@@ -1,0 +1,11 @@
+[package]
+name = "tls-parser"
+version = "0.1.0"
+authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
+
+[lib]
+name = "tls_parser"
+
+[dependencies]
+nom = "1.2.4"
+asn1 = { git = "https://github.com/alex/rust-asn1.git" }
