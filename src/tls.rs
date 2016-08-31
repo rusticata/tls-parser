@@ -185,7 +185,7 @@ named!(parse_tls_record_header<TlsRecordHeader>,
     )
 );
 
-named!(parse_tls_hanshake_msg_client_hello<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ClientHello as u8]) ~
         hl: parse_uint24 ~
@@ -221,7 +221,7 @@ named!(parse_tls_hanshake_msg_client_hello<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_hanshake_msg_server_hello<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ServerHello as u8]) ~
         hl: parse_uint24 ~
@@ -254,7 +254,7 @@ named!(parse_tls_hanshake_msg_server_hello<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_hanshake_msg_certificate<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_certificate<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::Certificate as u8]) ~
         hl: parse_uint24 ~
@@ -273,7 +273,7 @@ named!(parse_tls_hanshake_msg_certificate<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_hanshake_msg_serverkeyexchange<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_serverkeyexchange<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ServerKeyExchange as u8]) ~
         hl: parse_uint24 ~
@@ -291,7 +291,7 @@ named!(parse_tls_hanshake_msg_serverkeyexchange<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_hanshake_msg_serverdone<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_serverdone<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ServerDone as u8]) ~
         hl: parse_uint24 ~
@@ -306,7 +306,7 @@ named!(parse_tls_hanshake_msg_serverdone<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_hanshake_msg_clientkeyexchange<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_clientkeyexchange<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ClientKeyExchange as u8]) ~
         hl: parse_uint24 ~
@@ -328,12 +328,12 @@ named!(parse_tls_hanshake_msg_clientkeyexchange<TlsMessageHandshake>,
 // XXX take only len bytes to send to alt!
 named!(parse_tls_message_handshake<TlsMessage>,
     chain!(
-        m: alt!(parse_tls_hanshake_msg_client_hello |
-                parse_tls_hanshake_msg_server_hello |
-                parse_tls_hanshake_msg_certificate |
-                parse_tls_hanshake_msg_serverkeyexchange |
-                parse_tls_hanshake_msg_serverdone |
-                parse_tls_hanshake_msg_clientkeyexchange),
+        m: alt!(parse_tls_handshake_msg_client_hello |
+                parse_tls_handshake_msg_server_hello |
+                parse_tls_handshake_msg_certificate |
+                parse_tls_handshake_msg_serverkeyexchange |
+                parse_tls_handshake_msg_serverdone |
+                parse_tls_handshake_msg_clientkeyexchange),
     || { TlsMessage::Handshake(m) }
     )
 );
