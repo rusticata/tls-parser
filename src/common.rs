@@ -12,6 +12,24 @@
 //    Sequence = (0x10 | ASN1_CONSTRUCTED_FLAG),
 //}
 
+#[macro_export]
+macro_rules! error_if (
+  ($i:expr, $cond:expr, $err:expr) => (
+    {
+      if $cond {
+        IResult::Error($err)
+      } else {
+        IResult::Done($i, ())
+      }
+    }
+  );
+  ($i:expr, $cond:expr, $err:expr) => (
+    error!($i, $cond, $err);
+  );
+);
+
+
+
 pub fn bytes_to_u64(s: &[u8]) -> Result<u64, &'static str> {
     let mut u = 0;
 

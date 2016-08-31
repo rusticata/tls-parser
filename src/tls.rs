@@ -1,4 +1,6 @@
 use common::{take_u8,parse_uint24};
+use nom::{IResult,ErrorKind,Err};
+
 
 #[repr(u8)]
 pub enum TlsHandshakeType {
@@ -16,7 +18,11 @@ pub enum TlsHandshakeType {
 
 #[repr(u16)]                    // XXX big endian !
 pub enum TlsVersion {
+    Ssl30 = 0x0300,
+    Tls10 = 0x0301,
+    Tls11 = 0x0302,
     Tls12 = 0x0303,
+    Tls13 = 0x0304,
 }
 
 #[repr(u8)]
@@ -25,6 +31,25 @@ pub enum TlsRecordType {
     Alert = 0x15,
     Handshake = 0x16,
     ApplicationData = 0x17,
+}
+
+
+#[derive(Debug)]
+pub enum ParseIntError {
+    InvalidPacketType(u8),
+}
+
+
+impl TlsRecordType {
+    pub fn try_from_u8(original: u8) -> Result<Self, ParseIntError> {
+        match original {
+            0x14 => Ok(TlsRecordType::ChangeCipherSpec),
+            0x15 => Ok(TlsRecordType::Alert),
+            0x16 => Ok(TlsRecordType::Handshake),
+            0x17 => Ok(TlsRecordType::ApplicationData),
+            n => Err(ParseIntError::InvalidPacketType(n)),
+        }
+    }
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -72,6 +97,11 @@ pub struct TlsClientKeyExchangeContents<'a> {
 }
 
 #[derive(Clone,Debug,PartialEq)]
+pub struct TlsEncryptedContent<'a> {
+    blob: &'a[u8],
+}
+
+#[derive(Clone,Debug,PartialEq)]
 pub enum TlsHandshakeMsgContents<'a> {
     HelloRequest(&'a[u8]),
     ClientHello(TlsClientHelloContents<'a>),
@@ -83,33 +113,46 @@ pub enum TlsHandshakeMsgContents<'a> {
 }
 
 #[derive(Clone,Debug,PartialEq)]
-pub struct TlsHandshakeMsg<'a> {
+pub struct TlsMessageHandshake<'a> {
     handshake_type: u8,
     handshake_len: u32,
     contents: TlsHandshakeMsgContents<'a>,
 }
 
 #[derive(Clone,Debug,PartialEq)]
-pub struct TlsRecordHandshake<'a> {
+pub struct TlsMessageAlert {
+    severity: u8,
+    code: u8,
+}
+
+#[derive(Clone,Debug,PartialEq)]
+pub struct TlsMessageApplicationData<'a>{
+    blob: &'a[u8],
+}
+
+#[derive(Clone,Debug,PartialEq)]
+pub struct TlsRecordHeader {
     record_type: u8,
     version: u16,
     len: u16,
-    msg: TlsHandshakeMsg<'a>,
 }
 
 #[derive(Clone,Debug,PartialEq)]
-pub struct TlsRecordChangeCipherSpec {
-    record_type: u8,
-    version: u16,
+pub enum TlsMessage<'a> {
+    Handshake(TlsMessageHandshake<'a>),
+    ChangeCipherSpec,
+    Alert(TlsMessageAlert),
+    ApplicationData(TlsMessageApplicationData<'a>),
+    Encrypted(TlsEncryptedContent<'a>),
 }
 
 #[derive(Clone,Debug,PartialEq)]
-pub enum TlsRecord<'a> {
-    Handshake(TlsRecordHandshake<'a>),
-    ChangeCipherSpec(TlsRecordChangeCipherSpec),
+pub struct TlsRecord<'a> {
+    hdr: TlsRecordHeader,
+    msg: TlsMessage<'a>,
 }
 
-// TODO: cast as enum ?
+// TODO: wrap as struct + accessors ?
 named!(parse_cipher_suites<Vec<u16> >,
     chain!(v: many0!(u16!(true)), || { return v })
 );
@@ -127,14 +170,30 @@ named!(parse_certs<Vec<RawCertificate> >,
     )
 );
 
-named!(parse_tls_hanshake_msg_client_hello<TlsHandshakeMsg>,
+named!(parse_tls_record_header<TlsRecordHeader>,
+    chain!(
+        t: take_u8 ~
+        v: u16!(true) ~
+        l: u16!(true),
+    || {
+            TlsRecordHeader {
+                record_type: t,
+                version: v,
+                len: l,
+            }
+    }
+    )
+);
+
+named!(parse_tls_hanshake_msg_client_hello<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ClientHello as u8]) ~
         hl: parse_uint24 ~
         hv: u16!(true) ~
         hrand_time: u32!(true) ~
         hrand_data: take!(28) ~ // 28 as 32 (aligned) - 4 (time)
-        hsidlen: take_u8 ~ // XXX check <= 4     XXX can be 0
+        hsidlen: take_u8 ~ // check <= 4     XXX can be 0
+        error_if!(hsidlen > 4, Err::Code(ErrorKind::Custom(128))) ~
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
         ciphers_len: u16!(true) ~
         ciphers: flat_map!(take!(ciphers_len),parse_cipher_suites) ~
@@ -144,7 +203,7 @@ named!(parse_tls_hanshake_msg_client_hello<TlsHandshakeMsg>,
         ext_len: u16!(true) ~
         ext: take!(ext_len), // XXX parse extensions
         || {
-            TlsHandshakeMsg {
+            TlsMessageHandshake {
                 handshake_type:ht[0],
                 handshake_len:hl as u32,
                 contents: TlsHandshakeMsgContents::ClientHello(
@@ -162,22 +221,22 @@ named!(parse_tls_hanshake_msg_client_hello<TlsHandshakeMsg>,
     )
 );
 
-named!(parse_tls_hanshake_msg_server_hello<TlsHandshakeMsg>,
+named!(parse_tls_hanshake_msg_server_hello<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ServerHello as u8]) ~
         hl: parse_uint24 ~
         hv: u16!(true) ~
         hrand_time: u32!(true) ~
         hrand_data: take!(28) ~ // 28 as 32 (aligned) - 4 (time)
-        hsidlen: take_u8 ~ // XXX check <= 4     XXX can be 0
+        hsidlen: take_u8 ~ // check <= 4     XXX can be 0
+        error_if!(hsidlen > 4, Err::Code(ErrorKind::Custom(128))) ~
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
         cipher: u16!(true) ~
         comp: take_u8 ~
         ext_len: u16!(true) ~
         ext: take!(ext_len), // XXX parse extensions
         || {
-            println!("hl: {}", hl);
-            TlsHandshakeMsg {
+            TlsMessageHandshake {
                 handshake_type:ht[0],
                 handshake_len:hl as u32,
                 contents: TlsHandshakeMsgContents::ServerHello(
@@ -195,15 +254,14 @@ named!(parse_tls_hanshake_msg_server_hello<TlsHandshakeMsg>,
     )
 );
 
-named!(parse_tls_hanshake_msg_certificate<TlsHandshakeMsg>,
+named!(parse_tls_hanshake_msg_certificate<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::Certificate as u8]) ~
         hl: parse_uint24 ~
         cert_len: parse_uint24 ~
         certs: flat_map!(take!(cert_len),parse_certs),
         || {
-            println!("hl: {}", hl);
-            TlsHandshakeMsg {
+            TlsMessageHandshake {
                 handshake_type:ht[0],
                 handshake_len:hl as u32,
                 contents: TlsHandshakeMsgContents::Certificate(
@@ -215,14 +273,13 @@ named!(parse_tls_hanshake_msg_certificate<TlsHandshakeMsg>,
     )
 );
 
-named!(parse_tls_hanshake_msg_serverkeyexchange<TlsHandshakeMsg>,
+named!(parse_tls_hanshake_msg_serverkeyexchange<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ServerKeyExchange as u8]) ~
         hl: parse_uint24 ~
         ext: take!(hl),
         || {
-            println!("hl: {}", hl);
-            TlsHandshakeMsg {
+            TlsMessageHandshake {
                 handshake_type:ht[0],
                 handshake_len:hl as u32,
                 contents: TlsHandshakeMsgContents::ServerKeyExchange(
@@ -234,14 +291,13 @@ named!(parse_tls_hanshake_msg_serverkeyexchange<TlsHandshakeMsg>,
     )
 );
 
-named!(parse_tls_hanshake_msg_serverdone<TlsHandshakeMsg>,
+named!(parse_tls_hanshake_msg_serverdone<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ServerDone as u8]) ~
         hl: parse_uint24 ~
         ext: take!(hl),
         || {
-            println!("hl: {}", hl);
-            TlsHandshakeMsg {
+            TlsMessageHandshake {
                 handshake_type:ht[0],
                 handshake_len:hl as u32,
                 contents: TlsHandshakeMsgContents::ServerDone(ext),
@@ -250,14 +306,13 @@ named!(parse_tls_hanshake_msg_serverdone<TlsHandshakeMsg>,
     )
 );
 
-named!(parse_tls_hanshake_msg_clientkeyexchange<TlsHandshakeMsg>,
+named!(parse_tls_hanshake_msg_clientkeyexchange<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ClientKeyExchange as u8]) ~
         hl: parse_uint24 ~
         ext: take!(hl),
         || {
-            println!("hl: {}", hl);
-            TlsHandshakeMsg {
+            TlsMessageHandshake {
                 handshake_type:ht[0],
                 handshake_len:hl as u32,
                 contents: TlsHandshakeMsgContents::ClientKeyExchange(
@@ -269,56 +324,101 @@ named!(parse_tls_hanshake_msg_clientkeyexchange<TlsHandshakeMsg>,
     )
 );
 
-named!(parse_tls_record_handshake<TlsRecord>,
+// XXX parse generic message header
+// XXX take only len bytes to send to alt!
+named!(parse_tls_message_handshake<TlsMessage>,
     chain!(
-        t: tag!([TlsRecordType::Handshake as u8]) ~
-        v: u16!(true) ~
-        l: u16!(true) ~
         m: alt!(parse_tls_hanshake_msg_client_hello |
                 parse_tls_hanshake_msg_server_hello |
                 parse_tls_hanshake_msg_certificate |
                 parse_tls_hanshake_msg_serverkeyexchange |
                 parse_tls_hanshake_msg_serverdone |
                 parse_tls_hanshake_msg_clientkeyexchange),
-    || {
-        TlsRecord::Handshake(
-            TlsRecordHandshake {
-            record_type:t[0],
-            version:v,
-            len: l,
-            msg: m,
-        }) }
+    || { TlsMessage::Handshake(m) }
     )
 );
 
-named!(parse_tls_record_changecipherspec<TlsRecord>,
+// XXX add extra verification hdr.len == 1
+named!(parse_tls_message_changecipherspec<TlsMessage>,
     chain!(
-        t: tag!([TlsRecordType::ChangeCipherSpec as u8]) ~
-        v: u16!(true) ~
-        /*len: */ tag!([0x00, 0x01]) ~
         tag!([0x01]),
+    || { TlsMessage::ChangeCipherSpec }
+    )
+);
+
+// XXX add extra verification hdr.len == 2
+named!(parse_tls_message_alert<TlsMessage>,
+    chain!(
+        s: take_u8 ~
+        c: take_u8,
     || {
-        TlsRecord::ChangeCipherSpec(
-            TlsRecordChangeCipherSpec {
-                record_type: t[0],
-                version: v,
+        TlsMessage::Alert(
+            TlsMessageAlert {
+                severity: s,
+                code: c,
             })
     }
     )
 );
 
+fn parse_tls_message_applicationdata( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
+    chain!(i,
+        b: take!(i.len()),
+        || {
+            TlsMessage::ApplicationData(
+                TlsMessageApplicationData {
+                    blob: b,
+                })
+    })
+}
 
-named!(parse_tls_record<TlsRecord>,
-    alt!(   parse_tls_record_handshake |
-            parse_tls_record_changecipherspec)
+fn parse_tls_record_encrypted( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
+    chain!(i,
+        b: take!(i.len()),
+        || {
+            TlsMessage::Encrypted(
+                TlsEncryptedContent {
+                    blob: b,
+                })
+    })
+}
+
+fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], TlsMessage> {
+    chain!(i,
+        msg: switch!(value!(record_type),
+            /*TlsRecordType::ChangeCipherSpec*/ 0x14 => call!(parse_tls_message_changecipherspec) |
+            /*TlsRecordType::Alert*/            0x15 => call!(parse_tls_message_alert) |
+            /*TlsRecordType::Handshake*/        0x16 => call!(parse_tls_message_handshake) |
+            /*TlsRecordType::ApplicationData*/  0x17 => call!(parse_tls_message_applicationdata)
+         ),
+        || { msg }
+    )
+}
+
+
+// XXX a single record can contain multiple messages, they must share the same record type
+named!(pub parse_tls_record<TlsRecord>,
+    chain!(
+        hdr: parse_tls_record_header ~
+        // assume record content is encrypted if we don't recognize it
+        msg: flat_map!(take!(hdr.len),
+            alt!(apply!(parse_tls_record_with_type,hdr.record_type) | parse_tls_record_encrypted)
+            ),
+        || { TlsRecord {hdr:hdr, msg:msg} }
+    )
 );
 
 // XXX we should return a Vec<TlsRecord>, since one communication can contain multiple records
 named!(pub tls_parser<TlsRecord>,
     chain!(
         record:    parse_tls_record,
-    || { println!("record: {:?}", record); record }
+    || { println!("TLS Record: {:?}", record); record }
     )
+);
+
+// XXX we should return a Vec<TlsRecord>, since one communication can contain multiple records
+named!(pub tls_parser_many<Vec<TlsRecord> >,
+    many0!(parse_tls_record)
 );
 
 #[cfg(test)]
@@ -378,12 +478,14 @@ fn test_tls_record_clienthello() {
         0x0010, 0x000d, 0xc00d, 0xc003, 0x000a, 0x00ff
     ];
     let comp = vec![0x00];
-    let expected = TlsRecord::Handshake(
-        TlsRecordHandshake{
+    let expected = TlsRecord {
+        hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0301,
             len: 300,
-            msg: TlsHandshakeMsg {
+        },
+        msg: TlsMessage::Handshake(
+            TlsMessageHandshake {
                 handshake_type: TlsHandshakeType::ClientHello as u8,
                 handshake_len: 296,
                 contents: TlsHandshakeMsgContents::ClientHello(
@@ -396,9 +498,11 @@ fn test_tls_record_clienthello() {
                         comp: comp,
                         ext: &bytes[220..],
                     })
-            }
-    });
-    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+        })
+    };
+    let res = tls_parser(&bytes);
+    println!("res: {:?}", res);
+    assert_eq!(res, IResult::Done(empty, expected));
 }
 
 
@@ -706,12 +810,14 @@ static SERVER_REPLY1: &'static [u8] = &[
 fn test_tls_record_serverhello() {
     let empty = &b""[..];
     let bytes = &SERVER_REPLY1[0..64];
-    let expected = TlsRecord::Handshake(
-        TlsRecordHandshake{
+    let expected = TlsRecord {
+        hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
             len: 59,
-            msg: TlsHandshakeMsg {
+        },
+        msg: TlsMessage::Handshake(
+            TlsMessageHandshake {
                 handshake_type: TlsHandshakeType::ServerHello as u8,
                 handshake_len: 55,
                 contents: TlsHandshakeMsgContents::ServerHello(
@@ -724,9 +830,8 @@ fn test_tls_record_serverhello() {
                         compression: 0,
                         ext: &bytes[49..],
                     })
-            }
-        }
-    );
+        })
+    };
     assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
 }
 
@@ -742,21 +847,22 @@ fn test_tls_record_certificate() {
     for cert in &chain {
         println!("cert len: {}", cert.data.len());
     }
-    let expected = TlsRecord::Handshake(
-        TlsRecordHandshake{
+    let expected = TlsRecord {
+        hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
             len: 3081,
-            msg: TlsHandshakeMsg {
+        },
+        msg: TlsMessage::Handshake(
+            TlsMessageHandshake {
                 handshake_type: TlsHandshakeType::Certificate as u8,
                 handshake_len: 3077,
                 contents: TlsHandshakeMsgContents::Certificate(
                     TlsCertificateContents {
                         cert_chain: chain,
-                    })
-            }
-        }
-    );
+                })
+            })
+    };
     assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
 }
 
@@ -764,21 +870,22 @@ fn test_tls_record_certificate() {
 fn test_tls_record_serverkeyexchange() {
     let empty = &b""[..];
     let bytes = &SERVER_REPLY1[3150..3488];
-    let expected = TlsRecord::Handshake(
-        TlsRecordHandshake{
+    let expected = TlsRecord {
+        hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
             len: 333,
-            msg: TlsHandshakeMsg {
-                handshake_type: TlsHandshakeType::ServerKeyExchange as u8,
-                handshake_len: 329,
-                contents: TlsHandshakeMsgContents::ServerKeyExchange(
-                    TlsServerKeyExchangeContents {
-                        parameters: &bytes[9..],
-                    })
-            }
-        }
-    );
+        },
+        msg: TlsMessage::Handshake(
+            TlsMessageHandshake {
+            handshake_type: TlsHandshakeType::ServerKeyExchange as u8,
+            handshake_len: 329,
+            contents: TlsHandshakeMsgContents::ServerKeyExchange(
+                TlsServerKeyExchangeContents {
+                    parameters: &bytes[9..],
+                })
+        })
+    };
     assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
 }
 
@@ -786,18 +893,19 @@ fn test_tls_record_serverkeyexchange() {
 fn test_tls_record_serverdone() {
     let empty = &b""[..];
     let bytes = &SERVER_REPLY1[3488..];
-    let expected = TlsRecord::Handshake(
-        TlsRecordHandshake{
+    let expected = TlsRecord {
+        hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
             len: 4,
-            msg: TlsHandshakeMsg {
-                handshake_type: TlsHandshakeType::ServerDone as u8,
-                handshake_len: 0,
-                contents: TlsHandshakeMsgContents::ServerDone(empty),
-            }
-        }
-    );
+        },
+        msg: TlsMessage::Handshake(
+            TlsMessageHandshake {
+            handshake_type: TlsHandshakeType::ServerDone as u8,
+            handshake_len: 0,
+            contents: TlsHandshakeMsgContents::ServerDone(empty),
+        })
+    };
     assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
 }
 
@@ -823,21 +931,22 @@ static CLIENT_REPLY1: &'static [u8] = &[
 fn test_tls_record_clientkeyexchange() {
     let empty = &b""[..];
     let bytes = &CLIENT_REPLY1[0..75];
-    let expected = TlsRecord::Handshake(
-        TlsRecordHandshake{
+    let expected = TlsRecord {
+        hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
             len: 70,
-            msg: TlsHandshakeMsg {
-                handshake_type: TlsHandshakeType::ClientKeyExchange as u8,
-                handshake_len: 66,
-                contents: TlsHandshakeMsgContents::ClientKeyExchange(
-                    TlsClientKeyExchangeContents {
-                        parameters: &bytes[9..],
-                    })
-            }
-        }
-    );
+        },
+        msg: TlsMessage::Handshake(
+            TlsMessageHandshake {
+            handshake_type: TlsHandshakeType::ClientKeyExchange as u8,
+            handshake_len: 66,
+            contents: TlsHandshakeMsgContents::ClientKeyExchange(
+                TlsClientKeyExchangeContents {
+                    parameters: &bytes[9..],
+                })
+        })
+    };
     assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
 }
 
@@ -845,12 +954,33 @@ fn test_tls_record_clientkeyexchange() {
 fn test_tls_record_changecipherspec() {
     let empty = &b""[..];
     let bytes = &CLIENT_REPLY1[75..81];
-    let expected = TlsRecord::ChangeCipherSpec(
-            TlsRecordChangeCipherSpec {
-                record_type: TlsRecordType::ChangeCipherSpec as u8,
-                version: 0x0303,
+    let expected = TlsRecord {
+        hdr: TlsRecordHeader {
+            record_type: TlsRecordType::ChangeCipherSpec as u8,
+            version: 0x0303,
+            len: 1,
+        },
+        msg: TlsMessage::ChangeCipherSpec,
+    };
+    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+}
+
+#[test]
+fn test_tls_record_encryptedhandshake() {
+    let empty = &b""[..];
+    let bytes = &CLIENT_REPLY1[81..];
+    let expected = TlsRecord {
+        hdr: TlsRecordHeader {
+            record_type: TlsRecordType::Handshake as u8,
+            version: 0x0303,
+            len: bytes.len() as u16 - 5,
+        },
+        msg: TlsMessage::Encrypted(
+            TlsEncryptedContent {
+                blob: &bytes[5..],
             }
-    );
+        ),
+    };
     assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
 }
 
