@@ -7,6 +7,7 @@ pub enum TlsHandshakeType {
     HelloRequest = 0x0,
     ClientHello = 0x1,
     ServerHello = 0x02,
+    NewSessionTicket = 0x04,
     Certificate = 0x0b,
     ServerKeyExchange = 0x0c,
     CertificateRequest = 0x0d,
@@ -14,6 +15,8 @@ pub enum TlsHandshakeType {
     CertificateVerify = 0x0f,
     ClientKeyExchange = 0x10,
     Finished = 0x14,
+    CertificateURL = 0x15,
+    CertificateStatus = 0x16,
 }
 
 #[repr(u16)]                    // XXX big endian !
@@ -77,6 +80,12 @@ pub struct TlsServerHelloContents<'a> {
 }
 
 #[derive(Clone,Debug,PartialEq)]
+pub struct TlsNewSessionTicketContent<'a> {
+    ticket_lifetime_hint: u32,
+    ticket: &'a[u8],
+}
+
+#[derive(Clone,Debug,PartialEq)]
 pub struct RawCertificate<'a> {
     data: &'a[u8],
 }
@@ -103,13 +112,16 @@ pub struct TlsEncryptedContent<'a> {
 
 #[derive(Clone,Debug,PartialEq)]
 pub enum TlsHandshakeMsgContents<'a> {
-    HelloRequest(&'a[u8]),
+    HelloRequest,
     ClientHello(TlsClientHelloContents<'a>),
     ServerHello(TlsServerHelloContents<'a>),
+    NewSessionTicket(TlsNewSessionTicketContent<'a>),
     Certificate(TlsCertificateContents<'a>),
     ServerKeyExchange(TlsServerKeyExchangeContents<'a>),
     ServerDone(&'a[u8]),
+    CertificateVerify(&'a[u8]),
     ClientKeyExchange(TlsClientKeyExchangeContents<'a>),
+    Finished(&'a[u8]),
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -185,6 +197,20 @@ named!(parse_tls_record_header<TlsRecordHeader>,
     )
 );
 
+named!(parse_tls_handshake_msg_hello_request<TlsMessageHandshake>,
+    chain!(
+        ht: tag!([TlsHandshakeType::HelloRequest as u8]) ~
+        tag!([0x00, 0x00, 0x00]),
+        || {
+            TlsMessageHandshake {
+                handshake_type:ht[0],
+                handshake_len: 0,
+                contents: TlsHandshakeMsgContents::HelloRequest
+            }
+        }
+    )
+);
+
 named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ClientHello as u8]) ~
@@ -254,6 +280,27 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
     )
 );
 
+// RFC 5077   Stateless TLS Session Resumption
+named!(parse_tls_handshake_msg_newsessionticket<TlsMessageHandshake>,
+    chain!(
+        ht: tag!([TlsHandshakeType::NewSessionTicket as u8]) ~
+        hl: parse_uint24 ~
+        hint: u32!(true) ~
+        raw: take!(hl - 4),
+        || {
+            TlsMessageHandshake {
+                handshake_type:ht[0],
+                handshake_len:hl as u32,
+                contents: TlsHandshakeMsgContents::NewSessionTicket(
+                    TlsNewSessionTicketContent {
+                        ticket_lifetime_hint: hint,
+                        ticket: raw,
+                    })
+            }
+        }
+    )
+);
+
 named!(parse_tls_handshake_msg_certificate<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::Certificate as u8]) ~
@@ -306,6 +353,21 @@ named!(parse_tls_handshake_msg_serverdone<TlsMessageHandshake>,
     )
 );
 
+named!(parse_tls_handshake_msg_certificateverify<TlsMessageHandshake>,
+    chain!(
+        ht: tag!([TlsHandshakeType::CertificateVerify as u8]) ~
+        hl: parse_uint24 ~
+        blob: take!(hl),
+        || {
+            TlsMessageHandshake {
+                handshake_type:ht[0],
+                handshake_len:hl as u32,
+                contents: TlsHandshakeMsgContents::CertificateVerify(blob)
+            }
+        }
+    )
+);
+
 named!(parse_tls_handshake_msg_clientkeyexchange<TlsMessageHandshake>,
     chain!(
         ht: tag!([TlsHandshakeType::ClientKeyExchange as u8]) ~
@@ -324,16 +386,36 @@ named!(parse_tls_handshake_msg_clientkeyexchange<TlsMessageHandshake>,
     )
 );
 
+named!(parse_tls_handshake_msg_finished<TlsMessageHandshake>,
+    chain!(
+        ht: tag!([TlsHandshakeType::Finished as u8]) ~
+        hl: parse_uint24 ~
+        blob: take!(hl),
+        || {
+            TlsMessageHandshake {
+                handshake_type:ht[0],
+                handshake_len:hl as u32,
+                contents: TlsHandshakeMsgContents::Finished(blob)
+            }
+        }
+    )
+);
+
 // XXX parse generic message header
 // XXX take only len bytes to send to alt!
 named!(parse_tls_message_handshake<TlsMessage>,
     chain!(
-        m: alt!(parse_tls_handshake_msg_client_hello |
+        m: alt!(parse_tls_handshake_msg_hello_request |
+                parse_tls_handshake_msg_client_hello |
                 parse_tls_handshake_msg_server_hello |
+                parse_tls_handshake_msg_newsessionticket |
                 parse_tls_handshake_msg_certificate |
                 parse_tls_handshake_msg_serverkeyexchange |
                 parse_tls_handshake_msg_serverdone |
-                parse_tls_handshake_msg_clientkeyexchange),
+                parse_tls_handshake_msg_certificateverify |
+                parse_tls_handshake_msg_clientkeyexchange |
+                parse_tls_handshake_msg_finished
+            ),
     || { TlsMessage::Handshake(m) }
     )
 );
