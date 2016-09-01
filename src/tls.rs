@@ -1,6 +1,7 @@
 use common::{take_u8,parse_uint24};
 use nom::{IResult,ErrorKind,Err};
 
+use tls_alert::*;
 
 #[repr(u8)]
 pub enum TlsHandshakeType {
@@ -129,12 +130,6 @@ pub struct TlsMessageHandshake<'a> {
     handshake_type: u8,
     handshake_len: u32,
     contents: TlsHandshakeMsgContents<'a>,
-}
-
-#[derive(Clone,Debug,PartialEq)]
-pub struct TlsMessageAlert {
-    severity: u8,
-    code: u8,
 }
 
 #[derive(Clone,Debug,PartialEq)]

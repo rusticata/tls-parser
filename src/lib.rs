@@ -11,6 +11,9 @@ pub mod der;
 pub use x509::*;
 pub mod x509;
 
+pub use tls_alert::*;
+#[macro_use]
+pub mod tls_alert;
 pub use tls::*;
 pub mod tls;
 
