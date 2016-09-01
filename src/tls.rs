@@ -58,57 +58,57 @@ impl TlsRecordType {
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsClientHelloContents<'a> {
-    version: u16,
-    rand_time: u32,
-    rand_data: &'a[u8],
-    session_id: Option<&'a[u8]>,
-    ciphers: Vec<u16>,
-    comp: Vec<u8>,
+    pub version: u16,
+    pub rand_time: u32,
+    pub rand_data: &'a[u8],
+    pub session_id: Option<&'a[u8]>,
+    pub ciphers: Vec<u16>,
+    pub comp: Vec<u8>,
 
-    ext: &'a[u8],
+    pub ext: &'a[u8],
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsServerHelloContents<'a> {
-    version: u16,
-    rand_time: u32,
-    rand_data: &'a[u8],
-    session_id: Option<&'a[u8]>,
-    cipher: u16,
-    compression: u8,
+    pub version: u16,
+    pub rand_time: u32,
+    pub rand_data: &'a[u8],
+    pub session_id: Option<&'a[u8]>,
+    pub cipher: u16,
+    pub compression: u8,
 
-    ext: &'a[u8],
+    pub ext: &'a[u8],
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsNewSessionTicketContent<'a> {
-    ticket_lifetime_hint: u32,
-    ticket: &'a[u8],
+    pub ticket_lifetime_hint: u32,
+    pub ticket: &'a[u8],
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct RawCertificate<'a> {
-    data: &'a[u8],
+    pub data: &'a[u8],
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsCertificateContents<'a> {
-    cert_chain: Vec<RawCertificate<'a> >,
+    pub cert_chain: Vec<RawCertificate<'a> >,
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsServerKeyExchangeContents<'a> {
-    parameters: &'a[u8],
+    pub parameters: &'a[u8],
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsClientKeyExchangeContents<'a> {
-    parameters: &'a[u8],
+    pub parameters: &'a[u8],
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsEncryptedContent<'a> {
-    blob: &'a[u8],
+    pub blob: &'a[u8],
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -127,9 +127,9 @@ pub enum TlsHandshakeMsgContents<'a> {
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsMessageHandshake<'a> {
-    handshake_type: u8,
-    handshake_len: u32,
-    contents: TlsHandshakeMsgContents<'a>,
+    pub handshake_type: u8,
+    pub handshake_len: u32,
+    pub contents: TlsHandshakeMsgContents<'a>,
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -155,9 +155,20 @@ pub enum TlsMessage<'a> {
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsRecord<'a> {
-    hdr: TlsRecordHeader,
-    msg: TlsMessage<'a>,
+    pub hdr: TlsRecordHeader,
+    pub msg: TlsMessage<'a>,
 }
+
+impl<'a> TlsRecord<'a> {
+    pub fn is_a(&'a self, ty:u8) -> bool {
+        self.hdr.record_type == ty
+    }
+}
+
+
+
+
+
 
 // TODO: wrap as struct + accessors ?
 named!(parse_cipher_suites<Vec<u16> >,

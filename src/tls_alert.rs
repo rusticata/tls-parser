@@ -44,7 +44,6 @@ pub struct TlsMessageAlert {
 
 impl fmt::Display for TlsMessageAlert {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        // XXX try to convert code to TlsAlertDescription
         let s : TlsAlertSeverity = self.severity.into();
         let d : TlsAlertDescription = self.code.into();
         write!(out, "TlsAlert(severity={:?},code={:?})", s, d)
