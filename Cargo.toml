@@ -9,3 +9,7 @@ name = "tls_parser"
 [dependencies]
 nom = "1.2.4"
 asn1 = { git = "https://github.com/alex/rust-asn1.git" }
+
+[dev_dependencies]
+pcap = "0.5.7"
+pnet = "0.12.0"

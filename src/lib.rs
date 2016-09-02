@@ -14,6 +14,11 @@ pub mod x509;
 pub use tls_alert::*;
 #[macro_use]
 pub mod tls_alert;
+pub use tls_ciphers::*;
+pub mod tls_ciphers;
+pub use tls_extensions::*;
+#[macro_use]
+pub mod tls_extensions;
 pub use tls::*;
 pub mod tls;
 

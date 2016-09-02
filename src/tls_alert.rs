@@ -44,9 +44,11 @@ pub struct TlsMessageAlert {
 
 impl fmt::Display for TlsMessageAlert {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        let s : TlsAlertSeverity = self.severity.into();
-        let d : TlsAlertDescription = self.code.into();
-        write!(out, "TlsAlert(severity={:?},code={:?})", s, d)
+        // // XXX that does not always work, since Alert can be encrypted
+        // let s : TlsAlertSeverity = self.severity.into();
+        // let d : TlsAlertDescription = self.code.into();
+        // write!(out, "TlsAlert(severity={:?},code={:?})", s, d)
+        write!(out, "TlsAlert(severity={:x},code=0x{:x})", self.severity, self.code)
     }
 }
 
@@ -65,7 +67,7 @@ impl From<u8> for TlsAlertSeverity {
         match t {
             0x01 => TlsAlertSeverity::Warning,
             0x02 => TlsAlertSeverity::Fatal,
-            _    => panic!("boo"),
+            n    => panic!("Invalid TlsAlertSeverity {}",n),
         }
     }
 }
@@ -97,7 +99,7 @@ impl From<u8> for TlsAlertDescription {
             0x50 => TlsAlertDescription::InternalError,
             0x5A => TlsAlertDescription::UserCancelled,
             0x64 => TlsAlertDescription::NoRenegotiation,
-            _    => panic!("boo"),
+            n    => panic!("Invalid TlsAlertDescription {}",n),
         }
     }
 }

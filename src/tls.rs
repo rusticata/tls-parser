@@ -35,6 +35,7 @@ pub enum TlsRecordType {
     Alert = 0x15,
     Handshake = 0x16,
     ApplicationData = 0x17,
+    Heartbeat = 0x18,
 }
 
 
@@ -471,6 +472,8 @@ fn parse_tls_record_encrypted( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
     })
 }
 
+// XXX return vector of messages
+// this function must be called with the exact length of bytes
 fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], TlsMessage> {
     chain!(i,
         msg: switch!(value!(record_type),
