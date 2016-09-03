@@ -11,14 +11,14 @@ use pnet::packet::tcp::TcpPacket;
 use pnet::packet::ip::IpNextHeaderProtocols;
 
 extern crate tls_parser;
-use tls_parser::tls::{TlsMessage,TlsRecord,TlsHandshakeMsgContents,tls_parser_many};
+use tls_parser::tls::{TlsMessage,TlsPlaintext,TlsHandshakeMsgContents,tls_parser_many};
 use tls_parser::tls_ciphers::TlsCipherSuite;
 use tls_parser::tls_extensions::parse_tls_extensions;
 
 extern crate nom;
 use nom::IResult;
 
-fn handle_parsed_data(v:&Vec<TlsRecord>) {
+fn handle_parsed_data(v:&Vec<TlsPlaintext>) {
     for ref record in v {
         println!("{:?}", record);
         match record.msg {

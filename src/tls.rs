@@ -151,16 +151,21 @@ pub enum TlsMessage<'a> {
     ChangeCipherSpec,
     Alert(TlsMessageAlert),
     ApplicationData(TlsMessageApplicationData<'a>),
-    Encrypted(TlsEncryptedContent<'a>),
 }
 
 #[derive(Clone,Debug,PartialEq)]
-pub struct TlsRecord<'a> {
+pub struct TlsPlaintext<'a> {
     pub hdr: TlsRecordHeader,
     pub msg: TlsMessage<'a>,
 }
 
-impl<'a> TlsRecord<'a> {
+#[derive(Clone,Debug,PartialEq)]
+pub struct TlsEncrypted<'a> {
+    pub hdr: TlsRecordHeader,
+    pub msg: TlsEncryptedContent<'a>,
+}
+
+impl<'a> TlsPlaintext<'a> {
     pub fn is_a(&'a self, ty:u8) -> bool {
         self.hdr.record_type == ty
     }
@@ -461,17 +466,6 @@ fn parse_tls_message_applicationdata( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
     })
 }
 
-fn parse_tls_record_encrypted( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
-    chain!(i,
-        b: take!(i.len()),
-        || {
-            TlsMessage::Encrypted(
-                TlsEncryptedContent {
-                    blob: b,
-                })
-    })
-}
-
 // XXX return vector of messages
 // this function must be called with the exact length of bytes
 fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], TlsMessage> {
@@ -488,28 +482,39 @@ fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], TlsMe
 
 
 // XXX a single record can contain multiple messages, they must share the same record type
-named!(pub parse_tls_record<TlsRecord>,
+named!(pub parse_tls_plaintext<TlsPlaintext>,
     chain!(
         hdr: parse_tls_record_header ~
         // assume record content is encrypted if we don't recognize it
         msg: flat_map!(take!(hdr.len),
-            alt!(apply!(parse_tls_record_with_type,hdr.record_type) | parse_tls_record_encrypted)
+            // alt!(apply!(parse_tls_record_with_type,hdr.record_type) | parse_tls_record_encrypted)
+            apply!(parse_tls_record_with_type,hdr.record_type)
             ),
-        || { TlsRecord {hdr:hdr, msg:msg} }
+        || { TlsPlaintext {hdr:hdr, msg:msg} }
     )
 );
 
-// XXX we should return a Vec<TlsRecord>, since one communication can contain multiple records
-named!(pub tls_parser<TlsRecord>,
+// XXX a single record can contain multiple messages, they must share the same record type
+named!(pub parse_tls_encrypted<TlsEncrypted>,
     chain!(
-        record:    parse_tls_record,
+        hdr: parse_tls_record_header ~
+        // assume record content is encrypted if we don't recognize it
+        blob: take!(hdr.len),
+        || { TlsEncrypted {hdr:hdr, msg:TlsEncryptedContent{ blob: blob}} }
+    )
+);
+
+// XXX we should return a Vec<TlsPlaintext>, since one communication can contain multiple records
+named!(pub tls_parser<TlsPlaintext>,
+    chain!(
+        record:    parse_tls_plaintext,
     || { println!("TLS Record: {:?}", record); record }
     )
 );
 
-// XXX we should return a Vec<TlsRecord>, since one communication can contain multiple records
-named!(pub tls_parser_many<Vec<TlsRecord> >,
-    many0!(parse_tls_record)
+// XXX we should return a Vec<TlsPlaintext>, since one communication can contain multiple records
+named!(pub tls_parser_many<Vec<TlsPlaintext> >,
+    many0!(parse_tls_plaintext)
 );
 
 #[cfg(test)]
@@ -569,7 +574,7 @@ fn test_tls_record_clienthello() {
         0x0010, 0x000d, 0xc00d, 0xc003, 0x000a, 0x00ff
     ];
     let comp = vec![0x00];
-    let expected = TlsRecord {
+    let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0301,
@@ -591,7 +596,7 @@ fn test_tls_record_clienthello() {
                     })
         })
     };
-    let res = tls_parser(&bytes);
+    let res = parse_tls_plaintext(&bytes);
     println!("res: {:?}", res);
     assert_eq!(res, IResult::Done(empty, expected));
 }
@@ -901,7 +906,7 @@ static SERVER_REPLY1: &'static [u8] = &[
 fn test_tls_record_serverhello() {
     let empty = &b""[..];
     let bytes = &SERVER_REPLY1[0..64];
-    let expected = TlsRecord {
+    let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
@@ -923,7 +928,7 @@ fn test_tls_record_serverhello() {
                     })
         })
     };
-    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
 
 #[test]
@@ -938,7 +943,7 @@ fn test_tls_record_certificate() {
     for cert in &chain {
         println!("cert len: {}", cert.data.len());
     }
-    let expected = TlsRecord {
+    let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
@@ -954,14 +959,14 @@ fn test_tls_record_certificate() {
                 })
             })
     };
-    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
 
 #[test]
 fn test_tls_record_serverkeyexchange() {
     let empty = &b""[..];
     let bytes = &SERVER_REPLY1[3150..3488];
-    let expected = TlsRecord {
+    let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
@@ -977,14 +982,14 @@ fn test_tls_record_serverkeyexchange() {
                 })
         })
     };
-    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
 
 #[test]
 fn test_tls_record_serverdone() {
     let empty = &b""[..];
     let bytes = &SERVER_REPLY1[3488..];
-    let expected = TlsRecord {
+    let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
@@ -997,7 +1002,7 @@ fn test_tls_record_serverdone() {
             contents: TlsHandshakeMsgContents::ServerDone(empty),
         })
     };
-    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
 
 // client response, composed of 3 records:
@@ -1022,7 +1027,7 @@ static CLIENT_REPLY1: &'static [u8] = &[
 fn test_tls_record_clientkeyexchange() {
     let empty = &b""[..];
     let bytes = &CLIENT_REPLY1[0..75];
-    let expected = TlsRecord {
+    let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
@@ -1038,14 +1043,14 @@ fn test_tls_record_clientkeyexchange() {
                 })
         })
     };
-    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
 
 #[test]
 fn test_tls_record_changecipherspec() {
     let empty = &b""[..];
     let bytes = &CLIENT_REPLY1[75..81];
-    let expected = TlsRecord {
+    let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::ChangeCipherSpec as u8,
             version: 0x0303,
@@ -1053,26 +1058,24 @@ fn test_tls_record_changecipherspec() {
         },
         msg: TlsMessage::ChangeCipherSpec,
     };
-    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
 
 #[test]
 fn test_tls_record_encryptedhandshake() {
     let empty = &b""[..];
     let bytes = &CLIENT_REPLY1[81..];
-    let expected = TlsRecord {
+    let expected = TlsEncrypted {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
             version: 0x0303,
             len: bytes.len() as u16 - 5,
         },
-        msg: TlsMessage::Encrypted(
-            TlsEncryptedContent {
+        msg: TlsEncryptedContent {
                 blob: &bytes[5..],
             }
-        ),
     };
-    assert_eq!(tls_parser(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_encrypted(&bytes), IResult::Done(empty, expected));
 }
 
 } // mod tests
