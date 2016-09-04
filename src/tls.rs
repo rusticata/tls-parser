@@ -1,4 +1,4 @@
-use common::{take_u8,parse_uint24};
+use common::{take_u8,parse_uint24,IntToEnumError};
 use nom::{IResult,ErrorKind,Err};
 
 use tls_alert::*;
@@ -20,7 +20,7 @@ pub enum TlsHandshakeType {
     CertificateStatus = 0x16,
 }
 
-#[repr(u16)]                    // XXX big endian !
+#[repr(u16)]
 pub enum TlsVersion {
     Ssl30 = 0x0300,
     Tls10 = 0x0301,
@@ -39,20 +39,15 @@ pub enum TlsRecordType {
 }
 
 
-#[derive(Debug)]
-pub enum ParseIntError {
-    InvalidPacketType(u8),
-}
-
 
 impl TlsRecordType {
-    pub fn try_from_u8(original: u8) -> Result<Self, ParseIntError> {
+    pub fn try_from_u8(original: u8) -> Result<Self, IntToEnumError> {
         match original {
             0x14 => Ok(TlsRecordType::ChangeCipherSpec),
             0x15 => Ok(TlsRecordType::Alert),
             0x16 => Ok(TlsRecordType::Handshake),
             0x17 => Ok(TlsRecordType::ApplicationData),
-            n => Err(ParseIntError::InvalidPacketType(n)),
+            n => Err(IntToEnumError::InvalidU8(n)),
         }
     }
 }
@@ -239,7 +234,7 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         comp_len: take!(1) ~
         comp: count!(take_u8, comp_len[0] as usize) ~
         ext_len: u16!(true) ~
-        ext: take!(ext_len), // XXX parse extensions
+        ext: take!(ext_len),
         || {
             TlsMessageHandshake {
                 handshake_type:ht[0],
@@ -272,7 +267,7 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
         cipher: u16!(true) ~
         comp: take_u8 ~
         ext_len: u16!(true) ~
-        ext: take!(ext_len), // XXX parse extensions
+        ext: take!(ext_len),
         || {
             TlsMessageHandshake {
                 handshake_type:ht[0],

@@ -12,6 +12,12 @@
 //    Sequence = (0x10 | ASN1_CONSTRUCTED_FLAG),
 //}
 
+#[derive(Debug)]
+pub enum IntToEnumError {
+    InvalidU8(u8),
+    InvalidU16(u16),
+}
+
 #[macro_export]
 macro_rules! error_if (
   ($i:expr, $cond:expr, $err:expr) => (

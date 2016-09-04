@@ -1,4 +1,5 @@
 use std::fmt;
+use common::IntToEnumError;
 
 #[derive(Debug,PartialEq)]
 #[repr(u8)]
@@ -58,48 +59,65 @@ impl fmt::Debug for TlsMessageAlert {
     }
 }
 
-// use std::mem::transmute;
+impl TlsAlertSeverity {
+    pub fn try_from_u8(original: u8) -> Result<Self, IntToEnumError> {
+        match original {
+            0x01 => Ok(TlsAlertSeverity::Warning),
+            0x02 => Ok(TlsAlertSeverity::Fatal),
+            n => Err(IntToEnumError::InvalidU8(n)),
+        }
+    }
+}
+
 
 impl From<u8> for TlsAlertSeverity {
     fn from(t:u8) -> TlsAlertSeverity {
         // assert!(TlsAlertSeverity::Warning as u8 <= t && t <= TlsAlertSeverity::Fatal as u8);
         // unsafe { transmute(t) }
-        match t {
-            0x01 => TlsAlertSeverity::Warning,
-            0x02 => TlsAlertSeverity::Fatal,
-            n    => panic!("Invalid TlsAlertSeverity {}",n),
+        match TlsAlertSeverity::try_from_u8(t) {
+            Ok(s)  => s,
+            Err(_) => panic!("Invalid TlsAlertSeverity {}",t),
+        }
+    }
+}
+
+impl TlsAlertDescription {
+    pub fn try_from_u8(original: u8) -> Result<Self, IntToEnumError> {
+        match original {
+            0x00 => Ok(TlsAlertDescription::CloseNotify),
+            0x0A => Ok(TlsAlertDescription::UnexpectedMessage),
+            0x14 => Ok(TlsAlertDescription::BadRecordMac),
+            0x15 => Ok(TlsAlertDescription::DecryptionFailed),
+            0x16 => Ok(TlsAlertDescription::RecordOverflow),
+            0x1E => Ok(TlsAlertDescription::DecompressionFailure),
+            0x28 => Ok(TlsAlertDescription::HandshakeFailure),
+            0x29 => Ok(TlsAlertDescription::NoCertificate),
+            0x2A => Ok(TlsAlertDescription::BadCertificate),
+            0x2B => Ok(TlsAlertDescription::UnsupportedCertificate),
+            0x2C => Ok(TlsAlertDescription::CertificateRevoked),
+            0x2D => Ok(TlsAlertDescription::CertificateExpired),
+            0x2E => Ok(TlsAlertDescription::CertificateUnknown),
+            0x2F => Ok(TlsAlertDescription::IllegalParameter),
+            0x30 => Ok(TlsAlertDescription::UnknownCa),
+            0x31 => Ok(TlsAlertDescription::AccessDenied),
+            0x32 => Ok(TlsAlertDescription::DecodeError),
+            0x33 => Ok(TlsAlertDescription::DecryptError),
+            0x3C => Ok(TlsAlertDescription::ExportRestriction),
+            0x46 => Ok(TlsAlertDescription::ProtocolVersion),
+            0x47 => Ok(TlsAlertDescription::InsufficientSecurity),
+            0x50 => Ok(TlsAlertDescription::InternalError),
+            0x5A => Ok(TlsAlertDescription::UserCancelled),
+            0x64 => Ok(TlsAlertDescription::NoRenegotiation),
+            n => Err(IntToEnumError::InvalidU8(n)),
         }
     }
 }
 
 impl From<u8> for TlsAlertDescription {
     fn from(t:u8) -> TlsAlertDescription {
-        match t {
-            0x00 => TlsAlertDescription::CloseNotify,
-            0x0A => TlsAlertDescription::UnexpectedMessage,
-            0x14 => TlsAlertDescription::BadRecordMac,
-            0x15 => TlsAlertDescription::DecryptionFailed,
-            0x16 => TlsAlertDescription::RecordOverflow,
-            0x1E => TlsAlertDescription::DecompressionFailure,
-            0x28 => TlsAlertDescription::HandshakeFailure,
-            0x29 => TlsAlertDescription::NoCertificate,
-            0x2A => TlsAlertDescription::BadCertificate,
-            0x2B => TlsAlertDescription::UnsupportedCertificate,
-            0x2C => TlsAlertDescription::CertificateRevoked,
-            0x2D => TlsAlertDescription::CertificateExpired,
-            0x2E => TlsAlertDescription::CertificateUnknown,
-            0x2F => TlsAlertDescription::IllegalParameter,
-            0x30 => TlsAlertDescription::UnknownCa,
-            0x31 => TlsAlertDescription::AccessDenied,
-            0x32 => TlsAlertDescription::DecodeError,
-            0x33 => TlsAlertDescription::DecryptError,
-            0x3C => TlsAlertDescription::ExportRestriction,
-            0x46 => TlsAlertDescription::ProtocolVersion,
-            0x47 => TlsAlertDescription::InsufficientSecurity,
-            0x50 => TlsAlertDescription::InternalError,
-            0x5A => TlsAlertDescription::UserCancelled,
-            0x64 => TlsAlertDescription::NoRenegotiation,
-            n    => panic!("Invalid TlsAlertDescription {}",n),
+        match TlsAlertDescription::try_from_u8(t) {
+            Ok(s)  => s,
+            Err(_) => panic!("Invalid TlsAlertDescription {}",t),
         }
     }
 }
