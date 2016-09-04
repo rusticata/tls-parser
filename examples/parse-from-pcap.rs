@@ -11,7 +11,7 @@ use pnet::packet::tcp::TcpPacket;
 use pnet::packet::ip::IpNextHeaderProtocols;
 
 extern crate tls_parser;
-use tls_parser::tls::{TlsMessage,TlsPlaintext,TlsHandshakeMsgContents,tls_parser_many};
+use tls_parser::tls::{TlsMessage,TlsPlaintext,TlsMessageHandshake,tls_parser_many};
 use tls_parser::tls_ciphers::TlsCipherSuite;
 use tls_parser::tls_extensions::parse_tls_extensions;
 
@@ -23,12 +23,12 @@ fn handle_parsed_data(v:&Vec<TlsPlaintext>) {
         println!("{:?}", record);
         match record.msg {
             TlsMessage::Handshake(ref m) => {
-                match m.contents {
-                    TlsHandshakeMsgContents::ClientHello(ref content) => {
+                match *m {
+                    TlsMessageHandshake::ClientHello(ref content) => {
                         let blah = parse_tls_extensions(content.ext);
                         println!("ext {:?}", blah);
                     },
-                    TlsHandshakeMsgContents::ServerHello(ref content) => {
+                    TlsMessageHandshake::ServerHello(ref content) => {
                         let lu /* cipher */ : TlsCipherSuite = content.cipher.into();
                         println!("Selected cipher: {:?}", lu);
                         let blah = parse_tls_extensions(content.ext);
