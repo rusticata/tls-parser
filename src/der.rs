@@ -46,7 +46,7 @@ pub enum DerObject<'a> {
 
     UTCTime(&'a [u8]),
 
-    ContextSpecific(&'a[u8]),
+    ContextSpecific(/*tag:*/u8,&'a[u8]),
     Unknown(DerElementHeader, &'a[u8]),
 }
 
@@ -119,7 +119,7 @@ fn der_read_element_contents<'a,'b>(i: &'a[u8], hdr: DerElementHeader) -> IResul
         // application
         0b01 => (),
         // context-specific
-        0b10 => return chain!(i,b: take!(hdr.len),|| { DerObject::ContextSpecific(b) }),
+        0b10 => return chain!(i,b: take!(hdr.len),|| { DerObject::ContextSpecific(hdr.elt.tag,b) }),
         // private
         0b11 => (),
         _    => panic!("out of bounds value for hdr.elt.tag: {}", hdr.elt.tag),
