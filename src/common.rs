@@ -58,8 +58,3 @@ macro_rules! parse_hex_to_u64 (
 named!(pub parse_uint24<&[u8], u64>, parse_hex_to_u64!(3));
 
 //named!(parse_hex4<&[u8], u64>, parse_hex_to_u64!(4));
-
-/// Read one byte and return its value as u8 (and not &[u8])
-#[macro_use]
-named!(pub take_u8<&[u8], u8>, map!(take!(1),|x:&[u8]| { x[0] }));
-

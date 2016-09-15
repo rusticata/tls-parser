@@ -1,5 +1,5 @@
-use common::{take_u8,parse_uint24,IntToEnumError};
-use nom::{IResult,ErrorKind,Err};
+use common::{parse_uint24,IntToEnumError};
+use nom::{be_u8,IResult,ErrorKind,Err};
 
 use tls_alert::*;
 
@@ -184,7 +184,7 @@ named!(parse_certs<Vec<RawCertificate> >,
 
 named!(parse_tls_record_header<TlsRecordHeader>,
     chain!(
-        t: take_u8 ~
+        t: be_u8 ~
         v: u16!(true) ~
         l: u16!(true),
     || {
@@ -206,14 +206,14 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         hv: u16!(true) ~
         hrand_time: u32!(true) ~
         hrand_data: take!(28) ~ // 28 as 32 (aligned) - 4 (time)
-        hsidlen: take_u8 ~ // check <= 4     XXX can be 0
+        hsidlen: be_u8 ~ // check <= 4, can be 0
         error_if!(hsidlen > 4, Err::Code(ErrorKind::Custom(128))) ~
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
         ciphers_len: u16!(true) ~
         ciphers: flat_map!(take!(ciphers_len),parse_cipher_suites) ~
         //ciphers: count!(u16!(true), (ciphers_len/2) as usize) ~
         comp_len: take!(1) ~
-        comp: count!(take_u8, comp_len[0] as usize) ~
+        comp: count!(be_u8, comp_len[0] as usize) ~
         ext_len: u16!(true) ~
         ext: take!(ext_len),
         || {
@@ -236,11 +236,11 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
         hv: u16!(true) ~
         hrand_time: u32!(true) ~
         hrand_data: take!(28) ~ // 28 as 32 (aligned) - 4 (time)
-        hsidlen: take_u8 ~ // check <= 4     XXX can be 0
+        hsidlen: be_u8 ~ // check <= 4, can be 0
         error_if!(hsidlen > 4, Err::Code(ErrorKind::Custom(128))) ~
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
         cipher: u16!(true) ~
-        comp: take_u8 ~
+        comp: be_u8 ~
         ext_len: u16!(true) ~
         ext: take!(ext_len),
         || {
@@ -333,7 +333,7 @@ fn parse_tls_handshake_msg_finished( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMe
 
 named!(parse_tls_message_handshake<TlsMessage>,
     chain!(
-        ht: take_u8 ~
+        ht: be_u8 ~
         hl: parse_uint24 ~
         m: flat_map!(take!(hl),
             switch!(value!(ht),
@@ -367,8 +367,8 @@ named!(parse_tls_message_changecipherspec<TlsMessage>,
 // XXX add extra verification hdr.len == 2
 named!(parse_tls_message_alert<TlsMessage>,
     chain!(
-        s: take_u8 ~
-        c: take_u8,
+        s: be_u8 ~
+        c: be_u8,
     || {
         TlsMessage::Alert(
             TlsMessageAlert {
@@ -418,7 +418,6 @@ named!(pub parse_tls_plaintext<TlsPlaintext>,
     )
 );
 
-// XXX a single record can contain multiple messages, they must share the same record type
 named!(pub parse_tls_encrypted<TlsEncrypted>,
     chain!(
         hdr: parse_tls_record_header ~

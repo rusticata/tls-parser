@@ -5,8 +5,7 @@ pub use common::*;
 #[macro_use]
 pub mod common;
 
-pub use der::*;
-pub mod der;
+extern crate der_parser;
 
 pub use x509::*;
 pub mod x509;

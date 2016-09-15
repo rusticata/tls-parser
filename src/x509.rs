@@ -1,4 +1,4 @@
-use der::{parse_der,DerObject};
+use der_parser::der::*;
 
 
 named!(pub x509_parser<DerObject>,
