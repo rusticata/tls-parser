@@ -30,6 +30,12 @@ pub enum TlsVersion {
 }
 
 #[repr(u8)]
+pub enum TlsHeartbeatMessageType {
+    HeartBeatRequest  = 0x1,
+    HeartBeatResponse = 0x2,
+}
+
+#[repr(u8)]
 pub enum TlsRecordType {
     ChangeCipherSpec = 0x14,
     Alert = 0x15,
@@ -123,14 +129,21 @@ pub enum TlsMessageHandshake<'a> {
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsMessageApplicationData<'a>{
-    blob: &'a[u8],
+    pub blob: &'a[u8],
+}
+
+#[derive(Clone,Debug,PartialEq)]
+pub struct TlsMessageHeartbeat<'a>{
+    pub heartbeat_type: u8,
+    pub payload_len: u16,
+    pub payload: &'a[u8],
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsRecordHeader {
-    record_type: u8,
-    version: u16,
-    len: u16,
+    pub record_type: u8,
+    pub version: u16,
+    pub len: u16,
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -139,6 +152,7 @@ pub enum TlsMessage<'a> {
     ChangeCipherSpec,
     Alert(TlsMessageAlert),
     ApplicationData(TlsMessageApplicationData<'a>),
+    Heartbeat(TlsMessageHeartbeat<'a>),
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -390,6 +404,21 @@ fn parse_tls_message_applicationdata( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
     })
 }
 
+fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
+    chain!(i,
+        hb_type: be_u8 ~
+        hb_len: u16!(true) ~
+        b: take!(i.len()-3), // payload (hb_len) + padding
+        || {
+            TlsMessage::Heartbeat(
+                TlsMessageHeartbeat {
+                    heartbeat_type: hb_type,
+                    payload_len: hb_len,
+                    payload: b,
+                })
+    })
+}
+
 // XXX return vector of messages
 // XXX check message length (not required for parser safety, but for protocol
 fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], TlsMessage> {
@@ -398,7 +427,8 @@ fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], TlsMe
             /*TlsRecordType::ChangeCipherSpec*/ 0x14 => call!(parse_tls_message_changecipherspec) |
             /*TlsRecordType::Alert*/            0x15 => call!(parse_tls_message_alert) |
             /*TlsRecordType::Handshake*/        0x16 => call!(parse_tls_message_handshake) |
-            /*TlsRecordType::ApplicationData*/  0x17 => call!(parse_tls_message_applicationdata)
+            /*TlsRecordType::ApplicationData*/  0x17 => call!(parse_tls_message_applicationdata) |
+            /*TlsRecordType::Heartbeat      */  0x18 => call!(parse_tls_message_heartbeat)
          ),
         || { msg }
     )
