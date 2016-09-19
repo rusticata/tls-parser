@@ -29,8 +29,10 @@ fn handle_parsed_data(v:&Vec<TlsPlaintext>) {
                         println!("ext {:?}", blah);
                     },
                     TlsMessageHandshake::ServerHello(ref content) => {
-                        let lu /* cipher */ : TlsCipherSuite = content.cipher.into();
-                        println!("Selected cipher: {:?}", lu);
+                        match TlsCipherSuite::from_id(content.cipher) {
+                            Some(c) => println!("Selected cipher: {:?}", c),
+                            _ => println!("Unknown ciphe 0x{:x}", content.cipher),
+                        };
                         let blah = parse_tls_extensions(content.ext);
                         println!("ext {:?}", blah);
                     },
