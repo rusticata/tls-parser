@@ -439,9 +439,7 @@ fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], TlsMe
 named!(pub parse_tls_plaintext<TlsPlaintext>,
     chain!(
         hdr: parse_tls_record_header ~
-        // assume record content is encrypted if we don't recognize it
         msg: flat_map!(take!(hdr.len),
-            // alt!(apply!(parse_tls_record_with_type,hdr.record_type) | parse_tls_record_encrypted)
             apply!(parse_tls_record_with_type,hdr.record_type)
             ),
         || { TlsPlaintext {hdr:hdr, msg:msg} }
@@ -451,21 +449,17 @@ named!(pub parse_tls_plaintext<TlsPlaintext>,
 named!(pub parse_tls_encrypted<TlsEncrypted>,
     chain!(
         hdr: parse_tls_record_header ~
-        // assume record content is encrypted if we don't recognize it
         blob: take!(hdr.len),
         || { TlsEncrypted {hdr:hdr, msg:TlsEncryptedContent{ blob: blob}} }
     )
 );
 
-// XXX we should return a Vec<TlsPlaintext>, since one communication can contain multiple records
+// parse one packet only
 named!(pub tls_parser<TlsPlaintext>,
-    chain!(
-        record:    parse_tls_plaintext,
-    || { println!("TLS Record: {:?}", record); record }
-    )
+    call!(parse_tls_plaintext)
 );
 
-// XXX we should return a Vec<TlsPlaintext>, since one communication can contain multiple records
+// parse one packet, possibly containing multiple records
 named!(pub tls_parser_many<Vec<TlsPlaintext> >,
     many0!(parse_tls_plaintext)
 );
