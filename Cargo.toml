@@ -9,6 +9,7 @@ name = "tls_parser"
 [dependencies]
 nom = "1.2.4"
 lazy_static = "0.1.*"
+enum_primitive = "0.1.0"
 # der-parser = { git = "ssh://git@git.wzdftpd.net:22/der-parser-rs.git" }
 
 [dependencies.der-parser]

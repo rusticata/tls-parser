@@ -1,22 +1,74 @@
-//const ASN1_CONSTRUCTED_FLAG: u8 = 0x20;
-//
-//#[repr(u8)]
-//pub enum Tag {
-//    Bool = 0x1,
-//    Integer = 0x2,
-//    BitString = 0x3,
-//    OctetString = 0x4,
-//    ObjectIdentifier = 0x6,
-//    PrintableString = 0x13,
-//    UTCTime = 0x17,
-//    Sequence = (0x10 | ASN1_CONSTRUCTED_FLAG),
-//}
-
 #[derive(Debug)]
 pub enum IntToEnumError {
     InvalidU8(u8),
     InvalidU16(u16),
 }
+
+/// Named curves, as defined in [RFC4492] and [RFC7027]
+enum_from_primitive! {
+#[derive(Debug)]
+#[repr(u16)]
+pub enum NamedCurve {
+    Sect163k1 = 1,
+    Sect163r1 = 2,
+    Sect163r2 = 3,
+    Sect193r1 = 4,
+    Sect193r2 = 5,
+    Sect233k1 = 6,
+    Sect233r1 = 7,
+    Sect239k1 = 8,
+    Sect283k1 = 9,
+    Sect283r1 = 10,
+    Sect409k1 = 11,
+    Sect409r1 = 12,
+    Sect571k1 = 13,
+    Sect571r1 = 14,
+    Secp160k1 = 15,
+    Secp160r1 = 16,
+    Secp160r2 = 17,
+    Secp192k1 = 18,
+    Secp192r1 = 19,
+    Secp224k1 = 20,
+    Secp224r1 = 21,
+    Secp256k1 = 22,
+    Secp256r1 = 23,
+    Secp384r1 = 24,
+    Secp521r1 = 25,
+    BrainpoolP256r1 = 26,
+    BrainpoolP384r1 = 27,
+    BrainpoolP512r1 = 28,
+    ArbitraryExplicitPrimeCurves = 0xFF01,
+    ArbitraryExplicitChar2Curves = 0xFF02,
+}
+}
+
+/// Hash algorithms, as defined in [RFC5246]
+enum_from_primitive! {
+#[derive(Debug)]
+#[repr(u8)]
+pub enum HashAlgorithm {
+    None = 0,
+    Md5 = 1,
+    Sh1 = 2,
+    Sha224 = 3,
+    Sha256 = 4,
+    Sha384 = 5,
+    Sha512 = 6,
+}
+}
+
+/// Signature algorithms, as defined in [RFC5246]
+enum_from_primitive! {
+#[derive(Debug)]
+#[repr(u8)]
+pub enum SignatureAlgorithm {
+    Anonymous = 0,
+    Rsa = 1,
+    Dsa = 2,
+    Ecdsa = 3,
+}
+}
+
 
 #[macro_export]
 macro_rules! error_if (

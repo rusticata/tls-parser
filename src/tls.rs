@@ -541,7 +541,6 @@ fn test_tls_record_clienthello() {
         )
     };
     let res = parse_tls_plaintext(&bytes);
-    println!("res: {:?}", res);
     assert_eq!(res, IResult::Done(empty, expected));
 }
 
