@@ -1,6 +1,6 @@
 use std::fmt;
 use std::str::from_utf8;
-use nom::{be_u8,IResult,Err,ErrorKind};
+use nom::{be_u8,be_u16,IResult,Err,ErrorKind};
 
 use enum_primitive::FromPrimitive;
 use common::{NamedCurve,HashAlgorithm,SignatureAlgorithm};
@@ -104,14 +104,14 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
 }
 
 named!(pub parse_tls_extension_sni_hostname<(u8,&[u8])>,
-    pair!(be_u8,length_bytes!(u16!(true)))
+    pair!(be_u8,length_bytes!(be_u16))
 );
 
 named!(pub parse_tls_extension_sni<TlsExtension>,
     chain!(
         tag!([0x00,0x00]) ~
-        ext_len:  u16!(true) ~
-        list_len: u16!(true) ~
+        ext_len:  be_u16 ~
+        list_len: be_u16 ~
         v: flat_map!(take!(list_len),
             many0!(parse_tls_extension_sni_hostname)
             ),
@@ -122,7 +122,7 @@ named!(pub parse_tls_extension_sni<TlsExtension>,
 named!(pub parse_tls_extension_status_request<TlsExtension>,
     chain!(
         tag!([0x00,0x05]) ~
-        ext_len:  u16!(true) ~
+        ext_len:  be_u16 ~
         status_type: be_u8 ~
         request: take!(ext_len-1),
         || { TlsExtension::StatusRequest(status_type,request) }
@@ -132,10 +132,10 @@ named!(pub parse_tls_extension_status_request<TlsExtension>,
 named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
     chain!(
         tag!([0x00,0x0a]) ~
-        ext_len:  u16!(true) ~
-        list_len: u16!(true) ~
+        ext_len:  be_u16 ~
+        list_len: be_u16 ~
         l: flat_map!(take!(list_len),
-            many0!(u16!(true))
+            many0!(be_u16)
             ),
         || { TlsExtension::EllipticCurves(l) }
     )
@@ -144,7 +144,7 @@ named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
 named!(pub parse_tls_extension_ec_point_formats<TlsExtension>,
     chain!(
         tag!([0x00,0x0b]) ~
-        ext_len:  u16!(true) ~
+        ext_len:  be_u16 ~
         list_len: be_u8 ~
         v: take!(list_len),
         || { TlsExtension::EcPointFormats(v) }
@@ -154,8 +154,8 @@ named!(pub parse_tls_extension_ec_point_formats<TlsExtension>,
 named!(pub parse_tls_extension_signature_algorithms<TlsExtension>,
     chain!(
         tag!([0x00,0x0d]) ~
-        ext_len:  u16!(true) ~
-        list_len: u16!(true) ~
+        ext_len:  be_u16 ~
+        list_len: be_u16 ~
         l: flat_map!(take!(list_len),
             many0!(pair!(be_u8,be_u8))
             ),
@@ -166,7 +166,7 @@ named!(pub parse_tls_extension_signature_algorithms<TlsExtension>,
 named!(pub parse_tls_extension_heartbeat<TlsExtension>,
     chain!(
         tag!([0x00,0x0f]) ~
-        ext_len:  u16!(true) ~
+        ext_len:  be_u16 ~
         error_if!(ext_len != 1, Err::Code(ErrorKind::Custom(128))) ~
         hb_mode: be_u8,
         || { TlsExtension::Heartbeat(hb_mode) }
@@ -176,7 +176,7 @@ named!(pub parse_tls_extension_heartbeat<TlsExtension>,
 named!(pub parse_tls_extension_session_ticket<TlsExtension>,
     chain!(
         tag!([0x00,0x23]) ~
-        ext_len:  u16!(true) ~
+        ext_len:  be_u16 ~
         ext_data: take!(ext_len),
         || { TlsExtension::SessionTicket(ext_data) }
     )
@@ -184,8 +184,8 @@ named!(pub parse_tls_extension_session_ticket<TlsExtension>,
 
 named!(pub parse_tls_extension_unknown<TlsExtension>,
     chain!(
-        ext_type: u16!(true) ~
-        ext_len:  u16!(true) ~
+        ext_type: be_u16 ~
+        ext_len:  be_u16 ~
         ext_data: take!(ext_len),
         || { TlsExtension::Unknown(ext_type,ext_data) }
     )

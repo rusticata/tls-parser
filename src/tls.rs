@@ -1,5 +1,5 @@
 use common::{parse_uint24,IntToEnumError};
-use nom::{be_u8,IResult,ErrorKind,Err};
+use nom::{be_u8,be_u16,be_u32,IResult,ErrorKind,Err};
 
 use tls_alert::*;
 
@@ -180,7 +180,7 @@ impl<'a> TlsPlaintext<'a> {
 
 // TODO: wrap as struct + accessors ?
 named!(parse_cipher_suites<Vec<u16> >,
-    chain!(v: many0!(u16!(true)), || { return v })
+    chain!(v: many0!(be_u16), || { return v })
 );
 
 named!(parse_certs<Vec<RawCertificate> >,
@@ -199,8 +199,8 @@ named!(parse_certs<Vec<RawCertificate> >,
 named!(parse_tls_record_header<TlsRecordHeader>,
     chain!(
         t: be_u8 ~
-        v: u16!(true) ~
-        l: u16!(true),
+        v: be_u16 ~
+        l: be_u16,
     || {
             TlsRecordHeader {
                 record_type: t,
@@ -217,18 +217,18 @@ named!(parse_tls_handshake_msg_hello_request<TlsMessageHandshake>,
 
 named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     chain!(
-        hv: u16!(true) ~
-        hrand_time: u32!(true) ~
+        hv: be_u16 ~
+        hrand_time: be_u32 ~
         hrand_data: take!(28) ~ // 28 as 32 (aligned) - 4 (time)
         hsidlen: be_u8 ~ // check <= 4, can be 0
         error_if!(hsidlen > 4, Err::Code(ErrorKind::Custom(128))) ~
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
-        ciphers_len: u16!(true) ~
+        ciphers_len: be_u16 ~
         ciphers: flat_map!(take!(ciphers_len),parse_cipher_suites) ~
-        //ciphers: count!(u16!(true), (ciphers_len/2) as usize) ~
+        //ciphers: count!(be_u16, (ciphers_len/2) as usize) ~
         comp_len: take!(1) ~
         comp: count!(be_u8, comp_len[0] as usize) ~
-        ext_len: u16!(true) ~
+        ext_len: be_u16 ~
         ext: take!(ext_len),
         || {
             TlsMessageHandshake::ClientHello(
@@ -247,15 +247,15 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
 
 named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
     chain!(
-        hv: u16!(true) ~
-        hrand_time: u32!(true) ~
+        hv: be_u16 ~
+        hrand_time: be_u32 ~
         hrand_data: take!(28) ~ // 28 as 32 (aligned) - 4 (time)
         hsidlen: be_u8 ~ // check <= 4, can be 0
         error_if!(hsidlen > 4, Err::Code(ErrorKind::Custom(128))) ~
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
-        cipher: u16!(true) ~
+        cipher: be_u16 ~
         comp: be_u8 ~
-        ext_len: u16!(true) ~
+        ext_len: be_u16 ~
         ext: take!(ext_len),
         || {
             TlsMessageHandshake::ServerHello(
@@ -275,7 +275,7 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
 // RFC 5077   Stateless TLS Session Resumption
 fn parse_tls_handshake_msg_newsessionticket( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
     chain!(i,
-        hint: u32!(true) ~
+        hint: be_u32 ~
         raw: take!(len - 4),
         || {
             TlsMessageHandshake::NewSessionTicket(
@@ -407,7 +407,7 @@ fn parse_tls_message_applicationdata( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
 fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
     chain!(i,
         hb_type: be_u8 ~
-        hb_len: u16!(true) ~
+        hb_len: be_u16 ~
         b: take!(i.len()-3), // payload (hb_len) + padding
         || {
             TlsMessage::Heartbeat(
