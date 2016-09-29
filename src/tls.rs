@@ -67,7 +67,7 @@ pub struct TlsClientHelloContents<'a> {
     pub ciphers: Vec<u16>,
     pub comp: Vec<u8>,
 
-    pub ext: &'a[u8],
+    pub ext: Option<&'a[u8]>,
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -79,7 +79,7 @@ pub struct TlsServerHelloContents<'a> {
     pub cipher: u16,
     pub compression: u8,
 
-    pub ext: &'a[u8],
+    pub ext: Option<&'a[u8]>,
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -215,6 +215,14 @@ named!(parse_tls_handshake_msg_hello_request<TlsMessageHandshake>,
     value!(TlsMessageHandshake::HelloRequest)
 );
 
+named!(read_len_value_u16<&[u8]>,
+    chain!(
+        len: be_u16 ~
+        val: take!(len),
+        || { val }
+    )
+);
+
 named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     chain!(
         hv: be_u16 ~
@@ -228,8 +236,7 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         //ciphers: count!(be_u16, (ciphers_len/2) as usize) ~
         comp_len: take!(1) ~
         comp: count!(be_u8, comp_len[0] as usize) ~
-        ext_len: be_u16 ~
-        ext: take!(ext_len),
+        ext: opt!(complete!(read_len_value_u16)),
         || {
             TlsMessageHandshake::ClientHello(
                     TlsClientHelloContents {
@@ -255,8 +262,7 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
         cipher: be_u16 ~
         comp: be_u8 ~
-        ext_len: be_u16 ~
-        ext: take!(ext_len),
+        ext: opt!(complete!(read_len_value_u16)),
         || {
             TlsMessageHandshake::ServerHello(
                     TlsServerHelloContents {
@@ -536,7 +542,7 @@ fn test_tls_record_clienthello() {
                         session_id: None,
                         ciphers: ciphers,
                         comp: comp,
-                        ext: &bytes[220..],
+                        ext: Some(&bytes[220..]),
                     })
         )
     };
@@ -864,7 +870,7 @@ fn test_tls_record_serverhello() {
                         session_id: None,
                         cipher: 0xc02f,
                         compression: 0,
-                        ext: &bytes[49..],
+                        ext: Some(&bytes[49..]),
                     })
         )
     };

@@ -25,7 +25,7 @@ fn handle_parsed_data(v:&Vec<TlsPlaintext>) {
             TlsMessage::Handshake(ref m) => {
                 match *m {
                     TlsMessageHandshake::ClientHello(ref content) => {
-                        let blah = parse_tls_extensions(content.ext);
+                        let blah = parse_tls_extensions(content.ext.unwrap_or(b""));
                         println!("ext {:?}", blah);
                     },
                     TlsMessageHandshake::ServerHello(ref content) => {
@@ -33,7 +33,7 @@ fn handle_parsed_data(v:&Vec<TlsPlaintext>) {
                             Some(c) => println!("Selected cipher: {:?}", c),
                             _ => println!("Unknown ciphe 0x{:x}", content.cipher),
                         };
-                        let blah = parse_tls_extensions(content.ext);
+                        let blah = parse_tls_extensions(content.ext.unwrap_or(b""));
                         println!("ext {:?}", blah);
                     },
                     _ => (),
@@ -44,12 +44,12 @@ fn handle_parsed_data(v:&Vec<TlsPlaintext>) {
     }
 }
 
-fn callback(packet: pcap::Packet) {
+fn callback(ds: usize, packet: pcap::Packet) {
     println!("----------------------------------------");
-    println!("raw packet: {:?}", &packet[16..]);
+    println!("raw packet: {:?}", packet.data);
 
     //let ref ether = EthernetPacket::new(packet.data).unwrap();
-    let ref ipv4 = Ipv4Packet::new(&packet.data[16..]).unwrap();
+    let ref ipv4 = Ipv4Packet::new(&packet.data[ds..]).unwrap();
     // println!("next level proto: {:?}", ipv4.get_next_level_protocol());
     if ipv4.get_next_level_protocol() == IpNextHeaderProtocols::Tcp {
         match TcpPacket::new(ipv4.payload()) {
@@ -77,8 +77,13 @@ fn main() {
     if args.len() > 1 {
         let mut cap = pcap::Capture::from_file(&args[1]).unwrap();
 
+        let ds = match cap.get_datalink() {
+            pcap::Linktype(1) => 14,
+            _ => 16,
+        };
+
         while let Ok(packet) = cap.next() {
-            callback(packet);
+            callback(ds,packet);
         }
     } else {
         println!("Usage: <prog> file.pcap");
