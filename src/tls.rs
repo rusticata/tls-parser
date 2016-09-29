@@ -228,8 +228,8 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         hv: be_u16 ~
         hrand_time: be_u32 ~
         hrand_data: take!(28) ~ // 28 as 32 (aligned) - 4 (time)
-        hsidlen: be_u8 ~ // check <= 4, can be 0
-        error_if!(hsidlen > 4, Err::Code(ErrorKind::Custom(128))) ~
+        hsidlen: be_u8 ~ // check <= 32, can be 0
+        error_if!(hsidlen > 32, Err::Code(ErrorKind::Custom(128))) ~
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
         ciphers_len: be_u16 ~
         ciphers: flat_map!(take!(ciphers_len),parse_cipher_suites) ~
@@ -257,8 +257,8 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
         hv: be_u16 ~
         hrand_time: be_u32 ~
         hrand_data: take!(28) ~ // 28 as 32 (aligned) - 4 (time)
-        hsidlen: be_u8 ~ // check <= 4, can be 0
-        error_if!(hsidlen > 4, Err::Code(ErrorKind::Custom(128))) ~
+        hsidlen: be_u8 ~ // check <= 32, can be 0
+        error_if!(hsidlen > 32, Err::Code(ErrorKind::Custom(128))) ~
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
         cipher: be_u16 ~
         comp: be_u8 ~
