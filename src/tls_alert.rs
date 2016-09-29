@@ -33,6 +33,7 @@ pub enum TlsAlertDescription {
     ProtocolVersion        = 0x46,
     InsufficientSecurity   = 0x47,
     InternalError          = 0x50,
+    InappropriateFallback  = 0x56,
     UserCancelled          = 0x5A,
     NoRenegotiation        = 0x64,
 }
