@@ -21,25 +21,27 @@ use nom::IResult;
 fn handle_parsed_data(v:&Vec<TlsPlaintext>) {
     for ref record in v {
         println!("{:?}", record);
-        match record.msg {
-            TlsMessage::Handshake(ref m) => {
-                match *m {
-                    TlsMessageHandshake::ClientHello(ref content) => {
-                        let blah = parse_tls_extensions(content.ext.unwrap_or(b""));
-                        println!("ext {:?}", blah);
-                    },
-                    TlsMessageHandshake::ServerHello(ref content) => {
-                        match TlsCipherSuite::from_id(content.cipher) {
-                            Some(c) => println!("Selected cipher: {:?}", c),
-                            _ => println!("Unknown ciphe 0x{:x}", content.cipher),
-                        };
-                        let blah = parse_tls_extensions(content.ext.unwrap_or(b""));
-                        println!("ext {:?}", blah);
-                    },
-                    _ => (),
-                }
-            },
-            _ => (),
+        for msg in &record.msg {
+            match *msg {
+                TlsMessage::Handshake(ref m) => {
+                    match *m {
+                        TlsMessageHandshake::ClientHello(ref content) => {
+                            let blah = parse_tls_extensions(content.ext.unwrap_or(b""));
+                            println!("ext {:?}", blah);
+                        },
+                        TlsMessageHandshake::ServerHello(ref content) => {
+                            match TlsCipherSuite::from_id(content.cipher) {
+                                Some(c) => println!("Selected cipher: {:?}", c),
+                                _ => println!("Unknown ciphe 0x{:x}", content.cipher),
+                            };
+                            let blah = parse_tls_extensions(content.ext.unwrap_or(b""));
+                            println!("ext {:?}", blah);
+                        },
+                        _ => (),
+                    }
+                },
+                _ => (),
+            }
         }
     }
 }

@@ -158,7 +158,7 @@ pub enum TlsMessage<'a> {
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsPlaintext<'a> {
     pub hdr: TlsRecordHeader,
-    pub msg: TlsMessage<'a>,
+    pub msg: Vec<TlsMessage<'a>>,
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -427,14 +427,14 @@ fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
 
 // XXX return vector of messages
 // XXX check message length (not required for parser safety, but for protocol
-fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], TlsMessage> {
+fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], Vec<TlsMessage>> {
     chain!(i,
         msg: switch!(value!(record_type),
-            /*TlsRecordType::ChangeCipherSpec*/ 0x14 => call!(parse_tls_message_changecipherspec) |
-            /*TlsRecordType::Alert*/            0x15 => call!(parse_tls_message_alert) |
-            /*TlsRecordType::Handshake*/        0x16 => call!(parse_tls_message_handshake) |
-            /*TlsRecordType::ApplicationData*/  0x17 => call!(parse_tls_message_applicationdata) |
-            /*TlsRecordType::Heartbeat      */  0x18 => call!(parse_tls_message_heartbeat)
+            /*TlsRecordType::ChangeCipherSpec*/ 0x14 => many1!(parse_tls_message_changecipherspec) |
+            /*TlsRecordType::Alert*/            0x15 => many1!(parse_tls_message_alert) |
+            /*TlsRecordType::Handshake*/        0x16 => many1!(parse_tls_message_handshake) |
+            /*TlsRecordType::ApplicationData*/  0x17 => many1!(parse_tls_message_applicationdata) |
+            /*TlsRecordType::Heartbeat      */  0x18 => many1!(parse_tls_message_heartbeat)
          ),
         || { msg }
     )
@@ -467,7 +467,7 @@ named!(pub tls_parser<TlsPlaintext>,
 
 // parse one packet, possibly containing multiple records
 named!(pub tls_parser_many<Vec<TlsPlaintext> >,
-    many0!(parse_tls_plaintext)
+    many1!(parse_tls_plaintext)
 );
 
 #[cfg(test)]
@@ -533,7 +533,7 @@ fn test_tls_record_clienthello() {
             version: 0x0301,
             len: 300,
         },
-        msg: TlsMessage::Handshake(
+        msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ClientHello(
                     TlsClientHelloContents {
                         version: 0x0303,
@@ -544,7 +544,7 @@ fn test_tls_record_clienthello() {
                         comp: comp,
                         ext: Some(&bytes[220..]),
                     })
-        )
+        )]
     };
     let res = parse_tls_plaintext(&bytes);
     assert_eq!(res, IResult::Done(empty, expected));
@@ -861,7 +861,7 @@ fn test_tls_record_serverhello() {
             version: 0x0303,
             len: 59,
         },
-        msg: TlsMessage::Handshake(
+        msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ServerHello(
                     TlsServerHelloContents {
                         version: 0x0303,
@@ -872,7 +872,7 @@ fn test_tls_record_serverhello() {
                         compression: 0,
                         ext: Some(&bytes[49..]),
                     })
-        )
+        )]
     };
     assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
@@ -895,12 +895,12 @@ fn test_tls_record_certificate() {
             version: 0x0303,
             len: 3081,
         },
-        msg: TlsMessage::Handshake(
+        msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::Certificate(
                     TlsCertificateContents {
                         cert_chain: chain,
                 })
-            )
+            )]
     };
     assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
@@ -915,12 +915,12 @@ fn test_tls_record_serverkeyexchange() {
             version: 0x0303,
             len: 333,
         },
-        msg: TlsMessage::Handshake(
+        msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ServerKeyExchange(
                 TlsServerKeyExchangeContents {
                     parameters: &bytes[9..],
                 })
-        )
+        )]
     };
     assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
@@ -935,9 +935,9 @@ fn test_tls_record_serverdone() {
             version: 0x0303,
             len: 4,
         },
-        msg: TlsMessage::Handshake(
+        msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ServerDone(empty),
-        )
+        )]
     };
     assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
@@ -970,12 +970,12 @@ fn test_tls_record_clientkeyexchange() {
             version: 0x0303,
             len: 70,
         },
-        msg: TlsMessage::Handshake(
+        msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ClientKeyExchange(
                 TlsClientKeyExchangeContents {
                     parameters: &bytes[9..],
                 })
-        )
+        )]
     };
     assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
@@ -990,7 +990,7 @@ fn test_tls_record_changecipherspec() {
             version: 0x0303,
             len: 1,
         },
-        msg: TlsMessage::ChangeCipherSpec,
+        msg: vec![TlsMessage::ChangeCipherSpec],
     };
     assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
