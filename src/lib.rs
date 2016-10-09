@@ -13,8 +13,6 @@ pub use common::*;
 #[macro_use]
 pub mod common;
 
-extern crate der_parser;
-
 pub use tls_alert::*;
 #[macro_use]
 pub mod tls_alert;

@@ -12,10 +12,6 @@ nom = "1.2.4"
 lazy_static = "0.1.*"
 phf = "0.7.16"
 enum_primitive = "0.1.0"
-# der-parser = { git = "ssh://git@git.wzdftpd.net:22/der-parser-rs.git" }
-
-[dependencies.der-parser]
-path = "/home/pollux/CODE/RUST/der-parser"
 
 [dev_dependencies]
 pcap = "0.5.7"
