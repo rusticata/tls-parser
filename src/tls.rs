@@ -491,7 +491,7 @@ named!(pub tls_parser<TlsPlaintext>,
 
 // parse one packet, possibly containing multiple records
 named!(pub tls_parser_many<Vec<TlsPlaintext> >,
-    many1!(parse_tls_plaintext)
+    many1!(complete!(parse_tls_plaintext))
 );
 
 #[cfg(test)]
