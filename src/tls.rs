@@ -99,6 +99,13 @@ pub struct TlsCertificateContents<'a> {
 }
 
 #[derive(Clone,Debug,PartialEq)]
+pub struct TlsCertificateRequestContents<'a> {
+    pub cert_types: Vec<u8>,
+    pub sig_hash_algs: Vec<u16>,
+    pub unparsed_ca: &'a[u8],
+}
+
+#[derive(Clone,Debug,PartialEq)]
 pub struct TlsServerKeyExchangeContents<'a> {
     pub parameters: &'a[u8],
 }
@@ -121,6 +128,7 @@ pub enum TlsMessageHandshake<'a> {
     NewSessionTicket(TlsNewSessionTicketContent<'a>),
     Certificate(TlsCertificateContents<'a>),
     ServerKeyExchange(TlsServerKeyExchangeContents<'a>),
+    CertificateRequest(TlsCertificateRequestContents<'a>),
     ServerDone(&'a[u8]),
     CertificateVerify(&'a[u8]),
     ClientKeyExchange(TlsClientKeyExchangeContents<'a>),
@@ -344,6 +352,23 @@ fn parse_tls_handshake_msg_clientkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u
     )
 }
 
+fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
+    chain!(i,
+        cert_types: length_value!(be_u8,be_u8) ~
+        sig_hash_algs_len: be_u16 ~
+        sig_hash_algs: flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) ~
+        ca: length_bytes!(be_u16),
+        || {
+            TlsMessageHandshake::CertificateRequest(
+                    TlsCertificateRequestContents {
+                        cert_types: cert_types,
+                        sig_hash_algs: sig_hash_algs,
+                        unparsed_ca: ca,
+                    })
+        }
+    )
+}
+
 fn parse_tls_handshake_msg_finished( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
     chain!(i,
         blob: take!(len),
@@ -363,7 +388,7 @@ named!(parse_tls_message_handshake<TlsMessage>,
                 /*TlsHandshakeType::NewSessionTicket*/  0x04 => call!(parse_tls_handshake_msg_newsessionticket,hl) |
                 /*TlsHandshakeType::Certificate*/       0x0b => call!(parse_tls_handshake_msg_certificate) |
                 /*TlsHandshakeType::ServerKeyExchange*/ 0x0c => call!(parse_tls_handshake_msg_serverkeyexchange,hl) |
-                // /*TlsHandshakeType::CertificateRequest*/ 0x0d => call!(parse_tls_handshake_msg_certificaterequest) |
+                /*TlsHandshakeType::CertificateRequest*/ 0x0d => call!(parse_tls_handshake_msg_certificaterequest) |
                 /*TlsHandshakeType::ServerDone*/        0x0e => call!(parse_tls_handshake_msg_serverdone,hl) |
                 /*TlsHandshakeType::CertificateVerify*/ 0x0f => call!(parse_tls_handshake_msg_certificateverify,hl) |
                 /*TlsHandshakeType::ClientKeyExchange*/ 0x10 => call!(parse_tls_handshake_msg_clientkeyexchange,hl) |
@@ -1059,6 +1084,36 @@ fn test_tls_record_invalid_messagelength2() {
     let expected = IResult::Incomplete(Needed::Size(11));
     let res = parse_tls_plaintext(&bytes);
     assert_eq!(res, expected);
+}
+
+static SERVER_CERTIFICATE_REQUEST: &'static [u8] = &[
+    0x16, 0x03, 0x03, 0x00, 0x2a, 0x0d, 0x00, 0x00, 0x26, 0x03, 0x01, 0x02,
+    0x40, 0x00, 0x1e, 0x06, 0x01, 0x06, 0x02, 0x06, 0x03, 0x05, 0x01, 0x05,
+    0x02, 0x05, 0x03, 0x04, 0x01, 0x04, 0x02, 0x04, 0x03, 0x03, 0x01, 0x03,
+    0x02, 0x03, 0x03, 0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x00, 0x00
+];
+
+#[test]
+fn test_tls_record_cert_request() {
+    let empty = &b""[..];
+    let bytes = SERVER_CERTIFICATE_REQUEST;
+    let expected = TlsPlaintext {
+        hdr: TlsRecordHeader {
+            record_type: TlsRecordType::Handshake as u8,
+            version: 0x0303,
+            len: bytes.len() as u16 - 5,
+        },
+        msg: vec![TlsMessage::Handshake(
+            TlsMessageHandshake::CertificateRequest(
+                TlsCertificateRequestContents {
+                    cert_types: vec![0x01, 0x02, 0x40],
+                    sig_hash_algs: vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
+                                        0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203],
+                    unparsed_ca: &b""[..],
+                })
+        )]
+    };
+    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
 
 } // mod tests
