@@ -193,15 +193,12 @@ named!(parse_cipher_suites<Vec<u16> >,
 );
 
 named!(parse_certs<Vec<RawCertificate> >,
-    chain!(
-        v: many0!(
-            chain!(
-                len: parse_uint24 ~
-                s: take!(len),
-                || { RawCertificate{ data: s } }
-            )
-        ),
-        || { return v }
+    many0!(
+        chain!(
+            len: parse_uint24 ~
+            s: take!(len),
+            || { RawCertificate{ data: s } }
+        )
     )
 );
 
