@@ -102,7 +102,8 @@ pub struct TlsCertificateContents<'a> {
 pub struct TlsCertificateRequestContents<'a> {
     pub cert_types: Vec<u8>,
     pub sig_hash_algs: Vec<u16>,
-    pub unparsed_ca: &'a[u8],
+    // a list of DER-encoded distinguished names [X501]
+    pub unparsed_ca: Vec<&'a[u8]>,
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -357,7 +358,8 @@ fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMe
         cert_types: length_value!(be_u8,be_u8) ~
         sig_hash_algs_len: be_u16 ~
         sig_hash_algs: flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) ~
-        ca: length_bytes!(be_u16),
+        ca_len: be_u16 ~
+        ca: flat_map!(take!(ca_len),many0!(read_len_value_u16)),
         || {
             TlsMessageHandshake::CertificateRequest(
                     TlsCertificateRequestContents {
@@ -1086,7 +1088,7 @@ fn test_tls_record_invalid_messagelength2() {
     assert_eq!(res, expected);
 }
 
-static SERVER_CERTIFICATE_REQUEST: &'static [u8] = &[
+static SERVER_CERTIFICATE_REQUEST_NOCA: &'static [u8] = &[
     0x16, 0x03, 0x03, 0x00, 0x2a, 0x0d, 0x00, 0x00, 0x26, 0x03, 0x01, 0x02,
     0x40, 0x00, 0x1e, 0x06, 0x01, 0x06, 0x02, 0x06, 0x03, 0x05, 0x01, 0x05,
     0x02, 0x05, 0x03, 0x04, 0x01, 0x04, 0x02, 0x04, 0x03, 0x03, 0x01, 0x03,
@@ -1094,9 +1096,9 @@ static SERVER_CERTIFICATE_REQUEST: &'static [u8] = &[
 ];
 
 #[test]
-fn test_tls_record_cert_request() {
+fn test_tls_record_cert_request_noca() {
     let empty = &b""[..];
-    let bytes = SERVER_CERTIFICATE_REQUEST;
+    let bytes = SERVER_CERTIFICATE_REQUEST_NOCA;
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake as u8,
@@ -1109,11 +1111,49 @@ fn test_tls_record_cert_request() {
                     cert_types: vec![0x01, 0x02, 0x40],
                     sig_hash_algs: vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
                                         0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203],
-                    unparsed_ca: &b""[..],
+                    unparsed_ca: vec![],
                 })
         )]
     };
     assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
 }
+
+static SERVER_CERTIFICATE_REQUEST_CA: &'static [u8] = &[
+    0x16, 0x03, 0x03, 0x00, 0x73, 0x0d, 0x00, 0x00, 0x6f, 0x03, 0x01, 0x02,
+    0x40, 0x00, 0x1e, 0x06, 0x01, 0x06, 0x02, 0x06, 0x03, 0x05, 0x01, 0x05,
+    0x02, 0x05, 0x03, 0x04, 0x01, 0x04, 0x02, 0x04, 0x03, 0x03, 0x01, 0x03,
+    0x02, 0x03, 0x03, 0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x00, 0x49, 0x00,
+    0x47, 0x30, 0x45, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x06,
+    0x13, 0x02, 0x46, 0x52, 0x31, 0x13, 0x30, 0x11, 0x06, 0x03, 0x55, 0x04,
+    0x08, 0x0c, 0x0a, 0x53, 0x6f, 0x6d, 0x65, 0x2d, 0x53, 0x74, 0x61, 0x74,
+    0x65, 0x31, 0x21, 0x30, 0x1f, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x18,
+    0x49, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x20, 0x57, 0x69, 0x64,
+    0x67, 0x69, 0x74, 0x73, 0x20, 0x50, 0x74, 0x79, 0x20, 0x4c, 0x74, 0x64
+];
+
+#[test]
+fn test_tls_record_cert_request_ca() {
+    let empty = &b""[..];
+    let bytes = SERVER_CERTIFICATE_REQUEST_CA;
+    let ca1 = &bytes[49..];
+    let expected = TlsPlaintext {
+        hdr: TlsRecordHeader {
+            record_type: TlsRecordType::Handshake as u8,
+            version: 0x0303,
+            len: bytes.len() as u16 - 5,
+        },
+        msg: vec![TlsMessage::Handshake(
+            TlsMessageHandshake::CertificateRequest(
+                TlsCertificateRequestContents {
+                    cert_types: vec![0x01, 0x02, 0x40],
+                    sig_hash_algs: vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
+                                        0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203],
+                    unparsed_ca: vec![ca1],
+                })
+        )]
+    };
+    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+}
+
 
 } // mod tests
