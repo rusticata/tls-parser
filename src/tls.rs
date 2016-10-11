@@ -176,6 +176,12 @@ pub struct TlsEncrypted<'a> {
     pub msg: TlsEncryptedContent<'a>,
 }
 
+#[derive(Clone,Debug,PartialEq)]
+pub struct TlsRawRecord<'a> {
+    pub hdr: TlsRecordHeader,
+    pub data: &'a[u8],
+}
+
 impl<'a> TlsPlaintext<'a> {
     pub fn is_a(&'a self, ty:u8) -> bool {
         self.hdr.record_type == ty
@@ -481,6 +487,29 @@ named!(pub parse_tls_encrypted<TlsEncrypted>,
         hdr: parse_tls_record_header ~
         blob: take!(hdr.len),
         || { TlsEncrypted {hdr:hdr, msg:TlsEncryptedContent{ blob: blob}} }
+    )
+);
+
+/// Convert a raw (not decoded) record to a plaintext message
+/// Returns None if data could not be decoded, or if there are remaining bytes after decoding.
+pub fn parse_tls_raw_record_as_plaintext<'a>( raw:&'a TlsRawRecord ) -> Option<TlsPlaintext<'a>> {
+    match parse_tls_record_with_type(raw.data,raw.hdr.record_type) {
+        IResult::Done(rem,r) => {
+            match rem.len() {
+                0 => Some(TlsPlaintext{hdr:raw.hdr.clone(), msg:r}),
+                _ => None,
+            }
+        },
+        _ => None,
+    }
+}
+
+/// Read TLS record envelope, but do not decode data
+named!(pub parse_tls_raw_record<TlsRawRecord>,
+    chain!(
+        hdr: parse_tls_record_header ~
+        data: take!(hdr.len),
+        || { TlsRawRecord {hdr:hdr, data: data} }
     )
 );
 
