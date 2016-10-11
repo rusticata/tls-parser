@@ -63,6 +63,9 @@ pub fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake
         (TlsState::NoCertHelloDone,  &TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::NoCertCKE),
         // Resuming session
         (TlsState::AskResumeSession, &TlsMessageHandshake::ServerHello(_))       => Ok(TlsState::ResumeSession),
+        // Hello requests must be accepted at any time (except start), but ignored [RFC5246] 7.4.1.1
+        (TlsState::None,             &TlsMessageHandshake::HelloRequest)         => Err(StateChangeError::InvalidTransition),
+        (s,                          &TlsMessageHandshake::HelloRequest)         => Ok(s),
         // All other transitions are considered invalid
         _ => Err(StateChangeError::InvalidTransition),
     }
