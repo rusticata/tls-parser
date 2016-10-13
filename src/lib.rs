@@ -4,9 +4,6 @@ extern crate enum_primitive;
 #[macro_use]
 extern crate nom;
 
-#[macro_use]
-extern crate lazy_static;
-
 extern crate phf;
 
 pub use common::*;
