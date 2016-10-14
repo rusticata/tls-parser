@@ -455,9 +455,8 @@ fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
     })
 }
 
-// XXX return vector of messages
 // XXX check message length (not required for parser safety, but for protocol
-fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], Vec<TlsMessage>> {
+pub fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], Vec<TlsMessage>> {
     chain!(i,
         msg: switch!(value!(record_type),
             /*TlsRecordType::ChangeCipherSpec*/ 0x14 => many1!(parse_tls_message_changecipherspec) |
@@ -471,7 +470,7 @@ fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], Vec<T
 }
 
 
-// XXX a single record can contain multiple messages, they must share the same record type
+// a single record can contain multiple messages, they must share the same record type
 named!(pub parse_tls_plaintext<TlsPlaintext>,
     chain!(
         hdr: parse_tls_record_header ~
@@ -489,20 +488,6 @@ named!(pub parse_tls_encrypted<TlsEncrypted>,
         || { TlsEncrypted {hdr:hdr, msg:TlsEncryptedContent{ blob: blob}} }
     )
 );
-
-/// Convert a raw (not decoded) record to a plaintext message
-/// Returns None if data could not be decoded, or if there are remaining bytes after decoding.
-pub fn parse_tls_raw_record_as_plaintext<'a>( raw:&'a TlsRawRecord ) -> Option<TlsPlaintext<'a>> {
-    match parse_tls_record_with_type(raw.data,raw.hdr.record_type) {
-        IResult::Done(rem,r) => {
-            match rem.len() {
-                0 => Some(TlsPlaintext{hdr:raw.hdr.clone(), msg:r}),
-                _ => None,
-            }
-        },
-        _ => None,
-    }
-}
 
 /// Read TLS record envelope, but do not decode data
 named!(pub parse_tls_raw_record<TlsRawRecord>,
