@@ -456,9 +456,9 @@ fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
 }
 
 // XXX check message length (not required for parser safety, but for protocol
-pub fn parse_tls_record_with_type( i:&[u8], record_type:u8 ) -> IResult<&[u8], Vec<TlsMessage>> {
+pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&[u8], Vec<TlsMessage>> {
     chain!(i,
-        msg: switch!(value!(record_type),
+        msg: switch!(value!(hdr.record_type),
             /*TlsRecordType::ChangeCipherSpec*/ 0x14 => many1!(parse_tls_message_changecipherspec) |
             /*TlsRecordType::Alert*/            0x15 => many1!(parse_tls_message_alert) |
             /*TlsRecordType::Handshake*/        0x16 => many1!(parse_tls_message_handshake) |
@@ -475,7 +475,7 @@ named!(pub parse_tls_plaintext<TlsPlaintext>,
     chain!(
         hdr: parse_tls_record_header ~
         msg: flat_map!(take!(hdr.len),
-            apply!(parse_tls_record_with_type,hdr.record_type)
+            apply!(parse_tls_record_with_header,hdr.clone())
             ),
         || { TlsPlaintext {hdr:hdr, msg:msg} }
     )
