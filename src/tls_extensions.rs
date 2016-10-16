@@ -110,7 +110,7 @@ named!(pub parse_tls_extension_sni_hostname<(u8,&[u8])>,
 named!(pub parse_tls_extension_sni<TlsExtension>,
     chain!(
         tag!([0x00,0x00]) ~
-        ext_len:  be_u16 ~
+        /*ext_len:*/  be_u16 ~
         list_len: be_u16 ~
         v: flat_map!(take!(list_len),
             many0!(parse_tls_extension_sni_hostname)
@@ -132,7 +132,7 @@ named!(pub parse_tls_extension_status_request<TlsExtension>,
 named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
     chain!(
         tag!([0x00,0x0a]) ~
-        ext_len:  be_u16 ~
+        /*ext_len:*/  be_u16 ~
         list_len: be_u16 ~
         l: flat_map!(take!(list_len),
             many0!(be_u16)
@@ -144,7 +144,7 @@ named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
 named!(pub parse_tls_extension_ec_point_formats<TlsExtension>,
     chain!(
         tag!([0x00,0x0b]) ~
-        ext_len:  be_u16 ~
+        /*ext_len:*/  be_u16 ~
         list_len: be_u8 ~
         v: take!(list_len),
         || { TlsExtension::EcPointFormats(v) }
@@ -154,7 +154,7 @@ named!(pub parse_tls_extension_ec_point_formats<TlsExtension>,
 named!(pub parse_tls_extension_signature_algorithms<TlsExtension>,
     chain!(
         tag!([0x00,0x0d]) ~
-        ext_len:  be_u16 ~
+        /*ext_len:*/  be_u16 ~
         list_len: be_u16 ~
         l: flat_map!(take!(list_len),
             many0!(pair!(be_u8,be_u8))
