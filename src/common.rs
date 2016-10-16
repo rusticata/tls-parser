@@ -49,7 +49,7 @@ enum_from_primitive! {
 pub enum HashAlgorithm {
     None = 0,
     Md5 = 1,
-    Sh1 = 2,
+    Sha1 = 2,
     Sha224 = 3,
     Sha256 = 4,
     Sha384 = 5,
