@@ -238,7 +238,7 @@ named!(pub parse_tls_extension_encrypt_then_mac<TlsExtension>,
     )
 );
 
-/// Encrypt-then-MAC is defined in [RFC7627]
+/// Extended Master Secret is defined in [RFC7627]
 fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     chain!(i,
         error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
@@ -246,7 +246,7 @@ fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> 
     )
 }
 
-/// Encrypt-then-MAC is defined in [RFC7627]
+/// Extended Master Secret is defined in [RFC7627]
 named!(pub parse_tls_extension_extended_master_secret<TlsExtension>,
     chain!(
         tag!([0x00,0x17]) ~
