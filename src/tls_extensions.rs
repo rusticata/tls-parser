@@ -51,6 +51,9 @@ pub enum TlsExtension<'a>{
     SessionTicket(&'a[u8]),
     Heartbeat(u8),
 
+    EncryptThenMac,
+    ExtendedMasterSecret,
+
     Unknown(u16,&'a[u8]),
 }
 
@@ -91,6 +94,8 @@ impl<'a> fmt::Display for TlsExtension<'a> {
                 write!(out, "TlsExtension::SignatureAlgorithms({:?})", v2)
             },
             TlsExtension::Heartbeat(mode) => write!(out, "TlsExtension::Heartbeat(mode={})", mode),
+            TlsExtension::EncryptThenMac => write!(out, "TlsExtension::EncryptThenMac"),
+            TlsExtension::ExtendedMasterSecret => write!(out, "TlsExtension::ExtendedMasterSecret"),
             TlsExtension::SessionTicket(data) => write!(out, "TlsExtension::SessionTicket(data={:?})", data),
             TlsExtension::Unknown(id,data) => write!(out, "TlsExtension::Unknown(id=0x{:x},data={:?})", id, data),
         }
@@ -107,10 +112,8 @@ named!(pub parse_tls_extension_sni_hostname<(u8,&[u8])>,
     pair!(be_u8,length_bytes!(be_u16))
 );
 
-named!(pub parse_tls_extension_sni<TlsExtension>,
+named!(pub parse_tls_extension_sni_content<TlsExtension>,
     chain!(
-        tag!([0x00,0x00]) ~
-        /*ext_len:*/  be_u16 ~
         list_len: be_u16 ~
         v: flat_map!(take!(list_len),
             many0!(parse_tls_extension_sni_hostname)
@@ -119,20 +122,34 @@ named!(pub parse_tls_extension_sni<TlsExtension>,
     )
 );
 
-named!(pub parse_tls_extension_status_request<TlsExtension>,
+named!(pub parse_tls_extension_sni<TlsExtension>,
     chain!(
-        tag!([0x00,0x05]) ~
+        tag!([0x00,0x00]) ~
         ext_len:  be_u16 ~
+        ext: flat_map!(take!(ext_len),parse_tls_extension_sni_content),
+        || { ext }
+    )
+);
+
+fn parse_tls_extension_status_request_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    chain!(i,
         status_type: be_u8 ~
         request: take!(ext_len-1),
         || { TlsExtension::StatusRequest(status_type,request) }
     )
+}
+
+named!(pub parse_tls_extension_status_request<TlsExtension>,
+    chain!(
+        tag!([0x00,0x05]) ~
+        ext_len:  be_u16 ~
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_status_request_content,ext_len)),
+        || { ext }
+    )
 );
 
-named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
+named!(pub parse_tls_extension_elliptic_curves_content<TlsExtension>,
     chain!(
-        tag!([0x00,0x0a]) ~
-        /*ext_len:*/  be_u16 ~
         list_len: be_u16 ~
         l: flat_map!(take!(list_len),
             many0!(be_u16)
@@ -141,20 +158,34 @@ named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
     )
 );
 
-named!(pub parse_tls_extension_ec_point_formats<TlsExtension>,
+named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
     chain!(
-        tag!([0x00,0x0b]) ~
-        /*ext_len:*/  be_u16 ~
+        tag!([0x00,0x0a]) ~
+        ext_len:  be_u16 ~
+        ext: flat_map!(take!(ext_len),parse_tls_extension_elliptic_curves_content),
+        || { ext }
+    )
+);
+
+named!(pub parse_tls_extension_ec_point_formats_content<TlsExtension>,
+    chain!(
         list_len: be_u8 ~
         v: take!(list_len),
         || { TlsExtension::EcPointFormats(v) }
     )
 );
 
-named!(pub parse_tls_extension_signature_algorithms<TlsExtension>,
+named!(pub parse_tls_extension_ec_point_formats<TlsExtension>,
     chain!(
-        tag!([0x00,0x0d]) ~
-        /*ext_len:*/  be_u16 ~
+        tag!([0x00,0x0b]) ~
+        ext_len:  be_u16 ~
+        ext: flat_map!(take!(ext_len),parse_tls_extension_ec_point_formats_content),
+        || { ext }
+    )
+);
+
+named!(pub parse_tls_extension_signature_algorithms_content<TlsExtension>,
+    chain!(
         list_len: be_u16 ~
         l: flat_map!(take!(list_len),
             many0!(pair!(be_u8,be_u8))
@@ -163,22 +194,81 @@ named!(pub parse_tls_extension_signature_algorithms<TlsExtension>,
     )
 );
 
-named!(pub parse_tls_extension_heartbeat<TlsExtension>,
+named!(pub parse_tls_extension_signature_algorithms<TlsExtension>,
     chain!(
-        tag!([0x00,0x0f]) ~
+        tag!([0x00,0x0d]) ~
         ext_len:  be_u16 ~
-        error_if!(ext_len != 1, Err::Code(ErrorKind::Custom(128))) ~
+        ext: flat_map!(take!(ext_len),parse_tls_extension_signature_algorithms_content),
+        || { ext }
+    )
+);
+
+named!(pub parse_tls_extension_heartbeat_content<TlsExtension>,
+    chain!(
         hb_mode: be_u8,
         || { TlsExtension::Heartbeat(hb_mode) }
     )
 );
 
+named!(pub parse_tls_extension_heartbeat<TlsExtension>,
+    chain!(
+        tag!([0x00,0x0f]) ~
+        ext_len:  be_u16 ~
+        error_if!(ext_len != 1, Err::Code(ErrorKind::Custom(128))) ~
+        ext: flat_map!(take!(ext_len),parse_tls_extension_heartbeat_content),
+        || { ext }
+    )
+);
+
+/// Encrypt-then-MAC is defined in [RFC7366]
+fn parse_tls_extension_encrypt_then_mac_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    chain!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
+        || { TlsExtension::EncryptThenMac }
+    )
+}
+
+/// Encrypt-then-MAC is defined in [RFC7366]
+named!(pub parse_tls_extension_encrypt_then_mac<TlsExtension>,
+    chain!(
+        tag!([0x00,0x16]) ~
+        ext_len:  be_u16 ~
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_encrypt_then_mac_content,ext_len)),
+        || { ext }
+    )
+);
+
+/// Encrypt-then-MAC is defined in [RFC7627]
+fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    chain!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
+        || { TlsExtension::ExtendedMasterSecret }
+    )
+}
+
+/// Encrypt-then-MAC is defined in [RFC7627]
+named!(pub parse_tls_extension_extended_master_secret<TlsExtension>,
+    chain!(
+        tag!([0x00,0x17]) ~
+        ext_len:  be_u16 ~
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_extended_master_secret_content,ext_len)),
+        || { ext }
+    )
+);
+
+fn parse_tls_extension_session_ticket_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    chain!(i,
+        ext_data: take!(ext_len),
+        || { TlsExtension::SessionTicket(ext_data) }
+    )
+}
+
 named!(pub parse_tls_extension_session_ticket<TlsExtension>,
     chain!(
         tag!([0x00,0x23]) ~
         ext_len:  be_u16 ~
-        ext_data: take!(ext_len),
-        || { TlsExtension::SessionTicket(ext_data) }
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_session_ticket_content,ext_len)),
+        || { ext }
     )
 );
 
@@ -192,17 +282,28 @@ named!(pub parse_tls_extension_unknown<TlsExtension>,
 );
 
 
+fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    match ext_type {
+        0x0000 => parse_tls_extension_sni_content(i),
+        0x0005 => parse_tls_extension_status_request_content(i,ext_len),
+        0x000a => parse_tls_extension_elliptic_curves_content(i),
+        0x000b => parse_tls_extension_ec_point_formats_content(i),
+        0x000d => parse_tls_extension_signature_algorithms_content(i),
+        0x000f => parse_tls_extension_heartbeat_content(i),
+        0x0016 => parse_tls_extension_encrypt_then_mac_content(i,ext_len),
+        0x0017 => parse_tls_extension_extended_master_secret_content(i,ext_len),
+        0x0023 => parse_tls_extension_session_ticket_content(i,ext_len),
+        _      => { chain!(i, ext_data:take!(ext_len), || { TlsExtension::Unknown(ext_type,ext_data) }) },
+    }
+}
+
 named!(pub parse_tls_extension<TlsExtension>,
-   alt!(
-      parse_tls_extension_sni |
-      parse_tls_extension_status_request |
-      parse_tls_extension_elliptic_curves |
-      parse_tls_extension_ec_point_formats |
-      parse_tls_extension_signature_algorithms |
-      parse_tls_extension_heartbeat |
-      parse_tls_extension_session_ticket |
-      parse_tls_extension_unknown
-    )
+   chain!(
+       ext_type: be_u16 ~
+       ext_len:  be_u16 ~
+       ext: flat_map!(take!(ext_len),call!(parse_tls_extension_with_type,ext_type,ext_len)),
+       || { ext }
+   )
 );
 
 named!(pub parse_tls_extensions<Vec<TlsExtension> >,
@@ -245,8 +346,36 @@ fn test_tls_extensions() {
     ]);
 
     let res = parse_tls_extensions(bytes);
-    println!("ext: {:?}", res);
-    println!("-------------------");
+
+    assert_eq!(res,expected);
+}
+
+#[test]
+fn test_tls_extension_encrypt_then_mac() {
+    let empty = &b""[..];
+    let bytes = &[
+        0x00, 0x16, 0x00, 0x00
+    ];
+    let expected = IResult::Done(empty,
+        TlsExtension::EncryptThenMac,
+    );
+
+    let res = parse_tls_extension(bytes);
+
+    assert_eq!(res,expected);
+}
+
+#[test]
+fn test_tls_extension_extended_master_secret() {
+    let empty = &b""[..];
+    let bytes = &[
+        0x00, 0x17, 0x00, 0x00
+    ];
+    let expected = IResult::Done(empty,
+        TlsExtension::ExtendedMasterSecret,
+    );
+
+    let res = parse_tls_extension(bytes);
 
     assert_eq!(res,expected);
 }
