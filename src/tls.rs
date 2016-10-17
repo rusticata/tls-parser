@@ -18,6 +18,8 @@ pub enum TlsHandshakeType {
     Finished = 0x14,
     CertificateURL = 0x15,
     CertificateStatus = 0x16,
+
+    NextProtocol = 0x43,
 }
 
 #[repr(u16)]
@@ -117,6 +119,12 @@ pub struct TlsClientKeyExchangeContents<'a> {
 }
 
 #[derive(Clone,Debug,PartialEq)]
+pub struct TlsNextProtocolContent<'a> {
+    pub selected_protocol: &'a[u8],
+    pub padding: &'a[u8],
+}
+
+#[derive(Clone,Debug,PartialEq)]
 pub struct TlsEncryptedContent<'a> {
     pub blob: &'a[u8],
 }
@@ -134,6 +142,7 @@ pub enum TlsMessageHandshake<'a> {
     CertificateVerify(&'a[u8]),
     ClientKeyExchange(TlsClientKeyExchangeContents<'a>),
     Finished(&'a[u8]),
+    NextProtocol(TlsNextProtocolContent<'a>),
 }
 
 #[derive(Clone,Debug,PartialEq)]
@@ -381,6 +390,22 @@ fn parse_tls_handshake_msg_finished( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMe
     )
 }
 
+/// NextProtocol handshake message, as defined in draft-agl-tls-nextprotoneg-03
+/// Deprecated in favour of ALPN.
+fn parse_tls_handshake_msg_next_protocol( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
+    chain!(i,
+        selected_protocol: length_bytes!(be_u8) ~
+        padding: length_bytes!(be_u8),
+        || {
+            TlsMessageHandshake::NextProtocol(
+                    TlsNextProtocolContent {
+                        selected_protocol: selected_protocol,
+                        padding: padding,
+                    })
+        }
+    )
+}
+
 named!(parse_tls_message_handshake<TlsMessage>,
     chain!(
         ht: be_u8 ~
@@ -397,9 +422,10 @@ named!(parse_tls_message_handshake<TlsMessage>,
                 /*TlsHandshakeType::ServerDone*/        0x0e => call!(parse_tls_handshake_msg_serverdone,hl) |
                 /*TlsHandshakeType::CertificateVerify*/ 0x0f => call!(parse_tls_handshake_msg_certificateverify,hl) |
                 /*TlsHandshakeType::ClientKeyExchange*/ 0x10 => call!(parse_tls_handshake_msg_clientkeyexchange,hl) |
-                /*TlsHandshakeType::Finished*/          0x14 => call!(parse_tls_handshake_msg_finished,hl) /*|
-                /*TlsHandshakeType::CertificateURL*/    0x15 => call!(parse_tls_handshake_msg_certificateurl) |
+                /*TlsHandshakeType::Finished*/          0x14 => call!(parse_tls_handshake_msg_finished,hl) |
+                /*TlsHandshakeType::CertificateURL*/    /*0x15 => call!(parse_tls_handshake_msg_certificateurl) |
                 /*TlsHandshakeType::CertificateStatus*/ 0x16 => call!(parse_tls_handshake_msg_certificatestatus)*/
+                /*TlsHandshakeType::NextProtocol*/      0x43 => call!(parse_tls_handshake_msg_next_protocol)
              )
         ),
     || { TlsMessage::Handshake(m) }

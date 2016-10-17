@@ -38,21 +38,27 @@ pub enum TlsExtensionType {
 
     SessionTicketTLS      = 0x0023,
 
+    NextProtocolNegotiation = 0x3374,
+
     RenegotiationInfo     = 0xff01,
 }
 
 #[derive(Clone,PartialEq)]
 pub enum TlsExtension<'a>{
-    StatusRequest(u8,&'a[u8]),
     SNI(Vec<(u8,&'a[u8])>),
+    MaxFragmentLength(u8),
+    StatusRequest(u8,&'a[u8]),
     EllipticCurves(Vec<u16>),
     EcPointFormats(&'a[u8]),
     SignatureAlgorithms(Vec<(u8,u8)>),
     SessionTicket(&'a[u8]),
     Heartbeat(u8),
+    ALPN(Vec<&'a[u8]>),
 
     EncryptThenMac,
     ExtendedMasterSecret,
+
+    NextProtocolNegotiation,
 
     Unknown(u16,&'a[u8]),
 }
@@ -68,6 +74,7 @@ impl<'a> fmt::Display for TlsExtension<'a> {
                 }
             write!(out, "])")
             },
+            TlsExtension::MaxFragmentLength(l) => write!(out, "TlsExtension::MaxFragmentLength({})", l),
             TlsExtension::StatusRequest(ty,data) => write!(out, "TlsExtension::StatusRequest({},{:?})", ty, data),
             TlsExtension::EllipticCurves(ref v) => {
                 let v2 : Vec<_> = v.iter().map(|&curve| {
@@ -94,8 +101,10 @@ impl<'a> fmt::Display for TlsExtension<'a> {
                 write!(out, "TlsExtension::SignatureAlgorithms({:?})", v2)
             },
             TlsExtension::Heartbeat(mode) => write!(out, "TlsExtension::Heartbeat(mode={})", mode),
+            TlsExtension::ALPN(ref v) => write!(out, "TlsExtension::ALPN({:?})", v),
             TlsExtension::EncryptThenMac => write!(out, "TlsExtension::EncryptThenMac"),
             TlsExtension::ExtendedMasterSecret => write!(out, "TlsExtension::ExtendedMasterSecret"),
+            TlsExtension::NextProtocolNegotiation => write!(out, "TlsExtension::NextProtocolNegotiation"),
             TlsExtension::SessionTicket(data) => write!(out, "TlsExtension::SessionTicket(data={:?})", data),
             TlsExtension::Unknown(id,data) => write!(out, "TlsExtension::Unknown(id=0x{:x},data={:?})", id, data),
         }
@@ -127,6 +136,24 @@ named!(pub parse_tls_extension_sni<TlsExtension>,
         tag!([0x00,0x00]) ~
         ext_len:  be_u16 ~
         ext: flat_map!(take!(ext_len),parse_tls_extension_sni_content),
+        || { ext }
+    )
+);
+
+/// Max fragment length [RFC6066]
+named!(pub parse_tls_extension_max_fragment_length_content<TlsExtension>,
+    chain!(
+        l: be_u8,
+        || { TlsExtension::MaxFragmentLength(l) }
+    )
+);
+
+/// Max fragment length [RFC6066]
+named!(pub parse_tls_extension_max_fragment_length<TlsExtension>,
+    chain!(
+        tag!([0x00,0x01]) ~
+        ext_len:  be_u16 ~
+        ext: flat_map!(take!(ext_len),parse_tls_extension_max_fragment_length_content),
         || { ext }
     )
 );
@@ -220,6 +247,23 @@ named!(pub parse_tls_extension_heartbeat<TlsExtension>,
     )
 );
 
+named!(parse_protocol_name<&[u8]>,
+    chain!(
+        len: be_u8 ~
+        name: take!(len),
+        || { name }
+    )
+);
+
+/// Defined in [RFC7301]
+named!(pub parse_tls_extension_alpn_content<TlsExtension>,
+    chain!(
+        list_len: be_u16 ~
+        v: flat_map!(take!(list_len),many0!(complete!(parse_protocol_name))),
+        || { TlsExtension::ALPN(v) }
+    )
+);
+
 /// Encrypt-then-MAC is defined in [RFC7366]
 fn parse_tls_extension_encrypt_then_mac_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     chain!(i,
@@ -272,6 +316,14 @@ named!(pub parse_tls_extension_session_ticket<TlsExtension>,
     )
 );
 
+/// Defined in RFC-draft-agl-tls-nextprotoneg-03. Deprecated in favour of ALPN.
+fn parse_tls_extension_npn_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    chain!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
+        || { TlsExtension::NextProtocolNegotiation }
+    )
+}
+
 named!(pub parse_tls_extension_unknown<TlsExtension>,
     chain!(
         ext_type: be_u16 ~
@@ -285,14 +337,17 @@ named!(pub parse_tls_extension_unknown<TlsExtension>,
 fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult<&[u8],TlsExtension> {
     match ext_type {
         0x0000 => parse_tls_extension_sni_content(i),
+        0x0001 => parse_tls_extension_max_fragment_length_content(i),
         0x0005 => parse_tls_extension_status_request_content(i,ext_len),
         0x000a => parse_tls_extension_elliptic_curves_content(i),
         0x000b => parse_tls_extension_ec_point_formats_content(i),
         0x000d => parse_tls_extension_signature_algorithms_content(i),
         0x000f => parse_tls_extension_heartbeat_content(i),
+        0x0010 => parse_tls_extension_alpn_content(i),
         0x0016 => parse_tls_extension_encrypt_then_mac_content(i,ext_len),
         0x0017 => parse_tls_extension_extended_master_secret_content(i,ext_len),
         0x0023 => parse_tls_extension_session_ticket_content(i,ext_len),
+        0x3374 => parse_tls_extension_npn_content(i,ext_len),
         _      => { chain!(i, ext_data:take!(ext_len), || { TlsExtension::Unknown(ext_type,ext_data) }) },
     }
 }
@@ -351,6 +406,46 @@ fn test_tls_extensions() {
 }
 
 #[test]
+fn test_tls_extension_max_fragment_length() {
+    let empty = &b""[..];
+    let bytes = &[
+        0x00, 0x01, 0x00, 0x01, 0x04
+    ];
+    let expected = IResult::Done(empty,
+        TlsExtension::MaxFragmentLength(4),
+    );
+
+    let res = parse_tls_extension(bytes);
+
+    assert_eq!(res,expected);
+}
+
+#[test]
+fn test_tls_extension_alpn() {
+    let empty = &b""[..];
+    let bytes = &[
+        0x00, 0x10, 0x00, 0x29, 0x00, 0x27, 0x05, 0x68, 0x32, 0x2d, 0x31, 0x36,
+        0x05, 0x68, 0x32, 0x2d, 0x31, 0x35, 0x05, 0x68, 0x32, 0x2d, 0x31, 0x34,
+        0x02, 0x68, 0x32, 0x08, 0x73, 0x70, 0x64, 0x79, 0x2f, 0x33, 0x2e, 0x31,
+        0x08, 0x68, 0x74, 0x74, 0x70, 0x2f, 0x31, 0x2e, 0x31
+    ];
+    let expected = IResult::Done(empty,
+        TlsExtension::ALPN(vec![
+                           b"h2-16",
+                           b"h2-15",
+                           b"h2-14",
+                           b"h2",
+                           b"spdy/3.1",
+                           b"http/1.1",
+        ]),
+    );
+
+    let res = parse_tls_extension(bytes);
+
+    assert_eq!(res,expected);
+}
+
+#[test]
 fn test_tls_extension_encrypt_then_mac() {
     let empty = &b""[..];
     let bytes = &[
@@ -373,6 +468,21 @@ fn test_tls_extension_extended_master_secret() {
     ];
     let expected = IResult::Done(empty,
         TlsExtension::ExtendedMasterSecret,
+    );
+
+    let res = parse_tls_extension(bytes);
+
+    assert_eq!(res,expected);
+}
+
+#[test]
+fn test_tls_extension_npn() {
+    let empty = &b""[..];
+    let bytes = &[
+        0x33, 0x74, 0x00, 0x00
+    ];
+    let expected = IResult::Done(empty,
+        TlsExtension::NextProtocolNegotiation,
     );
 
     let res = parse_tls_extension(bytes);
