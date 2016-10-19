@@ -60,6 +60,8 @@ pub enum TlsExtension<'a>{
 
     NextProtocolNegotiation,
 
+    RenegotiationInfo(&'a[u8]),
+
     Unknown(u16,&'a[u8]),
 }
 
@@ -106,6 +108,7 @@ impl<'a> fmt::Display for TlsExtension<'a> {
             TlsExtension::ExtendedMasterSecret => write!(out, "TlsExtension::ExtendedMasterSecret"),
             TlsExtension::NextProtocolNegotiation => write!(out, "TlsExtension::NextProtocolNegotiation"),
             TlsExtension::SessionTicket(data) => write!(out, "TlsExtension::SessionTicket(data={:?})", data),
+            TlsExtension::RenegotiationInfo(data) => write!(out, "TlsExtension::RenegotiationInfo(data={:?})", data),
             TlsExtension::Unknown(id,data) => write!(out, "TlsExtension::Unknown(id=0x{:x},data={:?})", id, data),
         }
     }
@@ -330,6 +333,15 @@ fn parse_tls_extension_npn_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsEx
     )
 }
 
+/// Renegotiation Info, defined in [RFC5746]
+named!(pub parse_tls_extension_renegotiation_info_content<TlsExtension>,
+    chain!(
+        reneg_info_len: be_u8 ~
+        reneg_info    : take!(reneg_info_len),
+        || { TlsExtension::RenegotiationInfo(reneg_info) }
+    )
+);
+
 named!(pub parse_tls_extension_unknown<TlsExtension>,
     chain!(
         ext_type: be_u16 ~
@@ -354,6 +366,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x0017 => parse_tls_extension_extended_master_secret_content(i,ext_len),
         0x0023 => parse_tls_extension_session_ticket_content(i,ext_len),
         0x3374 => parse_tls_extension_npn_content(i,ext_len),
+        0xff01 => parse_tls_extension_renegotiation_info_content(i),
         _      => { chain!(i, ext_data:take!(ext_len), || { TlsExtension::Unknown(ext_type,ext_data) }) },
     }
 }
@@ -492,6 +505,25 @@ fn test_tls_extension_npn() {
     );
 
     let res = parse_tls_extension(bytes);
+
+    assert_eq!(res,expected);
+}
+
+#[test]
+fn test_tls_extension_list() {
+    let empty = &b""[..];
+    let bytes = &[
+        0, 5, 0, 0, 0, 23, 0, 0, 255, 1, 0, 1, 0
+    ];
+    let expected = IResult::Done(empty, vec![
+        TlsExtension::StatusRequest(None),
+        TlsExtension::ExtendedMasterSecret,
+        TlsExtension::RenegotiationInfo(&[]),
+    ]
+    );
+
+    let res = parse_tls_extensions(bytes);
+    println!("{:?}",res);
 
     assert_eq!(res,expected);
 }
