@@ -13,6 +13,7 @@ pub enum TlsState {
     ResumeSession,
     ServerHello,
     Certificate,
+    CertificateSt,
     ServerKeyExchange,
     ServerHelloDone,
     ClientKeyExchange,
@@ -48,6 +49,8 @@ pub fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake
         (TlsState::ServerHello,      &TlsMessageHandshake::Certificate(_))       => Ok(TlsState::Certificate),
         // Server certificate, no client certificate requested
         (TlsState::Certificate,      &TlsMessageHandshake::ServerKeyExchange(_)) => Ok(TlsState::ServerKeyExchange),
+        (TlsState::Certificate,      &TlsMessageHandshake::CertificateStatus(_)) => Ok(TlsState::CertificateSt),
+        (TlsState::CertificateSt,    &TlsMessageHandshake::ServerKeyExchange(_)) => Ok(TlsState::ServerKeyExchange),
         (TlsState::ServerKeyExchange,&TlsMessageHandshake::ServerDone(_))        => Ok(TlsState::ServerHelloDone),
         (TlsState::ServerHelloDone  ,&TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::ClientKeyExchange),
         // Server certificate, client certificate requested
