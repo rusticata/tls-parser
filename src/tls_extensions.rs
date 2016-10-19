@@ -47,7 +47,7 @@ pub enum TlsExtensionType {
 pub enum TlsExtension<'a>{
     SNI(Vec<(u8,&'a[u8])>),
     MaxFragmentLength(u8),
-    StatusRequest(u8,&'a[u8]),
+    StatusRequest(Option<(u8,&'a[u8])>),
     EllipticCurves(Vec<u16>),
     EcPointFormats(&'a[u8]),
     SignatureAlgorithms(Vec<(u8,u8)>),
@@ -75,7 +75,7 @@ impl<'a> fmt::Display for TlsExtension<'a> {
             write!(out, "])")
             },
             TlsExtension::MaxFragmentLength(l) => write!(out, "TlsExtension::MaxFragmentLength({})", l),
-            TlsExtension::StatusRequest(ty,data) => write!(out, "TlsExtension::StatusRequest({},{:?})", ty, data),
+            TlsExtension::StatusRequest(data) => write!(out, "TlsExtension::StatusRequest({:?})", data),
             TlsExtension::EllipticCurves(ref v) => {
                 let v2 : Vec<_> = v.iter().map(|&curve| {
                     match NamedCurve::from_u16(curve) {
@@ -158,12 +158,18 @@ named!(pub parse_tls_extension_max_fragment_length<TlsExtension>,
     )
 );
 
+/// Status Request [RFC6066]
 fn parse_tls_extension_status_request_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        status_type: be_u8 ~
-        request: take!(ext_len-1),
-        || { TlsExtension::StatusRequest(status_type,request) }
-    )
+    match ext_len {
+        0 => IResult::Done(i,TlsExtension::StatusRequest(None)),
+        _ => {
+                chain!(i,
+                    status_type: be_u8 ~
+                    request: take!(ext_len-1),
+                    || { TlsExtension::StatusRequest(Some((status_type,request))) }
+                )
+        },
+    }
 }
 
 named!(pub parse_tls_extension_status_request<TlsExtension>,
@@ -396,7 +402,7 @@ fn test_tls_extensions() {
         TlsExtension::SignatureAlgorithms(vec![
             (6, 1), (6, 2), (6, 3), (5, 1), (5, 2), (5, 3), (4, 1), (4, 2), (4, 3), (3, 1), (3, 2), (3, 3), (2, 1), (2, 2), (2, 3)
         ]),
-        TlsExtension::StatusRequest(0x1,ext1),
+        TlsExtension::StatusRequest(Some((0x1,ext1))),
         TlsExtension::Heartbeat(1),
     ]);
 
