@@ -4,7 +4,7 @@ pub enum IntToEnumError {
     InvalidU16(u16),
 }
 
-/// Named curves, as defined in [RFC4492] and [RFC7027]
+/// Named curves, as defined in [RFC4492], [RFC7027], [RFC7919]
 enum_from_primitive! {
 #[derive(Debug)]
 #[repr(u16)]
@@ -37,6 +37,13 @@ pub enum NamedCurve {
     BrainpoolP256r1 = 26,
     BrainpoolP384r1 = 27,
     BrainpoolP512r1 = 28,
+    EcdhX25519 = 29,
+    EcdhX448 = 30,
+    Ffdhe2048 = 0x100,
+    Ffdhe3072 = 0x101,
+    Ffdhe4096 = 0x102,
+    Ffdhe6144 = 0x103,
+    Ffdhe8192 = 0x104,
     ArbitraryExplicitPrimeCurves = 0xFF01,
     ArbitraryExplicitChar2Curves = 0xFF02,
 }
