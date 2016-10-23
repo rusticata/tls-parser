@@ -5,7 +5,7 @@ keywords = ["TLS","SSL","protocol","parser","nom"]
 homepage = "https://github.com/rusticata/tls-parser"
 repository = "https://github.com/rusticata/tls-parser.git"
 name = "tls-parser"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 build = "build.rs"
 
