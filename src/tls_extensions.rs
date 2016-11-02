@@ -3,7 +3,8 @@ use std::str::from_utf8;
 use nom::{be_u8,be_u16,IResult,Err,ErrorKind};
 
 use enum_primitive::FromPrimitive;
-use common::{NamedCurve,HashAlgorithm,SignatureAlgorithm};
+use tls_ec::NamedCurve;
+use tls_sign_hash::{HashAlgorithm,SignAlgorithm};
 
 // See http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
 #[derive(Clone,Debug,PartialEq)]
@@ -94,7 +95,7 @@ impl<'a> fmt::Display for TlsExtension<'a> {
                         Some(n) => format!("{:?}", n),
                         None    => format!("<Unknown hash 0x{:x}/{}>", h, h),
                     };
-                    let s2 = match SignatureAlgorithm::from_u8(s) {
+                    let s2 = match SignAlgorithm::from_u8(s) {
                         Some(n) => format!("{:?}", n),
                         None    => format!("<Unknown signature 0x{:x}/{}>", s, s),
                     };
