@@ -29,6 +29,9 @@ pub enum TlsState {
     NoCertHelloDone,
     NoCertCKE,
 
+    PskHelloDone,
+    PskCKE,
+
     SessionEncrypted,
 
     Alert,
@@ -64,6 +67,9 @@ pub fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake
         (TlsState::ServerHello,      &TlsMessageHandshake::ServerKeyExchange(_)) => Ok(TlsState::NoCertSKE),
         (TlsState::NoCertSKE,        &TlsMessageHandshake::ServerDone(_))        => Ok(TlsState::NoCertHelloDone),
         (TlsState::NoCertHelloDone,  &TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::NoCertCKE),
+        // PSK
+        (TlsState::Certificate,      &TlsMessageHandshake::ServerDone(_))        => Ok(TlsState::PskHelloDone),
+        (TlsState::PskHelloDone,     &TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::PskCKE),
         // Resuming session
         (TlsState::AskResumeSession, &TlsMessageHandshake::ServerHello(_))       => Ok(TlsState::ResumeSession),
         // Hello requests must be accepted at any time (except start), but ignored [RFC5246] 7.4.1.1
@@ -86,6 +92,8 @@ pub fn tls_state_transition(state: TlsState, msg: &TlsMessage) -> Result<TlsStat
         (TlsState::CRCertVerify,          &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
         // No server certificate
         (TlsState::NoCertCKE,             &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
+        // PSK
+        (TlsState::PskCKE,                &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
         // Resume session
         (TlsState::ResumeSession,         &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
         (_,_) => Err(StateChangeError::InvalidTransition),
