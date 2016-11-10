@@ -2,9 +2,11 @@
 
 use phf;
 
+enum_from_primitive! {
 #[derive(Debug,PartialEq)]
+#[repr(u8)]
 pub enum TlsCipherKx {
-    Null,
+    Null = 0,
     Psk,
     Krb5,
     Srp,
@@ -14,10 +16,13 @@ pub enum TlsCipherKx {
     Ecdh,
     Ecdhe,
 }
+}
 
+enum_from_primitive! {
 #[derive(Debug,PartialEq)]
+#[repr(u8)]
 pub enum TlsCipherAu {
-    Null,
+    Null = 0,
     Psk,
     Krb5,
     Srp,
@@ -28,8 +33,11 @@ pub enum TlsCipherAu {
     Dhe,
     Ecdsa,
 }
+}
 
+enum_from_primitive! {
 #[derive(Debug,PartialEq)]
+#[repr(u8)]
 pub enum TlsCipherEnc {
     Null,
     Des,
@@ -43,16 +51,22 @@ pub enum TlsCipherEnc {
     Camellia,
     Chacha20_Poly1305,
 }
+}
 
+enum_from_primitive! {
 #[derive(Debug,PartialEq)]
+#[repr(u8)]
 pub enum TlsCipherEncMode {
     Null,
     Cbc,
     Ccm,
     Gcm,
 }
+}
 
+enum_from_primitive! {
 #[derive(Debug,PartialEq)]
+#[repr(u8)]
 pub enum TlsCipherMac {
     Null,
     HmacMd5,
@@ -60,6 +74,7 @@ pub enum TlsCipherMac {
     HmacSha256,
     HmacSha384,
     Aead,
+}
 }
 
 #[derive(Debug)]
