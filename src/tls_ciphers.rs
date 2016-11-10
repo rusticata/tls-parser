@@ -3,7 +3,7 @@
 use phf;
 
 enum_from_primitive! {
-#[derive(Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherKx {
     Null = 0,
@@ -19,7 +19,7 @@ pub enum TlsCipherKx {
 }
 
 enum_from_primitive! {
-#[derive(Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherAu {
     Null = 0,
@@ -36,7 +36,7 @@ pub enum TlsCipherAu {
 }
 
 enum_from_primitive! {
-#[derive(Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherEnc {
     Null,
@@ -54,7 +54,7 @@ pub enum TlsCipherEnc {
 }
 
 enum_from_primitive! {
-#[derive(Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherEncMode {
     Null,
@@ -65,7 +65,7 @@ pub enum TlsCipherEncMode {
 }
 
 enum_from_primitive! {
-#[derive(Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherMac {
     Null,
