@@ -5,7 +5,7 @@ use enum_primitive::FromPrimitive;
 enum_from_primitive! {
 #[derive(Debug,PartialEq)]
 #[repr(u16)]
-pub enum NamedCurve {
+pub enum NamedGroup {
     Sect163k1 = 1,
     Sect163r1 = 2,
     Sect163r2 = 3,
@@ -46,46 +46,46 @@ pub enum NamedCurve {
 }
 }
 
-impl NamedCurve {
+impl NamedGroup {
     /// Return key size of curve in bits, or None if unknown
-    pub fn key_bits(self: &NamedCurve) -> Option<u16> {
+    pub fn key_bits(self: &NamedGroup) -> Option<u16> {
         match *self {
-            NamedCurve::Sect163k1 => Some(163),
-            NamedCurve::Sect163r1 => Some(163),
-            NamedCurve::Sect163r2 => Some(163),
-            NamedCurve::Sect193r1 => Some(193),
-            NamedCurve::Sect193r2 => Some(193),
-            NamedCurve::Sect233k1 => Some(233),
-            NamedCurve::Sect233r1 => Some(233),
-            NamedCurve::Sect239k1 => Some(239),
-            NamedCurve::Sect283k1 => Some(283),
-            NamedCurve::Sect283r1 => Some(283),
-            NamedCurve::Sect409k1 => Some(409),
-            NamedCurve::Sect409r1 => Some(409),
-            NamedCurve::Sect571k1 => Some(571),
-            NamedCurve::Sect571r1 => Some(571),
-            NamedCurve::Secp160k1 => Some(160),
-            NamedCurve::Secp160r1 => Some(160),
-            NamedCurve::Secp160r2 => Some(160),
-            NamedCurve::Secp192k1 => Some(192),
-            NamedCurve::Secp192r1 => Some(192),
-            NamedCurve::Secp224k1 => Some(224),
-            NamedCurve::Secp224r1 => Some(224),
-            NamedCurve::Secp256k1 => Some(256),
-            NamedCurve::Secp256r1 => Some(256),
-            NamedCurve::Secp384r1 => Some(384),
-            NamedCurve::Secp521r1 => Some(521),
-            NamedCurve::BrainpoolP256r1 => Some(256),
-            NamedCurve::BrainpoolP384r1 => Some(384),
-            NamedCurve::BrainpoolP512r1 => Some(521),
-            NamedCurve::EcdhX25519 => Some(253),
+            NamedGroup::Sect163k1 => Some(163),
+            NamedGroup::Sect163r1 => Some(163),
+            NamedGroup::Sect163r2 => Some(163),
+            NamedGroup::Sect193r1 => Some(193),
+            NamedGroup::Sect193r2 => Some(193),
+            NamedGroup::Sect233k1 => Some(233),
+            NamedGroup::Sect233r1 => Some(233),
+            NamedGroup::Sect239k1 => Some(239),
+            NamedGroup::Sect283k1 => Some(283),
+            NamedGroup::Sect283r1 => Some(283),
+            NamedGroup::Sect409k1 => Some(409),
+            NamedGroup::Sect409r1 => Some(409),
+            NamedGroup::Sect571k1 => Some(571),
+            NamedGroup::Sect571r1 => Some(571),
+            NamedGroup::Secp160k1 => Some(160),
+            NamedGroup::Secp160r1 => Some(160),
+            NamedGroup::Secp160r2 => Some(160),
+            NamedGroup::Secp192k1 => Some(192),
+            NamedGroup::Secp192r1 => Some(192),
+            NamedGroup::Secp224k1 => Some(224),
+            NamedGroup::Secp224r1 => Some(224),
+            NamedGroup::Secp256k1 => Some(256),
+            NamedGroup::Secp256r1 => Some(256),
+            NamedGroup::Secp384r1 => Some(384),
+            NamedGroup::Secp521r1 => Some(521),
+            NamedGroup::BrainpoolP256r1 => Some(256),
+            NamedGroup::BrainpoolP384r1 => Some(384),
+            NamedGroup::BrainpoolP512r1 => Some(521),
+            NamedGroup::EcdhX25519 => Some(253),
             _                     => None,
         }
     }
 }
 
-pub fn named_curve_of_u16(id: u16) -> Option<NamedCurve> {
-    NamedCurve::from_u16(id)
+pub fn named_curve_of_u16(id: u16) -> Option<NamedGroup> {
+    NamedGroup::from_u16(id)
 }
 
 #[derive(Debug,PartialEq)]
@@ -100,7 +100,7 @@ enum_from_primitive! {
 pub enum ECCurveType {
     ExplicitPrime = 1,
     ExplicitChar2 = 2,
-    NamedCurve = 3,
+    NamedGroup = 3,
 }
 }
 
@@ -124,7 +124,7 @@ pub enum ECParametersContent<'a> {
     ExplicitPrime(ExplicitPrimeContent<'a>),
     // TODO ExplicitChar2 is defined in [RFC4492] section 5.4
     ExplicitChar2(&'a[u8]),
-    NamedCurve(u16),
+    NamedGroup(u16),
 }
 
 #[derive(Debug,PartialEq)]
@@ -173,7 +173,7 @@ named!(parse_ec_explicit_prime_content<ECParametersContent>,
 );
 
 named!(parse_ec_named_curve_content<ECParametersContent>,
-    map!(be_u16,|c|{ECParametersContent::NamedCurve(c)})
+    map!(be_u16,|c|{ECParametersContent::NamedGroup(c)})
 );
 
 named!(pub parse_ec_parameters<ECParameters>,
