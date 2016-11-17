@@ -29,6 +29,8 @@ pub enum TlsVersion {
     Tls11 = 0x0302,
     Tls12 = 0x0303,
     Tls13 = 0x0304,
+
+    Tls13Draft18 = 0x7f12,
 }
 
 #[repr(u8)]
@@ -80,6 +82,15 @@ pub struct TlsServerHelloContents<'a> {
     pub session_id: Option<&'a[u8]>,
     pub cipher: u16,
     pub compression: u8,
+
+    pub ext: Option<&'a[u8]>,
+}
+
+#[derive(Clone,Debug,PartialEq)]
+pub struct TlsServerHelloV13Contents<'a> {
+    pub version: u16,
+    pub random: &'a[u8],
+    pub cipher: u16,
 
     pub ext: Option<&'a[u8]>,
 }
@@ -140,6 +151,7 @@ pub enum TlsMessageHandshake<'a> {
     HelloRequest,
     ClientHello(TlsClientHelloContents<'a>),
     ServerHello(TlsServerHelloContents<'a>),
+    ServerHelloV13(TlsServerHelloV13Contents<'a>),
     NewSessionTicket(TlsNewSessionTicketContent<'a>),
     Certificate(TlsCertificateContents<'a>),
     ServerKeyExchange(TlsServerKeyExchangeContents<'a>),
@@ -272,7 +284,7 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_server_hello_tlsv12<TlsMessageHandshake>,
     chain!(
         hv: be_u16 ~
         hrand_time: be_u32 ~
@@ -296,6 +308,34 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
                         })
         }
     )
+);
+
+named!(parse_tls_handshake_msg_server_hello_tlsv13draft<TlsMessageHandshake>,
+    chain!(
+        hv: be_u16 ~
+        random: take!(32) ~
+        cipher: be_u16 ~
+        ext: opt!(complete!(length_bytes!(be_u16))),
+        || {
+            TlsMessageHandshake::ServerHelloV13(
+                    TlsServerHelloV13Contents {
+                        version: hv,
+                        random: random,
+                        cipher: cipher,
+                        ext: ext,
+                        })
+        }
+    )
+);
+
+named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
+    switch!(peek!(be_u16),
+        0x7f12 => call!(parse_tls_handshake_msg_server_hello_tlsv13draft) |
+        0x0303 => call!(parse_tls_handshake_msg_server_hello_tlsv12) |
+        0x0302 => call!(parse_tls_handshake_msg_server_hello_tlsv12) |
+        0x0301 => call!(parse_tls_handshake_msg_server_hello_tlsv12)
+    )
+        // 0x0300 => call!(parse_tls_handshake_msg_server_hello_sslv3)
 );
 
 // RFC 5077   Stateless TLS Session Resumption
