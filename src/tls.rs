@@ -243,14 +243,6 @@ named!(parse_tls_handshake_msg_hello_request<TlsMessageHandshake>,
     value!(TlsMessageHandshake::HelloRequest)
 );
 
-named!(read_len_value_u16<&[u8]>,
-    chain!(
-        len: be_u16 ~
-        val: take!(len),
-        || { val }
-    )
-);
-
 named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     chain!(
         hv: be_u16 ~
@@ -264,7 +256,7 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         //ciphers: count!(be_u16, (ciphers_len/2) as usize) ~
         comp_len: take!(1) ~
         comp: count!(be_u8, comp_len[0] as usize) ~
-        ext: opt!(complete!(read_len_value_u16)),
+        ext: opt!(complete!(length_bytes!(be_u16))),
         || {
             TlsMessageHandshake::ClientHello(
                     TlsClientHelloContents {
@@ -290,7 +282,7 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
         hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) ~
         cipher: be_u16 ~
         comp: be_u8 ~
-        ext: opt!(complete!(read_len_value_u16)),
+        ext: opt!(complete!(length_bytes!(be_u16))),
         || {
             TlsMessageHandshake::ServerHello(
                     TlsServerHelloContents {
@@ -378,7 +370,7 @@ fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMe
         sig_hash_algs_len: be_u16 ~
         sig_hash_algs: flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) ~
         ca_len: be_u16 ~
-        ca: flat_map!(take!(ca_len),many0!(read_len_value_u16)),
+        ca: flat_map!(take!(ca_len),many0!(length_bytes!(be_u16))),
         || {
             TlsMessageHandshake::CertificateRequest(
                     TlsCertificateRequestContents {
