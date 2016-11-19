@@ -1,7 +1,7 @@
 use nom::be_u16;
 
 /// Diffie-Hellman parameters, defined in [RFC5246] section 7.4.3
-#[derive(Debug,PartialEq)]
+#[derive(PartialEq)]
 pub struct ServerDHParams<'a> {
     /// The prime modulus used for the Diffie-Hellman operation.
     pub dh_p:  &'a[u8],
