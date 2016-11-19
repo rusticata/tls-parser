@@ -100,6 +100,15 @@ impl<'a> fmt::Debug for TlsServerHelloV13Contents<'a> {
     }
 }
 
+impl<'a> fmt::Debug for TlsHelloRetryContents<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("TlsHelloRetryContents")
+            .field("version", &HexU16{d:self.version})
+            .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
+            .finish()
+    }
+}
+
 impl<'a> fmt::Debug for RawCertificate<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("RawCertificate")
@@ -203,6 +212,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
             TlsExtension::KeyShare(data) => write!(fmt, "TlsExtension::KeyShare(data={:?})", HexSlice{d:data}),
             TlsExtension::PreSharedKey(data) => write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice{d:data}),
+            TlsExtension::EarlyData => write!(fmt, "TlsExtension::EarlyData"),
             TlsExtension::SupportedVersions(ref v) => {
                 let v2 : Vec<_> = v.iter().map(|c| { format!("0x{:x}",c) }).collect();
                 write!(fmt, "TlsExtension::SupportedVersions(v={:?})", v2)

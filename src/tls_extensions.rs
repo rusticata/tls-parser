@@ -40,7 +40,7 @@ pub enum TlsExtensionType {
     SupportedVersions     = 0x002b,
     Cookie                = 0x002c,
     PskExchangeModes      = 0x002d,
-    TicketEarlyDataIndo   = 0x002e,
+    TicketEarlyDataInfo   = 0x002e,
 
     NextProtocolNegotiation = 0x3374,
 
@@ -59,6 +59,7 @@ pub enum TlsExtension<'a>{
     SessionTicket(&'a[u8]),
     KeyShare(&'a[u8]),
     PreSharedKey(&'a[u8]),
+    EarlyData,
     SupportedVersions(Vec<u16>),
     Cookie(&'a[u8]),
     PskExchangeModes(Vec<u8>),
@@ -357,6 +358,22 @@ named!(pub parse_tls_extension_pre_shared_key<TlsExtension>,
     )
 );
 
+fn parse_tls_extension_early_data_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    chain!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
+        || { TlsExtension::EarlyData }
+    )
+}
+
+named!(pub parse_tls_extension_early_data<TlsExtension>,
+    chain!(
+        tag!([0x00,0x2a]) ~
+        ext_len:  be_u16 ~
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_early_data_content,ext_len)),
+        || { ext }
+    )
+);
+
 fn parse_tls_extension_supported_versions_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     chain!(i,
         _n: be_u8 ~
@@ -451,6 +468,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x0023 => parse_tls_extension_session_ticket_content(i,ext_len),
         0x0028 => parse_tls_extension_key_share_content(i,ext_len),
         0x0029 => parse_tls_extension_pre_shared_key_content(i,ext_len),
+        0x002a => parse_tls_extension_early_data_content(i,ext_len),
         0x002b => parse_tls_extension_supported_versions_content(i,ext_len),
         0x002c => parse_tls_extension_cookie_content(i,ext_len),
         0x002d => parse_tls_extension_psk_key_exchange_modes_content(i),

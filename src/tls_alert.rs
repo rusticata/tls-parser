@@ -12,6 +12,7 @@ enum_from_primitive! {
 #[repr(u8)]
 pub enum TlsAlertDescription {
     CloseNotify            = 0x00,
+    EndOfEarlyData         = 0x01,
     UnexpectedMessage      = 0x0A,
     BadRecordMac           = 0x14,
     DecryptionFailed       = 0x15,
@@ -36,6 +37,14 @@ pub enum TlsAlertDescription {
     InappropriateFallback  = 0x56,
     UserCancelled          = 0x5A,
     NoRenegotiation        = 0x64,
+    MissingExtension       = 0x6d,
+    UnsupportedExtension   = 0x6e,
+    CertUnobtainable       = 0x6f,
+    UnrecognizedName       = 0x70,
+    BadCertStatusResponse  = 0x71,
+    BadCertHashValue       = 0x72,
+    UnknownPskIdentity     = 0x73,
+    CertificateRequired    = 0x74,
     NoApplicationProtocol  = 0x78, // [RFC7301]
 }
 }
