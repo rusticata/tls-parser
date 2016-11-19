@@ -80,7 +80,7 @@ pub struct TlsServerHelloContents<'a> {
     pub ext: Option<&'a[u8]>,
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub struct TlsServerHelloV13Contents<'a> {
     pub version: u16,
     pub random: &'a[u8],

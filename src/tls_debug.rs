@@ -79,6 +79,17 @@ impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
     }
 }
 
+impl<'a> fmt::Debug for TlsServerHelloV13Contents<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("TlsServerHelloV13Contents")
+            .field("version", &HexU16{d:self.version})
+            .field("random", &HexSlice{d:self.random})
+            .field("cipher", &CipherU16{d:self.cipher})
+            .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
+            .finish()
+    }
+}
+
 impl<'a> fmt::Debug for RawCertificate<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("RawCertificate")
