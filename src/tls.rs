@@ -10,6 +10,8 @@ pub enum TlsHandshakeType {
     ClientHello = 0x1,
     ServerHello = 0x02,
     NewSessionTicket = 0x04,
+    HelloRetryRequest = 0x06,
+    EncryptedExtensions = 0x08,
     Certificate = 0x0b,
     ServerKeyExchange = 0x0c,
     CertificateRequest = 0x0d,
@@ -19,6 +21,7 @@ pub enum TlsHandshakeType {
     Finished = 0x14,
     CertificateURL = 0x15,
     CertificateStatus = 0x16,
+    KeyUpdate = 0x18,
 
     NextProtocol = 0x43,
 }
