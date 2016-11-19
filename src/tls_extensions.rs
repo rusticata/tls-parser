@@ -1,16 +1,11 @@
-use std::fmt;
-use std::str::from_utf8;
 use nom::{be_u8,be_u16,IResult,Err,ErrorKind};
 
-use enum_primitive::FromPrimitive;
-use tls_ec::NamedGroup;
-use tls_sign_hash::{HashAlgorithm,SignAlgorithm};
-
 // See http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
+enum_from_primitive! {
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u16)]
 pub enum TlsExtensionType {
-    ServerName            = 0x0000,
+    ServerName            = 0x0000, // [RFC6066]
     MaxFragmentLength     = 0x0001,
     ClientCertificate     = 0x0002,
     TrustedCaKeys         = 0x0003,
@@ -26,7 +21,7 @@ pub enum TlsExtensionType {
     SignatureAlgorithms   = 0x000d,
     UseSrtp               = 0x000e,
     Heartbeat             = 0x000f,
-    ApplicationLayerProtocolNegotiation = 0x0010,
+    ApplicationLayerProtocolNegotiation = 0x0010, // [RFC7301]
     StatusRequestv2       = 0x0011,
     SignedCertificateTimestamp = 0x0012,
     ClientCertificateType = 0x0013,
@@ -50,6 +45,7 @@ pub enum TlsExtensionType {
     NextProtocolNegotiation = 0x3374,
 
     RenegotiationInfo     = 0xff01,
+}
 }
 
 #[derive(Clone,PartialEq)]
@@ -81,71 +77,6 @@ pub enum TlsExtension<'a>{
     Unknown(u16,&'a[u8]),
 }
 
-impl<'a> fmt::Display for TlsExtension<'a> {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TlsExtension::SNI(ref v) => {
-                write!(out, "TlsExtension::SNI([").unwrap();
-                for &(ty,name) in v {
-                    let s = from_utf8(name).unwrap_or("<error decoding utf8 string>");
-                    write!(out, "type=0x{:x},name={:?},", ty, s).unwrap();
-                }
-            write!(out, "])")
-            },
-            TlsExtension::MaxFragmentLength(l) => write!(out, "TlsExtension::MaxFragmentLength({})", l),
-            TlsExtension::StatusRequest(data) => write!(out, "TlsExtension::StatusRequest({:?})", data),
-            TlsExtension::EllipticCurves(ref v) => {
-                let v2 : Vec<_> = v.iter().map(|&curve| {
-                    match NamedGroup::from_u16(curve) {
-                        Some(n) => format!("{:?}", n),
-                        None    => format!("<Unknown curve 0x{:x}/{}>", curve, curve),
-                    }
-                }).collect();
-                write!(out, "TlsExtension::EllipticCurves({:?})", v2)
-            },
-            TlsExtension::EcPointFormats(v) => write!(out, "TlsExtension::EcPointFormats({:?})", v),
-            TlsExtension::SignatureAlgorithms(ref v) => {
-                let v2 : Vec<_> = v.iter().map(|&(h,s)| {
-                    let h2 = match HashAlgorithm::from_u8(h) {
-                        Some(n) => format!("{:?}", n),
-                        None    => format!("<Unknown hash 0x{:x}/{}>", h, h),
-                    };
-                    let s2 = match SignAlgorithm::from_u8(s) {
-                        Some(n) => format!("{:?}", n),
-                        None    => format!("<Unknown signature 0x{:x}/{}>", s, s),
-                    };
-                    (h2,s2)
-                }).collect();
-                write!(out, "TlsExtension::SignatureAlgorithms({:?})", v2)
-            },
-            TlsExtension::Heartbeat(mode) => write!(out, "TlsExtension::Heartbeat(mode={})", mode),
-            TlsExtension::ALPN(ref v) => write!(out, "TlsExtension::ALPN({:?})", v),
-            TlsExtension::Padding(data) => write!(out, "TlsExtension::Padding(data={:?})", data),
-            TlsExtension::EncryptThenMac => write!(out, "TlsExtension::EncryptThenMac"),
-            TlsExtension::ExtendedMasterSecret => write!(out, "TlsExtension::ExtendedMasterSecret"),
-            TlsExtension::NextProtocolNegotiation => write!(out, "TlsExtension::NextProtocolNegotiation"),
-            TlsExtension::SessionTicket(data) => write!(out, "TlsExtension::SessionTicket(data={:?})", data),
-            TlsExtension::PreSharedKey(data) => write!(out, "TlsExtension::PreSharedKey(data={:?})", data),
-            TlsExtension::KeyShare(data) => write!(out, "TlsExtension::KeyShare(data={:?})", data),
-            TlsExtension::SupportedVersions(ref v) => {
-                let v2 : Vec<_> = v.iter().map(|c| { format!("0x{:x}",c) }).collect();
-                write!(out, "TlsExtension::SupportedVersions(v={:?})", v2)
-            },
-            TlsExtension::Cookie(data) => write!(out, "TlsExtension::Cookie(data={:?})", data),
-            TlsExtension::PskExchangeModes(ref v) => write!(out, "TlsExtension::PskExchangeModes({:?})", v),
-            TlsExtension::SignedCertificateTimestamp(data) => write!(out, "TlsExtension::SignedCertificateTimestamp(data={:?})", data),
-            TlsExtension::RenegotiationInfo(data) => write!(out, "TlsExtension::RenegotiationInfo(data={:?})", data),
-            TlsExtension::Unknown(id,data) => write!(out, "TlsExtension::Unknown(id=0x{:x},data={:?})", id, data),
-        }
-    }
-}
-
-impl<'a> fmt::Debug for TlsExtension<'a> {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self,out)
-    }
-}
-
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct KeyShareEntry<'a> {
@@ -153,11 +84,21 @@ pub struct KeyShareEntry<'a> {
     pub kx: &'a[u8], // Key Exchange Data
 }
 
+enum_from_primitive!{
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum PskKeyExchangeMode {
     Psk    = 0,
     PskDhe = 1,
+}
+}
+
+enum_from_primitive!{
+#[derive(Clone,Debug,PartialEq)]
+#[repr(u8)]
+pub enum SNIType {
+    HostName = 0,
+}
 }
 
 

@@ -1,8 +1,9 @@
-use common::{parse_uint24,IntToEnumError};
+use common::parse_uint24;
 use nom::{be_u8,be_u16,be_u32,IResult,ErrorKind,Err};
 
 use tls_alert::*;
 
+enum_from_primitive! {
 #[repr(u8)]
 pub enum TlsHandshakeType {
     HelloRequest = 0x0,
@@ -21,7 +22,9 @@ pub enum TlsHandshakeType {
 
     NextProtocol = 0x43,
 }
+}
 
+enum_from_primitive! {
 #[repr(u16)]
 pub enum TlsVersion {
     Ssl30 = 0x0300,
@@ -32,13 +35,17 @@ pub enum TlsVersion {
 
     Tls13Draft18 = 0x7f12,
 }
+}
 
+enum_from_primitive! {
 #[repr(u8)]
 pub enum TlsHeartbeatMessageType {
     HeartBeatRequest  = 0x1,
     HeartBeatResponse = 0x2,
 }
+}
 
+enum_from_primitive! {
 #[repr(u8)]
 pub enum TlsRecordType {
     ChangeCipherSpec = 0x14,
@@ -47,22 +54,9 @@ pub enum TlsRecordType {
     ApplicationData = 0x17,
     Heartbeat = 0x18,
 }
-
-
-
-impl TlsRecordType {
-    pub fn try_from_u8(original: u8) -> Result<Self, IntToEnumError> {
-        match original {
-            0x14 => Ok(TlsRecordType::ChangeCipherSpec),
-            0x15 => Ok(TlsRecordType::Alert),
-            0x16 => Ok(TlsRecordType::Handshake),
-            0x17 => Ok(TlsRecordType::ApplicationData),
-            n => Err(IntToEnumError::InvalidU8(n)),
-        }
-    }
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub struct TlsClientHelloContents<'a> {
     pub version: u16,
     pub rand_time: u32,
@@ -74,7 +68,7 @@ pub struct TlsClientHelloContents<'a> {
     pub ext: Option<&'a[u8]>,
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub struct TlsServerHelloContents<'a> {
     pub version: u16,
     pub rand_time: u32,
@@ -101,7 +95,7 @@ pub struct TlsNewSessionTicketContent<'a> {
     pub ticket: &'a[u8],
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub struct RawCertificate<'a> {
     pub data: &'a[u8],
 }
@@ -119,12 +113,12 @@ pub struct TlsCertificateRequestContents<'a> {
     pub unparsed_ca: Vec<&'a[u8]>,
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub struct TlsServerKeyExchangeContents<'a> {
     pub parameters: &'a[u8],
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub struct TlsClientKeyExchangeContents<'a> {
     pub parameters: &'a[u8],
 }
@@ -176,7 +170,7 @@ pub struct TlsMessageHeartbeat<'a>{
     pub payload: &'a[u8],
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub struct TlsRecordHeader {
     pub record_type: u8,
     pub version: u16,
@@ -221,7 +215,6 @@ impl<'a> TlsPlaintext<'a> {
 
 
 
-// TODO: wrap as struct + accessors ?
 named!(parse_cipher_suites<Vec<u16> >,
     chain!(v: many0!(be_u16), || { return v })
 );

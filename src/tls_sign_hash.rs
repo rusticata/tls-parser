@@ -27,7 +27,7 @@ pub enum SignAlgorithm {
 }
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(PartialEq)]
 pub struct HashSignAlgorithm {
     pub hash: u8,
     pub sign: u8,
@@ -38,7 +38,7 @@ pub struct HashSignAlgorithm {
 /// has no algorithm definition.
 /// This should be deprecated in favor if
 /// DigitallySigned structure from [RFC5246] section 4.7
-#[derive(Debug,PartialEq)]
+#[derive(PartialEq)]
 pub struct DigitallySigned<'a> {
     pub alg: Option<HashSignAlgorithm>,
     pub data: &'a[u8],
