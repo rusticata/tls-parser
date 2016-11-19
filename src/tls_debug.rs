@@ -45,6 +45,16 @@ impl fmt::Debug for CipherU16 {
     }
 }
 
+pub struct SignatureSchemeU16 { pub d: u16 }
+impl fmt::Debug for SignatureSchemeU16 {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match SignatureScheme::from_u16(self.d) {
+            Some(ref c) => write!(fmt,"0x{:04x}({:?})",self.d,c),
+            None        => write!(fmt,"0x{:04x}(Unknown signature scheme)",self.d),
+        }
+    }
+}
+
 
 
 // ------------------------- tls.rs ------------------------------
@@ -182,6 +192,12 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
                     };
                     (h2,s2)
                 }).collect();
+                // let v2 : Vec<_> = v.iter().map(|c|{
+                //     match SignatureScheme::from_u16(*c) {
+                //         Some(n) => format!("{:?}", n),
+                //         None    => format!("<Unknown signature scheme 0x{:x}/{}>", c, c),
+                //     }
+                // }).collect();
                 write!(fmt, "TlsExtension::SignatureAlgorithms({:?})", v2)
             },
             TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
