@@ -13,7 +13,7 @@ build = "build.rs"
 name = "tls_parser"
 
 [dependencies]
-nom = "1.2.4"
+nom = {version = "^2.0", features=["verbose-errors"] }
 phf = "0.7.16"
 enum_primitive = "0.1.0"
 
