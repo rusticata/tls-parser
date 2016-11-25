@@ -367,7 +367,7 @@ fn parse_tls_handshake_msg_clientkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u
 
 fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
     chain!(i,
-        cert_types: length_value!(be_u8,be_u8) ~
+        cert_types: length_count!(be_u8,be_u8) ~
         sig_hash_algs_len: be_u16 ~
         sig_hash_algs: flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) ~
         ca_len: be_u16 ~
