@@ -204,7 +204,7 @@ impl<'a> TlsPlaintext<'a> {
 
 
 named!(parse_cipher_suites<Vec<u16> >,
-    chain!(v: many0!(be_u16), || { return v })
+    many0!(be_u16)
 );
 
 named!(parse_certs<Vec<RawCertificate> >,
@@ -237,11 +237,7 @@ named!(parse_tls_handshake_msg_hello_request<TlsMessageHandshake>,
 );
 
 named!(read_len_value_u16<&[u8]>,
-    chain!(
-        len: be_u16 ~
-        val: take!(len),
-        || { val }
-    )
+    length_bytes!(be_u16)
 );
 
 named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
@@ -540,7 +536,7 @@ named!(pub parse_tls_raw_record<TlsRawRecord>,
     )
 );
 
-// parse one packet only
+/// parse one packet only, as plaintext
 named!(pub tls_parser<TlsPlaintext>,
     call!(parse_tls_plaintext)
 );
