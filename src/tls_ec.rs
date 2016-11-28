@@ -1,8 +1,10 @@
 use nom::{be_u8,be_u16};
 use enum_primitive::FromPrimitive;
 
-/// Named curves, as defined in [RFC4492], [RFC7027], [RFC7919]
 enum_from_primitive! {
+/// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
+/// [IANA Supported Groups
+/// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8)
 #[derive(Debug,PartialEq)]
 #[repr(u16)]
 pub enum NamedCurve {

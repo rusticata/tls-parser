@@ -1,4 +1,5 @@
 enum_from_primitive! {
+/// TLS alert severity
 #[derive(Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsAlertSeverity {
@@ -8,6 +9,10 @@ pub enum TlsAlertSeverity {
 }
 
 enum_from_primitive! {
+/// TLS alert description
+///
+/// Alerts are defined in the [IANA TLS Alert
+/// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-6)
 #[derive(Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsAlertDescription {
@@ -39,9 +44,12 @@ pub enum TlsAlertDescription {
 }
 }
 
+/// TLS alert message
 #[derive(Clone,PartialEq)]
 pub struct TlsMessageAlert {
+    /// Should match a [TlsAlertSeverity](enum.TlsAlertSeverity.html) value
     pub severity: u8,
+    /// Should match a [TlsAlertSeverity](enum.TlsAlertDescription.html) value
     pub code: u8,
 }
 

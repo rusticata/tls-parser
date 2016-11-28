@@ -1,9 +1,17 @@
+//! # TLS parser
+//! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.2
+
 use common::parse_uint24;
 use nom::{be_u8,be_u16,be_u32,rest,IResult,ErrorKind,Err};
 
 use tls_alert::*;
 
 enum_from_primitive! {
+/// Handshake type
+///
+/// Handshake types are defined in [RFC5246](https://tools.ietf.org/html/rfc5246) and
+/// the [IANA HandshakeType
+/// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-7)
 #[repr(u8)]
 pub enum TlsHandshakeType {
     HelloRequest = 0x0,
@@ -25,6 +33,10 @@ pub enum TlsHandshakeType {
 }
 
 enum_from_primitive! {
+/// TLS version
+///
+/// Only the TLS version defined in the TLS message header is meaningful, the
+/// version defined in the record should be ignored or set to TLS 1.0
 #[repr(u16)]
 pub enum TlsVersion {
     Ssl30 = 0x0300,
@@ -36,6 +48,7 @@ pub enum TlsVersion {
 }
 
 enum_from_primitive! {
+/// Heartbeat type, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520) section 3
 #[repr(u8)]
 pub enum TlsHeartbeatMessageType {
     HeartBeatRequest  = 0x1,
@@ -44,6 +57,7 @@ pub enum TlsHeartbeatMessageType {
 }
 
 enum_from_primitive! {
+/// Content type, as defined in IANA TLS ContentType registry
 #[repr(u8)]
 pub enum TlsRecordType {
     ChangeCipherSpec = 0x14,
@@ -54,18 +68,26 @@ pub enum TlsRecordType {
 }
 }
 
+/// TLS Client Hello (from TLS 1.0 to TLS 1.2)
+///
+/// Some fields are unparsed (for performance reasons), for ex to parse `ext`,
+/// call the `parse_tls_extensions` function.
 #[derive(Clone,PartialEq)]
 pub struct TlsClientHelloContents<'a> {
+    /// TLS version of message
     pub version: u16,
     pub rand_time: u32,
     pub rand_data: &'a[u8],
     pub session_id: Option<&'a[u8]>,
+    /// A list of ciphers supported by client
     pub ciphers: Vec<u16>,
+    /// A list of compression methods supported by client
     pub comp: Vec<u8>,
 
     pub ext: Option<&'a[u8]>,
 }
 
+/// TLS Server Hello (from TLS 1.0 to TLS 1.2)
 #[derive(Clone,PartialEq)]
 pub struct TlsServerHelloContents<'a> {
     pub version: u16,
@@ -78,57 +100,71 @@ pub struct TlsServerHelloContents<'a> {
     pub ext: Option<&'a[u8]>,
 }
 
+/// Session ticket, as defined in [RFC5077](https://tools.ietf.org/html/rfc5077)
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsNewSessionTicketContent<'a> {
     pub ticket_lifetime_hint: u32,
     pub ticket: &'a[u8],
 }
 
+/// A raw certificate, which should be a DER-encoded X.509 certificate.
+///
+/// See [RFC5280](https://tools.ietf.org/html/rfc5280) for X509v3 certificate format.
 #[derive(Clone,PartialEq)]
 pub struct RawCertificate<'a> {
     pub data: &'a[u8],
 }
 
+/// The certificate chain, usually composed of the certificate, and all
+/// required certificate authorities.
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsCertificateContents<'a> {
     pub cert_chain: Vec<RawCertificate<'a> >,
 }
 
+/// Certificate request, as defined in [RFC5246](https://tools.ietf.org/html/rfc5246) section 7.4.4
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsCertificateRequestContents<'a> {
     pub cert_types: Vec<u8>,
     pub sig_hash_algs: Vec<u16>,
-    // a list of DER-encoded distinguished names [X501]
+    /// A list of DER-encoded distinguished names. See
+    /// [X.501](http://www.itu.int/rec/T-REC-X.501/en)
     pub unparsed_ca: Vec<&'a[u8]>,
 }
 
+/// Server key exchange parameters
+///
+/// This is an opaque struct, since the content depends on the selected
+/// key exchange method.
 #[derive(Clone,PartialEq)]
 pub struct TlsServerKeyExchangeContents<'a> {
     pub parameters: &'a[u8],
 }
 
+/// Client key exchange parameters
+///
+/// Content depends on the selected key exchange method.
 #[derive(Clone,PartialEq)]
 pub struct TlsClientKeyExchangeContents<'a> {
     pub parameters: &'a[u8],
 }
 
+/// Certificate status response, as defined in [RFC6066](https://tools.ietf.org/html/rfc6066) section 8
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsCertificateStatusContents<'a> {
     pub status_type: u8,
     pub blob: &'a[u8],
 }
 
+/// Next protocol response, defined in
+/// [draft-agl-tls-nextprotoneg-03](https://tools.ietf.org/html/draft-agl-tls-nextprotoneg-03)
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsNextProtocolContent<'a> {
     pub selected_protocol: &'a[u8],
     pub padding: &'a[u8],
 }
 
-#[derive(Clone,Debug,PartialEq)]
-pub struct TlsEncryptedContent<'a> {
-    pub blob: &'a[u8],
-}
-
+/// Generic handshake message
 #[derive(Clone,Debug,PartialEq)]
 pub enum TlsMessageHandshake<'a> {
     HelloRequest,
@@ -146,11 +182,19 @@ pub enum TlsMessageHandshake<'a> {
     NextProtocol(TlsNextProtocolContent<'a>),
 }
 
+/// TLS application data
+///
+/// Since this message can only be sent after the handshake, data is
+/// stored as opaque.
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsMessageApplicationData<'a>{
     pub blob: &'a[u8],
 }
 
+/// TLS heartbeat message, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520)
+///
+/// Heartbeat messages should not be sent during handshake, but in practise
+/// they can (and this caused heartbleed).
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsMessageHeartbeat<'a>{
     pub heartbeat_type: u8,
@@ -158,6 +202,7 @@ pub struct TlsMessageHeartbeat<'a>{
     pub payload: &'a[u8],
 }
 
+/// TLS record header
 #[derive(Clone,PartialEq)]
 pub struct TlsRecordHeader {
     pub record_type: u8,
@@ -165,6 +210,9 @@ pub struct TlsRecordHeader {
     pub len: u16,
 }
 
+/// TLS plaintext message
+///
+/// Plaintext records can only be found during the handshake.
 #[derive(Clone,Debug,PartialEq)]
 pub enum TlsMessage<'a> {
     Handshake(TlsMessageHandshake<'a>),
@@ -174,29 +222,40 @@ pub enum TlsMessage<'a> {
     Heartbeat(TlsMessageHeartbeat<'a>),
 }
 
+/// TLS plaintext record
+///
+/// A TLS record can contain multiple messages (sharing the same record type).
+/// Plaintext records can only be found during the handshake.
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsPlaintext<'a> {
     pub hdr: TlsRecordHeader,
     pub msg: Vec<TlsMessage<'a>>,
 }
 
+/// TLS encrypted data
+///
+/// This struct only contains an opaque pointer (data are encrypted).
+#[derive(Clone,Debug,PartialEq)]
+pub struct TlsEncryptedContent<'a> {
+    pub blob: &'a[u8],
+}
+
+/// Encrypted TLS record (containing opaque data)
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsEncrypted<'a> {
     pub hdr: TlsRecordHeader,
     pub msg: TlsEncryptedContent<'a>,
 }
 
+/// Tls Record with raw (unparsed) data
+///
+/// Use `parse_tls_raw_record` to parse content
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsRawRecord<'a> {
     pub hdr: TlsRecordHeader,
     pub data: &'a[u8],
 }
 
-impl<'a> TlsPlaintext<'a> {
-    pub fn is_a(&'a self, ty:u8) -> bool {
-        self.hdr.record_type == ty
-    }
-}
 
 
 
@@ -392,7 +451,7 @@ fn parse_tls_handshake_msg_finished( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMe
 }
 
 /// Defined in [RFC6066]
-/// if status_type == 0, blob is a OCSPResponse, as defined in [RFC2560]
+/// if status_type == 0, blob is a OCSPResponse, as defined in [RFC2560](https://tools.ietf.org/html/rfc2560)
 /// Note that the OCSPResponse object is DER-encoded.
 named!(parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
     do_parse!(
@@ -407,7 +466,8 @@ named!(parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
     )
 );
 
-/// NextProtocol handshake message, as defined in draft-agl-tls-nextprotoneg-03
+/// NextProtocol handshake message, as defined in
+/// [draft-agl-tls-nextprotoneg-03](https://tools.ietf.org/html/draft-agl-tls-nextprotoneg-03)
 /// Deprecated in favour of ALPN.
 fn parse_tls_handshake_msg_next_protocol( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
@@ -499,7 +559,12 @@ fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
     )
 }
 
-// XXX check message length (not required for parser safety, but for protocol
+/// Given data and a TLS record header, parse content.
+///
+/// A record can contain multiple messages (with the same type).
+///
+/// Note that message length is checked (not required for parser safety, but for
+/// strict protocol conformance).
 pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&[u8], Vec<TlsMessage>> {
     switch!(i, value!(hdr.record_type),
             /*TlsRecordType::ChangeCipherSpec*/ 0x14 => many1!(parse_tls_message_changecipherspec) |
@@ -511,40 +576,55 @@ pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&
 }
 
 
-// a single record can contain multiple messages, they must share the same record type
-named!(pub parse_tls_plaintext<TlsPlaintext>,
-    do_parse!(
+/// Parse one packet only, as plaintext
+/// A single record can contain multiple messages, they must share the same record type
+pub fn parse_tls_plaintext(i:&[u8]) -> IResult<&[u8],TlsPlaintext> {
+    do_parse!(i,
         hdr: parse_tls_record_header >>
         msg: flat_map!(take!(hdr.len),
             apply!(parse_tls_record_with_header,hdr.clone())
             ) >>
         ( TlsPlaintext {hdr:hdr, msg:msg} )
     )
-);
+}
 
-named!(pub parse_tls_encrypted<TlsEncrypted>,
-    do_parse!(
+/// Parse one packet only, as encrypted content
+pub fn parse_tls_encrypted(i:&[u8]) -> IResult<&[u8],TlsEncrypted> {
+    do_parse!(i,
         hdr: parse_tls_record_header >>
         blob: take!(hdr.len) >>
         ( TlsEncrypted {hdr:hdr, msg:TlsEncryptedContent{ blob: blob}} )
     )
-);
+}
 
 /// Read TLS record envelope, but do not decode data
-named!(pub parse_tls_raw_record<TlsRawRecord>,
-    do_parse!(
+///
+/// This function is used to get the record type, and to make sure the record is
+/// complete (not fragmented).
+/// After calling this function, use `parse_tls_record_with_header` to parse content.
+pub fn parse_tls_raw_record(i:&[u8]) -> IResult<&[u8],TlsRawRecord> {
+    do_parse!(i,
         hdr: parse_tls_record_header >>
         data: take!(hdr.len) >>
         ( TlsRawRecord {hdr:hdr, data: data} )
     )
-);
+}
 
-/// parse one packet only, as plaintext
-named!(pub tls_parser<TlsPlaintext>,
-    call!(parse_tls_plaintext)
-);
+/// Parse one packet only, as plaintext
+/// This function is deprecated. Use `parse_tls_plaintext` instead.
+///
+/// This function will be removed from API, as the name is not correct: it is
+/// not possible to parse TLS packets without knowing the TLS state.
+pub fn tls_parser(i:&[u8]) -> IResult<&[u8],TlsPlaintext> {
+    parse_tls_plaintext(i)
+}
 
-// parse one packet, possibly containing multiple records
-named!(pub tls_parser_many<Vec<TlsPlaintext> >,
-    many1!(complete!(parse_tls_plaintext))
-);
+/// Parse one chunk of data, possibly containing multiple TLS plaintext records
+/// This function is deprecated. Use `parse_tls_plaintext` instead, checking if
+/// there are remaining bytes, and calling `parse_tls_plaintext` recursively.
+///
+/// This function will be removed from API, as it should be replaced by a more
+/// useful one to handle fragmentation.
+pub fn tls_parser_many(i:&[u8]) -> IResult<&[u8],Vec<TlsPlaintext>> {
+    many1!(i,complete!(parse_tls_plaintext))
+}
