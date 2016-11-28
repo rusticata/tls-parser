@@ -12,14 +12,14 @@ pub struct ServerDHParams<'a> {
 }
 
 named!(pub parse_dh_params<ServerDHParams>,
-    chain!(
-        p:  length_bytes!(be_u16) ~
-        g:  length_bytes!(be_u16) ~
-        ys: length_bytes!(be_u16),
-        || { ServerDHParams{
+    do_parse!(
+        p:  length_bytes!(be_u16) >>
+        g:  length_bytes!(be_u16) >>
+        ys: length_bytes!(be_u16) >>
+        ( ServerDHParams{
             dh_p:  p,
             dh_g:  g,
             dh_ys: ys,
-        }}
+        })
     )
 );

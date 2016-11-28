@@ -144,21 +144,21 @@ named!(pub parse_ec_point<ECPoint>,
 );
 
 named!(parse_ec_curve<ECCurve>,
-    chain!(
-        a: length_bytes!(be_u8) ~
-        b: length_bytes!(be_u8),
-        || { ECCurve{a:a,b:b} }
+    do_parse!(
+        a: length_bytes!(be_u8) >>
+        b: length_bytes!(be_u8) >>
+        ( ECCurve{a:a,b:b} )
     )
 );
 
 named!(parse_ec_explicit_prime_content<ECParametersContent>,
-    chain!(
-        p:        length_bytes!(be_u8) ~
-        curve:    parse_ec_curve ~
-        base:     parse_ec_point ~
-        order:    length_bytes!(be_u8) ~
-        cofactor: length_bytes!(be_u8),
-        || {
+    do_parse!(
+        p:        length_bytes!(be_u8) >>
+        curve:    parse_ec_curve >>
+        base:     parse_ec_point >>
+        order:    length_bytes!(be_u8) >>
+        cofactor: length_bytes!(be_u8) >>
+        (
             ECParametersContent::ExplicitPrime(
                 ExplicitPrimeContent{
                     prime_p:  p,
@@ -168,7 +168,7 @@ named!(parse_ec_explicit_prime_content<ECParametersContent>,
                     cofactor: cofactor,
                 }
             )
-        }
+        )
     )
 );
 
@@ -177,25 +177,25 @@ named!(parse_ec_named_curve_content<ECParametersContent>,
 );
 
 named!(pub parse_ec_parameters<ECParameters>,
-    chain!(
-        curve_type: be_u8 ~
+    do_parse!(
+        curve_type: be_u8  >>
         d: switch!(value!(curve_type),
             1 => call!(parse_ec_explicit_prime_content) |
             3 => call!(parse_ec_named_curve_content)
-        ),
-        || {
+        ) >>
+        (
             ECParameters{
                 curve_type: curve_type,
                 params_content: d,
             }
-        }
+        )
     )
 );
 
 named!(pub parse_ecdh_params<ServerECDHParams>,
-    chain!(
-        c: parse_ec_parameters ~
-        p: parse_ec_point,
-        || { ServerECDHParams{curve_params:c,public:p} }
+    do_parse!(
+        c: parse_ec_parameters >>
+        p: parse_ec_point >>
+        ( ServerECDHParams{curve_params:c,public:p} )
     )
 );

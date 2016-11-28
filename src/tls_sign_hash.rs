@@ -52,14 +52,14 @@ named!(pub parse_digitally_signed_old<DigitallySigned>,
 );
 
 named!(pub parse_digitally_signed<DigitallySigned>,
-    chain!(
-        h: be_u8 ~
-        s: be_u8 ~
-        d: length_bytes!(be_u16),
-        || { DigitallySigned{
+    do_parse!(
+        h: be_u8 >>
+        s: be_u8 >>
+        d: length_bytes!(be_u16) >>
+        ( DigitallySigned{
             alg: Some( HashSignAlgorithm{ hash:h, sign:s } ),
             data: d,
-        }}
+        })
     )
 );
 
