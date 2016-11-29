@@ -1,8 +1,16 @@
+//!
+//! The [CIPHERS](static.CIPHERS.html) static hash map is built during the
+//! compilation of the crate, using `build.rs`. It parses a file derived from
+//! the [IANA TLS Cipher Suite
+//! Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4)
+//! to automatically extract parameters and add all known ciphersuites.
+
 #![allow(non_camel_case_types)]
 
 use phf;
 
 enum_from_primitive! {
+/// Key exchange methods
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherKx {
@@ -19,6 +27,7 @@ pub enum TlsCipherKx {
 }
 
 enum_from_primitive! {
+/// Authentication methods
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherAu {
@@ -36,6 +45,7 @@ pub enum TlsCipherAu {
 }
 
 enum_from_primitive! {
+/// Encryption methods
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherEnc {
@@ -54,6 +64,7 @@ pub enum TlsCipherEnc {
 }
 
 enum_from_primitive! {
+/// Encryption modes
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherEncMode {
@@ -65,6 +76,7 @@ pub enum TlsCipherEncMode {
 }
 
 enum_from_primitive! {
+/// Message Authentication Code (MAC) methods
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherMac {
@@ -77,6 +89,7 @@ pub enum TlsCipherMac {
 }
 }
 
+/// TLS Ciphersuite
 #[derive(Debug)]
 pub struct TlsCipherSuite {
     pub name: &'static str,

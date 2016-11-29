@@ -1,7 +1,18 @@
+//!
+//! TLS extensions are defined in:
+//!
+//! - [RFC4492](https://tools.ietf.org/html/rfc4492)
+//! - [RFC6066](https://tools.ietf.org/html/rfc6066)
+//! - [RFC7366](https://tools.ietf.org/html/rfc7366)
+//! - [RFC7627](https://tools.ietf.org/html/rfc7627)
+
 use nom::{be_u8,be_u16,IResult,Err,ErrorKind};
 
-// See http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
 enum_from_primitive! {
+/// TLS extension types,
+/// defined in the [IANA Transport Layer Security (TLS)
+/// Extensions](http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml)
+/// registry
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u16)]
 pub enum TlsExtensionType {
@@ -48,6 +59,8 @@ pub enum TlsExtensionType {
 }
 }
 
+/// TLS extensions
+///
 #[derive(Clone,PartialEq)]
 pub enum TlsExtension<'a>{
     SNI(Vec<(u8,&'a[u8])>),
@@ -110,39 +123,39 @@ named!(pub parse_tls_extension_sni_hostname<(u8,&[u8])>,
 );
 
 named!(pub parse_tls_extension_sni_content<TlsExtension>,
-    chain!(
-        list_len: be_u16 ~
+    do_parse!(
+        list_len: be_u16 >>
         v: flat_map!(take!(list_len),
             many0!(parse_tls_extension_sni_hostname)
-            ),
-        || { TlsExtension::SNI(v) }
+        ) >>
+        ( TlsExtension::SNI(v) )
     )
 );
 
 named!(pub parse_tls_extension_sni<TlsExtension>,
-    chain!(
-        tag!([0x00,0x00]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),parse_tls_extension_sni_content),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x00]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),parse_tls_extension_sni_content) >>
+        ( ext )
     )
 );
 
 /// Max fragment length [RFC6066]
 named!(pub parse_tls_extension_max_fragment_length_content<TlsExtension>,
-    chain!(
-        l: be_u8,
-        || { TlsExtension::MaxFragmentLength(l) }
+    map!(
+        be_u8,
+        |l| { TlsExtension::MaxFragmentLength(l) }
     )
 );
 
 /// Max fragment length [RFC6066]
 named!(pub parse_tls_extension_max_fragment_length<TlsExtension>,
-    chain!(
-        tag!([0x00,0x01]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),parse_tls_extension_max_fragment_length_content),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x01]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),parse_tls_extension_max_fragment_length_content) >>
+        ( ext )
     )
 );
 
@@ -151,302 +164,297 @@ fn parse_tls_extension_status_request_content(i: &[u8], ext_len:u16) -> IResult<
     match ext_len {
         0 => IResult::Done(i,TlsExtension::StatusRequest(None)),
         _ => {
-                chain!(i,
-                    status_type: be_u8 ~
-                    request: take!(ext_len-1),
-                    || { TlsExtension::StatusRequest(Some((status_type,request))) }
+                do_parse!(i,
+                    status_type: be_u8 >>
+                    request: take!(ext_len-1) >>
+                    ( TlsExtension::StatusRequest(Some((status_type,request))) )
                 )
         },
     }
 }
 
 named!(pub parse_tls_extension_status_request<TlsExtension>,
-    chain!(
-        tag!([0x00,0x05]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_status_request_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x05]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_status_request_content,ext_len)) >>
+        ( ext )
     )
 );
 
 named!(pub parse_tls_extension_elliptic_curves_content<TlsExtension>,
-    chain!(
-        list_len: be_u16 ~
+    do_parse!(
+        list_len: be_u16 >>
         l: flat_map!(take!(list_len),
             many0!(be_u16)
-            ),
-        || { TlsExtension::EllipticCurves(l) }
+        ) >>
+        ( TlsExtension::EllipticCurves(l) )
     )
 );
 
 named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
-    chain!(
-        tag!([0x00,0x0a]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),parse_tls_extension_elliptic_curves_content),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x0a]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),parse_tls_extension_elliptic_curves_content) >>
+        ( ext )
     )
 );
 
 named!(pub parse_tls_extension_ec_point_formats_content<TlsExtension>,
-    chain!(
-        list_len: be_u8 ~
-        v: take!(list_len),
-        || { TlsExtension::EcPointFormats(v) }
+    map!(
+        length_bytes!(be_u8),
+        |v| { TlsExtension::EcPointFormats(v) }
     )
 );
 
 named!(pub parse_tls_extension_ec_point_formats<TlsExtension>,
-    chain!(
-        tag!([0x00,0x0b]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),parse_tls_extension_ec_point_formats_content),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x0b]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),parse_tls_extension_ec_point_formats_content) >>
+        ( ext )
     )
 );
 
 named!(pub parse_tls_extension_signature_algorithms_content<TlsExtension>,
-    chain!(
-        list_len: be_u16 ~
+    do_parse!(
+        list_len: be_u16 >>
         l: flat_map!(take!(list_len),
             many0!(pair!(be_u8,be_u8))
-            ),
-        || { TlsExtension::SignatureAlgorithms(l) }
+        ) >>
+        ( TlsExtension::SignatureAlgorithms(l) )
     )
 );
 
 named!(pub parse_tls_extension_signature_algorithms<TlsExtension>,
-    chain!(
-        tag!([0x00,0x0d]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),parse_tls_extension_signature_algorithms_content),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x0d]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),parse_tls_extension_signature_algorithms_content) >>
+        ( ext )
     )
 );
 
 named!(pub parse_tls_extension_heartbeat_content<TlsExtension>,
-    chain!(
-        hb_mode: be_u8,
-        || { TlsExtension::Heartbeat(hb_mode) }
+    map!(
+        be_u8,
+        |hb_mode| { TlsExtension::Heartbeat(hb_mode) }
     )
 );
 
 named!(pub parse_tls_extension_heartbeat<TlsExtension>,
-    chain!(
-        tag!([0x00,0x0f]) ~
-        ext_len:  be_u16 ~
-        error_if!(ext_len != 1, Err::Code(ErrorKind::Custom(128))) ~
-        ext: flat_map!(take!(ext_len),parse_tls_extension_heartbeat_content),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x0f]) >>
+        ext_len:  be_u16 >>
+        error_if!(ext_len != 1, Err::Code(ErrorKind::Custom(128))) >>
+        ext: flat_map!(take!(ext_len),parse_tls_extension_heartbeat_content) >>
+        ( ext )
     )
 );
 
 named!(parse_protocol_name<&[u8]>,
-    chain!(
-        len: be_u8 ~
-        name: take!(len),
-        || { name }
-    )
+    length_bytes!(be_u8)
 );
 
 /// Defined in [RFC7301]
 named!(pub parse_tls_extension_alpn_content<TlsExtension>,
-    chain!(
-        list_len: be_u16 ~
-        v: flat_map!(take!(list_len),many0!(complete!(parse_protocol_name))),
-        || { TlsExtension::ALPN(v) }
+    do_parse!(
+        list_len: be_u16 >>
+        v: flat_map!(take!(list_len),many0!(complete!(parse_protocol_name))) >>
+        ( TlsExtension::ALPN(v) )
     )
 );
 
 /// Defined in [RFC7685]
 fn parse_tls_extension_padding_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        d: take!(ext_len),
-        || { TlsExtension::Padding(d) }
+    map!(i,
+        take!(ext_len),
+        |d| { TlsExtension::Padding(d) }
     )
 }
 
 /// Defined in [RFC6962]
 named!(pub parse_tls_extension_signed_certificate_timestamp_content<TlsExtension>,
-    chain!(
-        d: opt!(length_bytes!(be_u16)),
-        || { TlsExtension::SignedCertificateTimestamp(d) }
+    map!(
+        opt!(length_bytes!(be_u16)),
+        |d| { TlsExtension::SignedCertificateTimestamp(d) }
     )
 );
 
 /// Encrypt-then-MAC is defined in [RFC7366]
 fn parse_tls_extension_encrypt_then_mac_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
-        || { TlsExtension::EncryptThenMac }
+    do_parse!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        ( TlsExtension::EncryptThenMac )
     )
 }
 
 /// Encrypt-then-MAC is defined in [RFC7366]
 named!(pub parse_tls_extension_encrypt_then_mac<TlsExtension>,
-    chain!(
-        tag!([0x00,0x16]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_encrypt_then_mac_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x16]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_encrypt_then_mac_content,ext_len)) >>
+        ( ext )
     )
 );
 
 /// Extended Master Secret is defined in [RFC7627]
 fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
-        || { TlsExtension::ExtendedMasterSecret }
+    do_parse!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        ( TlsExtension::ExtendedMasterSecret )
     )
 }
 
 /// Extended Master Secret is defined in [RFC7627]
 named!(pub parse_tls_extension_extended_master_secret<TlsExtension>,
-    chain!(
-        tag!([0x00,0x17]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_extended_master_secret_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x17]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_extended_master_secret_content,ext_len)) >>
+        ( ext )
     )
 );
 
 fn parse_tls_extension_session_ticket_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        ext_data: take!(ext_len),
-        || { TlsExtension::SessionTicket(ext_data) }
+    map!(i,
+        take!(ext_len),
+        |ext_data| { TlsExtension::SessionTicket(ext_data) }
     )
 }
 
 named!(pub parse_tls_extension_session_ticket<TlsExtension>,
-    chain!(
-        tag!([0x00,0x23]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_session_ticket_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x23]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_session_ticket_content,ext_len)) >>
+        ( ext )
     )
 );
 
 fn parse_tls_extension_key_share_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        ext_data: take!(ext_len),
-        || { TlsExtension::KeyShare(ext_data) }
+    map!(i,
+        take!(ext_len),
+        |ext_data| { TlsExtension::KeyShare(ext_data) }
     )
 }
 
 named!(pub parse_tls_extension_key_share<TlsExtension>,
-    chain!(
-        tag!([0x00,0x28]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_key_share_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x28]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_key_share_content,ext_len)) >>
+        ( ext )
     )
 );
 
 fn parse_tls_extension_pre_shared_key_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        ext_data: take!(ext_len),
-        || { TlsExtension::PreSharedKey(ext_data) }
+    map!(i,
+        take!(ext_len),
+        |ext_data| { TlsExtension::PreSharedKey(ext_data) }
     )
 }
 
 named!(pub parse_tls_extension_pre_shared_key<TlsExtension>,
-    chain!(
-        tag!([0x00,0x28]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_pre_shared_key_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x28]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_pre_shared_key_content,ext_len)) >>
+        ( ext )
     )
 );
 
 fn parse_tls_extension_early_data_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
-        || { TlsExtension::EarlyData }
+    do_parse!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        ( TlsExtension::EarlyData )
     )
 }
 
 named!(pub parse_tls_extension_early_data<TlsExtension>,
-    chain!(
-        tag!([0x00,0x2a]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_early_data_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x2a]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_early_data_content,ext_len)) >>
+        ( ext )
     )
 );
 
 fn parse_tls_extension_supported_versions_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        _n: be_u8 ~
-        l: flat_map!(take!(ext_len-1),many0!(be_u16)),
-        || { TlsExtension::SupportedVersions(l) }
+    do_parse!(i,
+        _n: be_u8 >>
+        l: flat_map!(take!(ext_len-1),many0!(be_u16)) >>
+        ( TlsExtension::SupportedVersions(l) )
     )
 }
 
 named!(pub parse_tls_extension_supported_versions<TlsExtension>,
-    chain!(
-        tag!([0x00,0x2b]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_supported_versions_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x2b]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_supported_versions_content,ext_len)) >>
+        ( ext )
     )
 );
 
 fn parse_tls_extension_cookie_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        ext_data: take!(ext_len),
-        || { TlsExtension::Cookie(ext_data) }
+    map!(i,
+        take!(ext_len),
+        |ext_data| { TlsExtension::Cookie(ext_data) }
     )
 }
 
 named!(pub parse_tls_extension_cookie<TlsExtension>,
-    chain!(
-        tag!([0x00,0x2c]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_cookie_content,ext_len)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x2c]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_cookie_content,ext_len)) >>
+        ( ext )
     )
 );
 
 named!(pub parse_tls_extension_psk_key_exchange_modes_content<TlsExtension>,
-    chain!(
-        l: be_u8 ~
-        v: flat_map!(take!(l),many0!(be_u8)),
-        || { TlsExtension::PskExchangeModes(v) }
+    do_parse!(
+        l: be_u8 >>
+        v: flat_map!(take!(l),many0!(be_u8)) >>
+        ( TlsExtension::PskExchangeModes(v) )
     )
 );
 
 named!(pub parse_tls_extension_psk_key_exchange_modes<TlsExtension>,
-    chain!(
-        tag!([0x00,0x2d]) ~
-        ext_len:  be_u16 ~
-        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_psk_key_exchange_modes_content)),
-        || { ext }
+    do_parse!(
+        tag!([0x00,0x2d]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_psk_key_exchange_modes_content)) >>
+        ( ext )
     )
 );
 
 /// Defined in RFC-draft-agl-tls-nextprotoneg-03. Deprecated in favour of ALPN.
 fn parse_tls_extension_npn_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    chain!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))),
-        || { TlsExtension::NextProtocolNegotiation }
+    do_parse!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        ( TlsExtension::NextProtocolNegotiation )
     )
 }
 
 /// Renegotiation Info, defined in [RFC5746]
 named!(pub parse_tls_extension_renegotiation_info_content<TlsExtension>,
-    chain!(
-        reneg_info_len: be_u8 ~
-        reneg_info    : take!(reneg_info_len),
-        || { TlsExtension::RenegotiationInfo(reneg_info) }
+    do_parse!(
+        reneg_info_len: be_u8  >>
+        reneg_info    : take!(reneg_info_len) >>
+        ( TlsExtension::RenegotiationInfo(reneg_info) )
     )
 );
 
 named!(pub parse_tls_extension_unknown<TlsExtension>,
-    chain!(
-        ext_type: be_u16 ~
-        ext_len:  be_u16 ~
-        ext_data: take!(ext_len),
-        || { TlsExtension::Unknown(ext_type,ext_data) }
+    do_parse!(
+        ext_type: be_u16 >>
+        ext_len:  be_u16 >>
+        ext_data: take!(ext_len) >>
+        ( TlsExtension::Unknown(ext_type,ext_data) )
     )
 );
 
@@ -474,16 +482,16 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x002d => parse_tls_extension_psk_key_exchange_modes_content(i),
         0x3374 => parse_tls_extension_npn_content(i,ext_len),
         0xff01 => parse_tls_extension_renegotiation_info_content(i),
-        _      => { chain!(i, ext_data:take!(ext_len), || { TlsExtension::Unknown(ext_type,ext_data) }) },
+        _      => { map!(i, take!(ext_len), |ext_data| { TlsExtension::Unknown(ext_type,ext_data) }) },
     }
 }
 
 named!(pub parse_tls_extension<TlsExtension>,
-   chain!(
-       ext_type: be_u16 ~
-       ext_len:  be_u16 ~
-       ext: flat_map!(take!(ext_len),call!(parse_tls_extension_with_type,ext_type,ext_len)),
-       || { ext }
+   do_parse!(
+       ext_type: be_u16 >>
+       ext_len:  be_u16 >>
+       ext: flat_map!(take!(ext_len),call!(parse_tls_extension_with_type,ext_type,ext_len)) >>
+       ( ext )
    )
 );
 

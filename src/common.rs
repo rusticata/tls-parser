@@ -1,3 +1,4 @@
+/// Helper macro for nom parsers: raise error if the condition is false
 #[macro_export]
 macro_rules! error_if (
   ($i:expr, $cond:expr, $err:expr) => (
