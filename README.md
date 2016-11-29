@@ -15,7 +15,7 @@ The parser is published on `crates.io`.
 To use it, add the following to your `Cargo.toml` file:
 ```
 [dependencies]
-tls-parser = "0.2.1"
+tls-parser = "0.3.0"
 ```
 
 ## Parsing records
