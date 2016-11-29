@@ -1,5 +1,4 @@
 use nom::{be_u8,be_u16};
-use enum_primitive::FromPrimitive;
 
 enum_from_primitive! {
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
@@ -84,10 +83,6 @@ impl NamedGroup {
             _                     => None,
         }
     }
-}
-
-pub fn named_curve_of_u16(id: u16) -> Option<NamedGroup> {
-    NamedGroup::from_u16(id)
 }
 
 #[derive(Debug,PartialEq)]
