@@ -152,7 +152,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::StatusRequest(data) => write!(fmt, "TlsExtension::StatusRequest({:?})", data),
             TlsExtension::EllipticCurves(ref v) => {
                 let v2 : Vec<_> = v.iter().map(|&curve| {
-                    match NamedCurve::from_u16(curve) {
+                    match NamedGroup::from_u16(curve) {
                         Some(n) => format!("{:?}", n),
                         None    => format!("<Unknown curve 0x{:x}/{}>", curve, curve),
                     }
