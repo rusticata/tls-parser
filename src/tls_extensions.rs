@@ -1,7 +1,18 @@
+//!
+//! TLS extensions are defined in:
+//!
+//! - [RFC4492](https://tools.ietf.org/html/rfc4492)
+//! - [RFC6066](https://tools.ietf.org/html/rfc6066)
+//! - [RFC7366](https://tools.ietf.org/html/rfc7366)
+//! - [RFC7627](https://tools.ietf.org/html/rfc7627)
+
 use nom::{be_u8,be_u16,IResult,Err,ErrorKind};
 
-// See http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
 enum_from_primitive! {
+/// TLS extension types,
+/// defined in the [IANA Transport Layer Security (TLS)
+/// Extensions](http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml)
+/// registry
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u16)]
 pub enum TlsExtensionType {
@@ -40,6 +51,8 @@ pub enum TlsExtensionType {
 }
 }
 
+/// TLS extensions
+///
 #[derive(Clone,PartialEq)]
 pub enum TlsExtension<'a>{
     SNI(Vec<(u8,&'a[u8])>),

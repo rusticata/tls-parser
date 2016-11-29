@@ -1,10 +1,12 @@
 use tls::*;
 
+/// Error types for the state machine
 pub enum StateChangeError {
     InvalidTransition,
     ParseError,
 }
 
+/// TLS machine possible states
 #[derive(Copy,Clone,Debug,PartialEq)]
 pub enum TlsState {
     None,
@@ -39,7 +41,7 @@ pub enum TlsState {
     Invalid,
 }
 
-pub fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake) -> Result<TlsState,StateChangeError> {
+fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake) -> Result<TlsState,StateChangeError> {
     match (state,msg) {
         (TlsState::None,             &TlsMessageHandshake::ClientHello(ref msg)) => {
             match msg.session_id {
@@ -80,6 +82,18 @@ pub fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake
     }
 }
 
+/// Update the TLS state machine, doing one transition
+///
+/// Given the previous state and the parsed message, return the new state or a state machine error.
+///
+/// This state machine only implements the TLS handshake.
+///
+/// Some transitions only check the new message type, while some others must match the content
+/// (for example, to check if the client asked to resume a session).
+///
+/// If the previous state is `Invalid`, the state machine will not return an error, but keep the
+/// same `Invalid` state. This is used to raise error only once if the state machine keeps being
+/// updated by new messages.
 pub fn tls_state_transition(state: TlsState, msg: &TlsMessage) -> Result<TlsState,StateChangeError> {
     match (state,msg) {
         (TlsState::Invalid,_) => Ok(TlsState::Invalid),

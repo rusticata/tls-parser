@@ -85,6 +85,9 @@ impl NamedGroup {
     }
 }
 
+/// Elliptic curve
+///
+/// a and b specify the coefficients of the curve
 #[derive(Debug,PartialEq)]
 pub struct ECCurve<'a> {
     pub a: &'a[u8],
@@ -92,6 +95,9 @@ pub struct ECCurve<'a> {
 }
 
 enum_from_primitive! {
+/// Elliptic curve types, as defined in the
+/// [IANA EC Curve Type Registry
+/// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-10)
 #[derive(Debug,PartialEq)]
 #[repr(u8)]
 pub enum ECCurveType {
@@ -101,11 +107,14 @@ pub enum ECCurveType {
 }
 }
 
+/// EC Point
 #[derive(Debug,PartialEq)]
 pub struct ECPoint<'a> {
     pub point: &'a[u8],
 }
 
+/// Elliptic curve parameters, conveyed verbosely as a prime field, as
+/// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
 #[derive(Debug,PartialEq)]
 pub struct ExplicitPrimeContent<'a> {
     pub prime_p: &'a[u8],
@@ -115,7 +124,7 @@ pub struct ExplicitPrimeContent<'a> {
     pub cofactor: &'a[u8],
 }
 
-
+/// Elliptic curve parameters content (depending on EC type)
 #[derive(Debug,PartialEq)]
 pub enum ECParametersContent<'a> {
     ExplicitPrime(ExplicitPrimeContent<'a>),
@@ -124,19 +133,24 @@ pub enum ECParametersContent<'a> {
     NamedGroup(u16),
 }
 
+/// Elliptic curve parameters,
+/// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
 #[derive(Debug,PartialEq)]
 pub struct ECParameters<'a> {
+    /// Should match a [ECCurveType](enum.ECCurveType.html) value
     pub curve_type: u8,
     pub params_content: ECParametersContent<'a>,
 }
 
+/// ECDH parameters
+/// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
 #[derive(Debug,PartialEq)]
 pub struct ServerECDHParams<'a> {
     pub curve_params: ECParameters<'a>,
     pub public: ECPoint<'a>,
 }
 
-named!(pub parse_ec_point<ECPoint>,
+named!(parse_ec_point<ECPoint>,
        map!(length_bytes!(be_u8),|d| { ECPoint{ point:d } })
 );
 
