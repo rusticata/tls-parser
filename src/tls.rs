@@ -350,29 +350,19 @@ named!(read_len_value_u16<&[u8]>,
 
 named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     do_parse!(
-        hv: be_u16  >>
-        hrand_time: be_u32 >>
-        hrand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
-        hsidlen: be_u8 >> // check <= 32, can be 0
-        error_if!(hsidlen > 32, Err::Code(ErrorKind::Custom(128))) >>
-        hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) >>
-        ciphers_len: be_u16 >>
-        ciphers: flat_map!(take!(ciphers_len),parse_cipher_suites) >>
-        //ciphers: count!(be_u16, (ciphers_len/2) as usize) >>
-        comp_len: take!(1) >>
-        comp: count!(be_u8, comp_len[0] as usize) >>
-        ext: opt!(complete!(read_len_value_u16)) >>
+        v:         be_u16  >>
+        rand_time: be_u32 >>
+        rand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
+        sidlen:    be_u8 >> // check <= 32, can be 0
+                   error_if!(sidlen > 32, Err::Code(ErrorKind::Custom(128))) >>
+        sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
+        ciphers:   flat_map!(length_bytes!(be_u16),parse_cipher_suites) >>
+        comp_len:  take!(1) >>
+        comp:      count!(be_u8, comp_len[0] as usize) >>
+        ext:       opt!(complete!(read_len_value_u16)) >>
         (
             TlsMessageHandshake::ClientHello(
-                TlsClientHelloContents {
-                    version: hv,
-                    rand_time: hrand_time,
-                    rand_data: hrand_data,
-                    session_id: hsid,
-                    ciphers: ciphers,
-                    comp: comp,
-                    ext: ext,
-                }
+                TlsClientHelloContents::new(v,rand_time,rand_data,sid,ciphers,comp,ext)
             )
         )
     )
@@ -380,26 +370,18 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
 
 named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
     do_parse!(
-        hv: be_u16 >>
-        hrand_time: be_u32 >>
-        hrand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
-        hsidlen: be_u8 >> // check <= 32, can be 0
-        error_if!(hsidlen > 32, Err::Code(ErrorKind::Custom(128))) >>
-        hsid: cond!(hsidlen > 0, take!(hsidlen as usize)) >>
-        cipher: be_u16 >>
-        comp: be_u8 >>
-        ext: opt!(complete!(read_len_value_u16)) >>
+        v:         be_u16 >>
+        rand_time: be_u32 >>
+        rand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
+        sidlen:    be_u8 >> // check <= 32, can be 0
+                   error_if!(sidlen > 32, Err::Code(ErrorKind::Custom(128))) >>
+        sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
+        cipher:    be_u16 >>
+        comp:      be_u8 >>
+        ext:       opt!(complete!(read_len_value_u16)) >>
         (
             TlsMessageHandshake::ServerHello(
-                TlsServerHelloContents {
-                    version: hv,
-                    rand_time: hrand_time,
-                    rand_data: hrand_data,
-                    session_id: hsid,
-                    cipher: cipher,
-                    compression: comp,
-                    ext: ext,
-                    }
+                TlsServerHelloContents::new(v,rand_time,rand_data,sid,cipher,comp,ext)
             )
         )
     )
@@ -409,7 +391,7 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
 fn parse_tls_handshake_msg_newsessionticket( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
         hint: be_u32 >>
-        raw: take!(len - 4) >>
+        raw:  take!(len - 4) >>
         (
             TlsMessageHandshake::NewSessionTicket(
                 TlsNewSessionTicketContent {
@@ -424,7 +406,7 @@ fn parse_tls_handshake_msg_newsessionticket( i:&[u8], len: u64 ) -> IResult<&[u8
 named!(parse_tls_handshake_msg_certificate<TlsMessageHandshake>,
     do_parse!(
         cert_len: parse_uint24 >>
-        certs: flat_map!(take!(cert_len),parse_certs) >>
+        certs:    flat_map!(take!(cert_len),parse_certs) >>
         (
             TlsMessageHandshake::Certificate(
                 TlsCertificateContents {
@@ -476,11 +458,11 @@ fn parse_tls_handshake_msg_clientkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u
 
 fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
-        cert_types: length_count!(be_u8,be_u8) >>
+        cert_types:        length_count!(be_u8,be_u8) >>
         sig_hash_algs_len: be_u16 >>
-        sig_hash_algs: flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) >>
-        ca_len: be_u16 >>
-        ca: flat_map!(take!(ca_len),many0!(read_len_value_u16)) >>
+        sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) >>
+        ca_len:            be_u16 >>
+        ca:                flat_map!(take!(ca_len),many0!(read_len_value_u16)) >>
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
@@ -506,7 +488,7 @@ fn parse_tls_handshake_msg_finished( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMe
 named!(parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
     do_parse!(
         status_type: be_u8 >>
-        blob: length_bytes!(parse_uint24) >>
+        blob:        length_bytes!(parse_uint24) >>
         ( TlsMessageHandshake::CertificateStatus(
                 TlsCertificateStatusContents{
                     status_type:status_type,
@@ -522,7 +504,7 @@ named!(parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
 fn parse_tls_handshake_msg_next_protocol( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
         selected_protocol: length_bytes!(be_u8) >>
-        padding: length_bytes!(be_u8) >>
+        padding:           length_bytes!(be_u8) >>
         (
             TlsMessageHandshake::NextProtocol(
                 TlsNextProtocolContent {
