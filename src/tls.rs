@@ -5,6 +5,9 @@ use common::parse_uint24;
 use nom::{be_u8,be_u16,be_u32,rest,IResult,ErrorKind,Err};
 
 use tls_alert::*;
+use tls_ciphers::*;
+
+use enum_primitive::FromPrimitive;
 
 enum_from_primitive! {
 /// Handshake type
@@ -87,6 +90,31 @@ pub struct TlsClientHelloContents<'a> {
     pub ext: Option<&'a[u8]>,
 }
 
+impl<'a> TlsClientHelloContents<'a> {
+    pub fn new(v:u16,rt:u32,rd:&'a[u8],sid:Option<&'a[u8]>,c:Vec<u16>,co:Vec<u8>,e:Option<&'a[u8]>) -> Self {
+        TlsClientHelloContents {
+            version: v,
+            rand_time: rt,
+            rand_data: rd,
+            session_id: sid,
+            ciphers: c,
+            comp: co,
+            ext: e,
+        }
+    }
+
+    pub fn get_version(&self) -> Option<TlsVersion> {
+        TlsVersion::from_u16(self.version)
+    }
+
+    pub fn get_ciphers(&self) -> Vec<Option<&'static TlsCipherSuite>> {
+        self.ciphers.iter().map(|&x|
+            TlsCipherSuite::from_id(x)
+        ).collect()
+    }
+}
+
+
 /// TLS Server Hello (from TLS 1.0 to TLS 1.2)
 #[derive(Clone,PartialEq)]
 pub struct TlsServerHelloContents<'a> {
@@ -98,6 +126,28 @@ pub struct TlsServerHelloContents<'a> {
     pub compression: u8,
 
     pub ext: Option<&'a[u8]>,
+}
+
+impl<'a> TlsServerHelloContents<'a> {
+    pub fn new(v:u16,rt:u32,rd:&'a[u8],sid:Option<&'a[u8]>,c:u16,co:u8,e:Option<&'a[u8]>) -> Self {
+        TlsServerHelloContents {
+            version: v,
+            rand_time: rt,
+            rand_data: rd,
+            session_id: sid,
+            cipher: c,
+            compression: co,
+            ext: e,
+        }
+    }
+
+    pub fn get_version(&self) -> Option<TlsVersion> {
+        TlsVersion::from_u16(self.version)
+    }
+
+    pub fn get_cipher(&self) -> Option<&'static TlsCipherSuite> {
+        TlsCipherSuite::from_id(self.cipher)
+    }
 }
 
 /// Session ticket, as defined in [RFC5077](https://tools.ietf.org/html/rfc5077)
