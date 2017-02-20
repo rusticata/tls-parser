@@ -1,7 +1,7 @@
 //! # TLS parser
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.2
 
-use common::parse_uint24;
+use rusticata_macros::parse_uint24;
 use nom::{be_u8,be_u16,be_u32,rest,IResult,ErrorKind,Err};
 
 use tls_alert::*;
