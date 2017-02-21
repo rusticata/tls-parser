@@ -61,3 +61,6 @@ pub use tls::*;
 pub mod tls;
 
 mod tls_debug;
+
+pub mod tls_serialize;
+pub use tls_serialize::*;
