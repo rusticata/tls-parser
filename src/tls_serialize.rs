@@ -5,12 +5,50 @@ use tls::*;
 use tls_extensions::TlsExtension;
 use rusticata_macros::*;
 
+#[macro_export]
+macro_rules! gen_tagged_extension(
+    (($i:expr, $idx:expr), $tag:expr, $submac:ident!( $($args:tt)* )) => (
+        do_gen!(($i,$idx),
+                   gen_be_u16!($tag) >>
+            ofs:   gen_skip!(2) >>
+            start: $submac!( $($args)* ) >>
+            end:   gen_at_offset!(ofs,gen_be_u16!(end-start))
+        )
+    );
+    (($i:expr, $idx:expr), $tag:expr, $f:ident( $($args:tt)* )) => (
+        gen_tagged_extension!(($i,$idx), $tag, $gen_call!($f( $($args)* )))
+    );
+);
+
+
+pub fn gen_tls_ext_sni_hostname<'a,'b>(x:(&'a mut [u8],usize),h:&(u8,&'b[u8])) -> Result<(&'a mut [u8],usize),GenError> {
+    do_gen!(
+        x,
+        gen_be_u8!(h.0 as u8) >>
+        gen_be_u16!(h.1.len() as u16) >>
+        gen_slice!(h.1)
+    )
+}
+
+#[inline]
+pub fn gen_tls_ext_sni<'a,'b>(x:(&'a mut [u8],usize),m:&'b Vec<(u8,&'b[u8])>) -> Result<(&'a mut [u8],usize),GenError> {
+    gen_tagged_extension!((x.0,x.1), 0x0000, gen_many_ref!(m,gen_tls_ext_sni_hostname))
+}
+
+#[inline]
+pub fn gen_tls_ext_max_fragment_length<'a,'b>(x:(&'a mut [u8],usize),l:u8) -> Result<(&'a mut [u8],usize),GenError> {
+    gen_tagged_extension!((x.0,x.1), 0x0001, gen_be_u8!(l))
+}
+
 pub fn gen_tls_extension<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsExtension) -> Result<(&'a mut [u8],usize),GenError> {
     match m {
-        _ => Err(GenError::NotYetImplemented),
+        &TlsExtension::SNI(ref v)           => gen_tls_ext_sni(x,&v),
+        &TlsExtension::MaxFragmentLength(l) => gen_tls_ext_max_fragment_length(x,l),
+        _                                   => Err(GenError::NotYetImplemented),
     }
 }
 
+#[inline]
 pub fn gen_tls_sessionid<'a,'b>(x:(&'a mut [u8],usize),m:&Option<&'b [u8]>) -> Result<(&'a mut [u8],usize),GenError> {
     match m {
         &None    => gen_be_u8!(x,0),
@@ -89,7 +127,7 @@ mod tests {
     use nom::IResult;
 
     #[test]
-    fn serialize_clienthello() {
+    fn serialize_plaintext() {
         let rand_data = [0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a,
         0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9,
         0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4];
@@ -137,7 +175,6 @@ mod tests {
             let s = &mut mem[..];
 
             let res = gen_tls_plaintext((s,0), &expected);
-            println!("res: {:?}", res);
             match res {
                 Ok((b,_)) => {
                     let res_reparse = parse_tls_plaintext(b);
@@ -149,6 +186,93 @@ mod tests {
         }
 
     }
+
+    #[test]
+    fn serialize_hellorequest() {
+        let mut mem : [u8; 256] = [0; 256];
+        let s = &mut mem[..];
+        let m = TlsMessageHandshake::HelloRequest;
+
+        let res = gen_tls_messagehandshake((s,0), &m);
+        match res {
+            Ok((b,_)) => {
+                let v = [0, 0, 0, 0];
+                assert_eq!(&b[..v.len()],v);
+            },
+            Err(e)    => println!("Error: {:?}",e),
+        };
+    }
+
+    #[test]
+    fn serialize_tls_ext() {
+        let mut mem : [u8; 256] = [0; 256];
+        let s = &mut mem[..];
+        let ext = vec![
+            TlsExtension::SNI(vec![(0,b"www.google.com")]),
+        ];
+
+        let res = gen_many_ref!((s,0),ext,gen_tls_extension);
+        match res {
+            Ok((b,idx)) => {
+                let v = [
+                    0x00, 0x00, // SNI tag
+                    0x00, 0x11, // SNI ext length
+                    // element 0:
+                    0x00, // type
+                    0x00, 0x0e, // length
+                    0x77, 0x77, 0x77, 0x2e, 0x67, 0x6f, 0x6f, 0x67,
+                    0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d,
+                ];
+                assert_eq!(idx,v.len());
+                assert_eq!(&b[..v.len()],&v[..]);
+            },
+            Err(e)    => println!("Error: {:?}",e),
+        };
+    }
+
+    #[test]
+    fn serialize_clienthello() {
+        let rand_data = [0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a,
+        0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9,
+        0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4];
+        let ciphers = vec![ 0xc030, 0xc02c ];
+        let comp = vec![0x00];
+
+        let m = TlsMessageHandshake::ClientHello(
+            TlsClientHelloContents {
+                version: 0x0303,
+                rand_time: 0xb29dd787,
+                rand_data: &rand_data,
+                session_id: None,
+                ciphers: ciphers,
+                comp: comp,
+                ext: None,
+            });
+
+        let mut mem : [u8; 256] = [0; 256];
+        let s = &mut mem[..];
+
+        let res = gen_tls_messagehandshake((s,0), &m);
+        match res {
+            Ok((b,idx)) => {
+                let v = [
+                    0x01, 0x00, 0x00, 0x2b, 0x03, 0x03, // type, length, version
+                    0xb2, 0x9d, 0xd7, 0x87, // random time
+                    0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, // random data
+                    0x9a, 0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c,
+                    0x49, 0xbc, 0x8b, 0xb8, 0xa9, 0x03, 0x0a, 0x2d,
+                    0xce, 0x38, 0x0b, 0xf4,
+                    0x00, // session ID
+                    0x00, 0x04, 0xc0, 0x30, 0xc0, 0x2c, // ciphers
+                    0x01, 0x00, // compression
+                ];
+                assert_eq!(idx,v.len());
+                assert_eq!(&b[..v.len()],&v[..]);
+            },
+            Err(e)    => println!("Error: {:?}",e),
+        };
+    }
+
 }
 
 }
