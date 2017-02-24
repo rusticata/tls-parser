@@ -1,3 +1,16 @@
 language: rust
-rust:
-  - stable
+sudo: false
+matrix:
+  include:
+    - rust: stable
+      env:
+       - FEATURES='serialize'
+    - rust: nightly
+      env:
+       - FEATURES='serialize'
+       - BENCH=1
+script:
+  - |
+      cargo build --verbose --features "$FEATURES" &&
+      cargo test --verbose --features "$FEATURES" &&
+      ([ "$BENCH" != 1 ] || cargo bench --verbose --features "$FEATURES")
