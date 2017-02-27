@@ -104,18 +104,48 @@ pub fn gen_tls_serverhello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloCon
     )
 }
 
+pub fn gen_tls_finished<'a,'b>(x:(&'a mut [u8],usize),m:&'b [u8]) -> Result<(&'a mut [u8],usize),GenError> {
+    do_gen!(
+        x,
+                 gen_be_u8!(TlsHandshakeType::ServerHello as u8) >>
+        ofs_len: gen_skip!(3) >>
+        start:   gen_slice!(m) >>
+        end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+    )
+}
+
+pub fn gen_tls_clientkeyexchange<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsClientKeyExchangeContents) -> Result<(&'a mut [u8],usize),GenError> {
+    do_gen!(
+        x,
+                 gen_be_u8!(TlsHandshakeType::ClientKeyExchange as u8) >>
+        ofs_len: gen_skip!(3) >>
+        start:   gen_skip!(2) >>
+        s2:      gen_slice!(m.parameters) >>
+        end:     gen_at_offset!(start,gen_be_u16!(end-s2)) >>
+                 gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+    )
+}
+
 pub fn gen_tls_messagehandshake<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsMessageHandshake) -> Result<(&'a mut [u8],usize),GenError> {
     match m {
         &TlsMessageHandshake::HelloRequest => gen_tls_hellorequest(x),
         &TlsMessageHandshake::ClientHello(ref m) => gen_tls_clienthello(x,m),
         &TlsMessageHandshake::ServerHello(ref m) => gen_tls_serverhello(x,m),
+        &TlsMessageHandshake::ClientKeyExchange(ref m) => gen_tls_clientkeyexchange(x,m),
+        &TlsMessageHandshake::Finished(ref m) => gen_tls_finished(x,m),
         _ => Err(GenError::NotYetImplemented),
     }
+}
+
+#[inline]
+pub fn gen_tls_changecipherspec<'a>(x:(&'a mut [u8],usize)) -> Result<(&'a mut [u8],usize),GenError> {
+    gen_be_u8!(x,1)
 }
 
 pub fn gen_tls_message<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsMessage) -> Result<(&'a mut [u8],usize),GenError> {
     match m {
         &TlsMessage::Handshake(ref m) => gen_tls_messagehandshake(x,m),
+        &TlsMessage::ChangeCipherSpec => gen_tls_changecipherspec(x),
         _ => Err(GenError::NotYetImplemented),
     }
 }
