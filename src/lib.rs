@@ -30,10 +30,8 @@ extern crate nom;
 
 extern crate phf;
 
-pub use common::*;
-/// Helper functions
 #[macro_use]
-pub mod common;
+extern crate rusticata_macros;
 
 pub use tls_alert::*;
 /// TLS alerts
