@@ -78,6 +78,26 @@ fn main() {
         map.entry(key,val.as_str());
     };
 
+    // Add TLS 1.3 ciphers, until they are added to IANA
+    // Note that Kx is not included anymore
+    // XXX use a better value than 'Null' ?
+    map.entry(0x1301,
+        r#"TlsCipherSuite{ name:"TLS13_AES_128_GCM_SHA256", id:0x1301, kx:TlsCipherKx::Null, au:TlsCipherAu::Null, enc:TlsCipherEnc::Aes,  enc_mode:TlsCipherEncMode::Gcm, enc_size:128, mac:TlsCipherMac::Aead, mac_size:128,}"#
+    );
+    map.entry(0x1302,
+        r#"TlsCipherSuite{ name:"TLS13_AES_256_GCM_SHA384", id:0x1302, kx:TlsCipherKx::Null, au:TlsCipherAu::Null, enc:TlsCipherEnc::Aes,  enc_mode:TlsCipherEncMode::Gcm, enc_size:256, mac:TlsCipherMac::Aead, mac_size:256,}"#
+    );
+    map.entry(0x1303,
+        r#"TlsCipherSuite{ name:"TLS13_CHACHA20_POLY1305_SHA256", id:0x1303, kx:TlsCipherKx::Null, au:TlsCipherAu::Null, enc:TlsCipherEnc::Chacha20_Poly1305,  enc_mode:TlsCipherEncMode::Cbc, enc_size:256, mac:TlsCipherMac::Aead, mac_size:256,}"#
+    );
+    map.entry(0x1304,
+        r#"TlsCipherSuite{ name:"TLS13_AES_128_CCM_SHA256", id:0x1304, kx:TlsCipherKx::Null, au:TlsCipherAu::Null, enc:TlsCipherEnc::Aes,  enc_mode:TlsCipherEncMode::Ccm, enc_size:128, mac:TlsCipherMac::Aead, mac_size:128,}"#
+    );
+    map.entry(0x1305,
+        r#"TlsCipherSuite{ name:"TLS13_AES_128_CCM_8_SHA256", id:0x1305, kx:TlsCipherKx::Null, au:TlsCipherAu::Null, enc:TlsCipherEnc::Aes,  enc_mode:TlsCipherEncMode::Ccm, enc_size:128, mac:TlsCipherMac::Aead, mac_size:256,}"#
+    );
+
+
     map.build(&mut file).unwrap();
     write!(&mut file, ";\n").unwrap();
 }

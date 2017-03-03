@@ -33,6 +33,29 @@ pub struct HashSignAlgorithm {
     pub sign: u8,
 }
 
+/// Signature algorithms, as defined in [draft-ietf-tls-tls13-18]
+enum_from_primitive! {
+#[derive(Debug,PartialEq)]
+#[repr(u16)]
+pub enum SignatureScheme {
+    RsaPkcs1Sha1 = 0x0201,
+    RsaPkcs1Sha256 = 0x0401,
+    RsaPkcs1Sha384 = 0x0501,
+    RsaPkcs1Sha512 = 0x0601,
+
+    EcdsaSecp256r1Sha256 = 0x0403,
+    EcdsaSecp384r1Sha384 = 0x0503,
+    EcdsaSecp521r1Sha512 = 0x0603,
+
+    RsaPssSha256 = 0x0804,
+    RsaPssSha384 = 0x0805,
+    RsaPssSha512 = 0x0806,
+
+    Ed25519 = 0x0807,
+    Ed448 = 0x0808,
+}
+}
+
 
 /// DigitallySigned structure from [RFC2246] section 4.7
 /// has no algorithm definition.
@@ -41,8 +64,14 @@ pub struct HashSignAlgorithm {
 #[derive(PartialEq)]
 pub struct DigitallySigned<'a> {
     pub alg: Option<HashSignAlgorithm>,
+    // pub alg: Option<u16>, // SignatureScheme
     pub data: &'a[u8],
 }
+
+
+
+
+
 
 named!(pub parse_digitally_signed_old<DigitallySigned>,
     map!(

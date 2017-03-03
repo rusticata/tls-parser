@@ -21,6 +21,8 @@ pub enum TlsHandshakeType {
     ClientHello = 0x1,
     ServerHello = 0x02,
     NewSessionTicket = 0x04,
+    HelloRetryRequest = 0x06,
+    EncryptedExtensions = 0x08,
     Certificate = 0x0b,
     ServerKeyExchange = 0x0c,
     CertificateRequest = 0x0d,
@@ -30,6 +32,7 @@ pub enum TlsHandshakeType {
     Finished = 0x14,
     CertificateURL = 0x15,
     CertificateStatus = 0x16,
+    KeyUpdate = 0x18,
 
     NextProtocol = 0x43,
 }
@@ -47,6 +50,8 @@ pub enum TlsVersion {
     Tls11 = 0x0302,
     Tls12 = 0x0303,
     Tls13 = 0x0304,
+
+    Tls13Draft18 = 0x7f12,
 }
 }
 
@@ -124,6 +129,24 @@ pub struct TlsServerHelloContents<'a> {
     pub session_id: Option<&'a[u8]>,
     pub cipher: u16,
     pub compression: u8,
+
+    pub ext: Option<&'a[u8]>,
+}
+
+/// TLS Server Hello (TLS 1.3)
+#[derive(Clone,PartialEq)]
+pub struct TlsServerHelloV13Contents<'a> {
+    pub version: u16,
+    pub random: &'a[u8],
+    pub cipher: u16,
+
+    pub ext: Option<&'a[u8]>,
+}
+
+/// TLS Hello Retry Request (TLS 1.3)
+#[derive(Clone,PartialEq)]
+pub struct TlsHelloRetryContents<'a> {
+    pub version: u16,
 
     pub ext: Option<&'a[u8]>,
 }
@@ -214,13 +237,24 @@ pub struct TlsNextProtocolContent<'a> {
     pub padding: &'a[u8],
 }
 
+enum_from_primitive! {
+/// Key update request (TLS 1.3)
+#[repr(u8)]
+pub enum KeyUpdateRequest {
+    NotRequested  = 0x0,
+    Requested     = 0x1,
+}
+}
+
 /// Generic handshake message
 #[derive(Clone,Debug,PartialEq)]
 pub enum TlsMessageHandshake<'a> {
     HelloRequest,
     ClientHello(TlsClientHelloContents<'a>),
     ServerHello(TlsServerHelloContents<'a>),
+    ServerHelloV13(TlsServerHelloV13Contents<'a>),
     NewSessionTicket(TlsNewSessionTicketContent<'a>),
+    HelloRetry(TlsHelloRetryContents<'a>),
     Certificate(TlsCertificateContents<'a>),
     ServerKeyExchange(TlsServerKeyExchangeContents<'a>),
     CertificateRequest(TlsCertificateRequestContents<'a>),
@@ -230,6 +264,7 @@ pub enum TlsMessageHandshake<'a> {
     Finished(&'a[u8]),
     CertificateStatus(TlsCertificateStatusContents<'a>),
     NextProtocol(TlsNextProtocolContent<'a>),
+    KeyUpdate(u8),
 }
 
 /// TLS application data
@@ -344,10 +379,6 @@ named!(parse_tls_handshake_msg_hello_request<TlsMessageHandshake>,
     value!(TlsMessageHandshake::HelloRequest)
 );
 
-named!(read_len_value_u16<&[u8]>,
-    length_bytes!(be_u16)
-);
-
 named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     do_parse!(
         v:         be_u16  >>
@@ -359,7 +390,7 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         ciphers:   flat_map!(length_bytes!(be_u16),parse_cipher_suites) >>
         comp_len:  take!(1) >>
         comp:      count!(be_u8, comp_len[0] as usize) >>
-        ext:       opt!(complete!(read_len_value_u16)) >>
+        ext:       opt!(complete!(length_bytes!(be_u16))) >>
         (
             TlsMessageHandshake::ClientHello(
                 TlsClientHelloContents::new(v,rand_time,rand_data,sid,ciphers,comp,ext)
@@ -368,7 +399,7 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_server_hello_tlsv12<TlsMessageHandshake>,
     do_parse!(
         v:         be_u16 >>
         rand_time: be_u32 >>
@@ -378,13 +409,42 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
         sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
         cipher:    be_u16 >>
         comp:      be_u8 >>
-        ext:       opt!(complete!(read_len_value_u16)) >>
+        ext:       opt!(complete!(length_bytes!(be_u16))) >>
         (
             TlsMessageHandshake::ServerHello(
                 TlsServerHelloContents::new(v,rand_time,rand_data,sid,cipher,comp,ext)
             )
         )
     )
+);
+
+named!(parse_tls_handshake_msg_server_hello_tlsv13draft<TlsMessageHandshake>,
+    do_parse!(
+        hv:     be_u16 >>
+        random: take!(32) >>
+        cipher: be_u16 >>
+        ext:    opt!(complete!(length_bytes!(be_u16))) >>
+        (
+            TlsMessageHandshake::ServerHelloV13(
+                TlsServerHelloV13Contents {
+                    version: hv,
+                    random: random,
+                    cipher: cipher,
+                    ext: ext,
+                }
+            )
+        )
+    )
+);
+
+named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
+    switch!(peek!(be_u16),
+        0x7f12 => call!(parse_tls_handshake_msg_server_hello_tlsv13draft) |
+        0x0303 => call!(parse_tls_handshake_msg_server_hello_tlsv12) |
+        0x0302 => call!(parse_tls_handshake_msg_server_hello_tlsv12) |
+        0x0301 => call!(parse_tls_handshake_msg_server_hello_tlsv12)
+    )
+        // 0x0300 => call!(parse_tls_handshake_msg_server_hello_sslv3)
 );
 
 // RFC 5077   Stateless TLS Session Resumption
@@ -402,6 +462,21 @@ fn parse_tls_handshake_msg_newsessionticket( i:&[u8], len: u64 ) -> IResult<&[u8
         )
     )
 }
+
+named!(parse_tls_handshake_msg_hello_retry<TlsMessageHandshake>,
+    do_parse!(
+        hv: be_u16 >>
+        ext: opt!(complete!(length_bytes!(be_u16))) >>
+        (
+            TlsMessageHandshake::HelloRetry(
+                TlsHelloRetryContents {
+                    version: hv,
+                    ext: ext,
+                    }
+            )
+        )
+    )
+);
 
 named!(parse_tls_handshake_msg_certificate<TlsMessageHandshake>,
     do_parse!(
@@ -462,7 +537,7 @@ fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMe
         sig_hash_algs_len: be_u16 >>
         sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) >>
         ca_len:            be_u16 >>
-        ca:                flat_map!(take!(ca_len),many0!(read_len_value_u16)) >>
+        ca:                flat_map!(take!(ca_len),many0!(length_bytes!(be_u16))) >>
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
@@ -516,6 +591,13 @@ fn parse_tls_handshake_msg_next_protocol( i:&[u8] ) -> IResult<&[u8], TlsMessage
     )
 }
 
+fn parse_tls_handshake_msg_key_update( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
+    map!(i,
+        be_u8,
+        |update_request| { TlsMessageHandshake::KeyUpdate(update_request) }
+    )
+}
+
 named!(parse_tls_message_handshake<TlsMessage>,
     do_parse!(
         ht: be_u8 >>
@@ -526,6 +608,7 @@ named!(parse_tls_message_handshake<TlsMessage>,
                 /*TlsHandshakeType::ClientHello*/       0x01 => call!(parse_tls_handshake_msg_client_hello) |
                 /*TlsHandshakeType::ServerHello*/       0x02 => call!(parse_tls_handshake_msg_server_hello) |
                 /*TlsHandshakeType::NewSessionTicket*/  0x04 => call!(parse_tls_handshake_msg_newsessionticket,hl) |
+                /*TlsHandshakeType::HelloRetryRequest*/ 0x06 => call!(parse_tls_handshake_msg_hello_retry) |
                 /*TlsHandshakeType::Certificate*/       0x0b => call!(parse_tls_handshake_msg_certificate) |
                 /*TlsHandshakeType::ServerKeyExchange*/ 0x0c => call!(parse_tls_handshake_msg_serverkeyexchange,hl) |
                 /*TlsHandshakeType::CertificateRequest*/ 0x0d => call!(parse_tls_handshake_msg_certificaterequest) |
@@ -535,6 +618,7 @@ named!(parse_tls_message_handshake<TlsMessage>,
                 /*TlsHandshakeType::Finished*/          0x14 => call!(parse_tls_handshake_msg_finished,hl) |
                 /*TlsHandshakeType::CertificateURL*/    /*0x15 => call!(parse_tls_handshake_msg_certificateurl) |*/
                 /*TlsHandshakeType::CertificateStatus*/ 0x16 => call!(parse_tls_handshake_msg_certificatestatus) |
+                /*TlsHandshakeType::KeyUpdate*/         0x18 => call!(parse_tls_handshake_msg_key_update) |
                 /*TlsHandshakeType::NextProtocol*/      0x43 => call!(parse_tls_handshake_msg_next_protocol)
              )
         ) >>

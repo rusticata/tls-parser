@@ -16,7 +16,7 @@ enum_from_primitive! {
 #[derive(Clone,Debug,PartialEq)]
 #[repr(u16)]
 pub enum TlsExtensionType {
-    ServerName            = 0x0000,
+    ServerName            = 0x0000, // [RFC6066]
     MaxFragmentLength     = 0x0001,
     ClientCertificate     = 0x0002,
     TrustedCaKeys         = 0x0003,
@@ -26,24 +26,32 @@ pub enum TlsExtensionType {
     ClientAuthz           = 0x0007,
     ServerAuthz           = 0x0008,
     CertType              = 0x0009,
-    SupportedGroups       = 0x000a, // Previously known as EllipticCurves
-    EcPointFormats        = 0x000b,
-    Srp                   = 0x000c,
+    SupportedGroups       = 0x000a, // [RFC4492][RFC7919]
+    EcPointFormats        = 0x000b, // [RFC4492]
+    Srp                   = 0x000c, // [RFC5054]
     SignatureAlgorithms   = 0x000d,
     UseSrtp               = 0x000e,
     Heartbeat             = 0x000f,
-    ApplicationLayerProtocolNegotiation = 0x0010,
+    ApplicationLayerProtocolNegotiation = 0x0010, // [RFC7301]
     StatusRequestv2       = 0x0011,
     SignedCertificateTimestamp = 0x0012,
     ClientCertificateType = 0x0013,
     ServerCertificateType = 0x0014,
-    Padding               = 0x0015,
+    Padding               = 0x0015, // [RFC7685]
     EncryptThenMac        = 0x0016,
     ExtendedMasterSecret  = 0x0017,
     TokenBinding          = 0x0018,
     CachedInfo            = 0x0019,
 
     SessionTicketTLS      = 0x0023,
+
+    KeyShare              = 0x0028,
+    PreSharedKey          = 0x0029,
+    EarlyData             = 0x002a,
+    SupportedVersions     = 0x002b,
+    Cookie                = 0x002c,
+    PskExchangeModes      = 0x002d,
+    TicketEarlyDataInfo   = 0x002e,
 
     NextProtocolNegotiation = 0x3374,
 
@@ -62,9 +70,17 @@ pub enum TlsExtension<'a>{
     EcPointFormats(&'a[u8]),
     SignatureAlgorithms(Vec<(u8,u8)>),
     SessionTicket(&'a[u8]),
+    KeyShare(&'a[u8]),
+    PreSharedKey(&'a[u8]),
+    EarlyData,
+    SupportedVersions(Vec<u16>),
+    Cookie(&'a[u8]),
+    PskExchangeModes(Vec<u8>),
     Heartbeat(u8),
     ALPN(Vec<&'a[u8]>),
 
+    SignedCertificateTimestamp(Option<(&'a[u8])>),
+    Padding(&'a[u8]),
     EncryptThenMac,
     ExtendedMasterSecret,
 
@@ -74,6 +90,33 @@ pub enum TlsExtension<'a>{
 
     Unknown(u16,&'a[u8]),
 }
+
+
+#[derive(Clone,Debug,PartialEq)]
+pub struct KeyShareEntry<'a> {
+    pub group: u16,  // NamedGroup
+    pub kx: &'a[u8], // Key Exchange Data
+}
+
+enum_from_primitive!{
+#[derive(Clone,Debug,PartialEq)]
+#[repr(u8)]
+pub enum PskKeyExchangeMode {
+    Psk    = 0,
+    PskDhe = 1,
+}
+}
+
+enum_from_primitive!{
+#[derive(Clone,Debug,PartialEq)]
+#[repr(u8)]
+pub enum SNIType {
+    HostName = 0,
+}
+}
+
+
+
 
 named!(pub parse_tls_extension_sni_hostname<(u8,&[u8])>,
     pair!(be_u8,length_bytes!(be_u16))
@@ -223,6 +266,22 @@ named!(pub parse_tls_extension_alpn_content<TlsExtension>,
     )
 );
 
+/// Defined in [RFC7685]
+fn parse_tls_extension_padding_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    map!(i,
+        take!(ext_len),
+        |d| { TlsExtension::Padding(d) }
+    )
+}
+
+/// Defined in [RFC6962]
+named!(pub parse_tls_extension_signed_certificate_timestamp_content<TlsExtension>,
+    map!(
+        opt!(length_bytes!(be_u16)),
+        |d| { TlsExtension::SignedCertificateTimestamp(d) }
+    )
+);
+
 /// Encrypt-then-MAC is defined in [RFC7366]
 fn parse_tls_extension_encrypt_then_mac_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
@@ -275,6 +334,104 @@ named!(pub parse_tls_extension_session_ticket<TlsExtension>,
     )
 );
 
+fn parse_tls_extension_key_share_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    map!(i,
+        take!(ext_len),
+        |ext_data| { TlsExtension::KeyShare(ext_data) }
+    )
+}
+
+named!(pub parse_tls_extension_key_share<TlsExtension>,
+    do_parse!(
+        tag!([0x00,0x28]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_key_share_content,ext_len)) >>
+        ( ext )
+    )
+);
+
+fn parse_tls_extension_pre_shared_key_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    map!(i,
+        take!(ext_len),
+        |ext_data| { TlsExtension::PreSharedKey(ext_data) }
+    )
+}
+
+named!(pub parse_tls_extension_pre_shared_key<TlsExtension>,
+    do_parse!(
+        tag!([0x00,0x28]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_pre_shared_key_content,ext_len)) >>
+        ( ext )
+    )
+);
+
+fn parse_tls_extension_early_data_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    do_parse!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        ( TlsExtension::EarlyData )
+    )
+}
+
+named!(pub parse_tls_extension_early_data<TlsExtension>,
+    do_parse!(
+        tag!([0x00,0x2a]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_early_data_content,ext_len)) >>
+        ( ext )
+    )
+);
+
+fn parse_tls_extension_supported_versions_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    do_parse!(i,
+        _n: be_u8 >>
+        l: flat_map!(take!(ext_len-1),many0!(be_u16)) >>
+        ( TlsExtension::SupportedVersions(l) )
+    )
+}
+
+named!(pub parse_tls_extension_supported_versions<TlsExtension>,
+    do_parse!(
+        tag!([0x00,0x2b]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_supported_versions_content,ext_len)) >>
+        ( ext )
+    )
+);
+
+fn parse_tls_extension_cookie_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    map!(i,
+        take!(ext_len),
+        |ext_data| { TlsExtension::Cookie(ext_data) }
+    )
+}
+
+named!(pub parse_tls_extension_cookie<TlsExtension>,
+    do_parse!(
+        tag!([0x00,0x2c]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_cookie_content,ext_len)) >>
+        ( ext )
+    )
+);
+
+named!(pub parse_tls_extension_psk_key_exchange_modes_content<TlsExtension>,
+    do_parse!(
+        l: be_u8 >>
+        v: flat_map!(take!(l),many0!(be_u8)) >>
+        ( TlsExtension::PskExchangeModes(v) )
+    )
+);
+
+named!(pub parse_tls_extension_psk_key_exchange_modes<TlsExtension>,
+    do_parse!(
+        tag!([0x00,0x2d]) >>
+        ext_len:  be_u16 >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_psk_key_exchange_modes_content)) >>
+        ( ext )
+    )
+);
+
 /// Defined in RFC-draft-agl-tls-nextprotoneg-03. Deprecated in favour of ALPN.
 fn parse_tls_extension_npn_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
@@ -312,9 +469,17 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x000d => parse_tls_extension_signature_algorithms_content(i),
         0x000f => parse_tls_extension_heartbeat_content(i),
         0x0010 => parse_tls_extension_alpn_content(i),
+        0x0012 => parse_tls_extension_padding_content(i,ext_len),
+        0x0015 => parse_tls_extension_signed_certificate_timestamp_content(i),
         0x0016 => parse_tls_extension_encrypt_then_mac_content(i,ext_len),
         0x0017 => parse_tls_extension_extended_master_secret_content(i,ext_len),
         0x0023 => parse_tls_extension_session_ticket_content(i,ext_len),
+        0x0028 => parse_tls_extension_key_share_content(i,ext_len),
+        0x0029 => parse_tls_extension_pre_shared_key_content(i,ext_len),
+        0x002a => parse_tls_extension_early_data_content(i,ext_len),
+        0x002b => parse_tls_extension_supported_versions_content(i,ext_len),
+        0x002c => parse_tls_extension_cookie_content(i,ext_len),
+        0x002d => parse_tls_extension_psk_key_exchange_modes_content(i),
         0x3374 => parse_tls_extension_npn_content(i,ext_len),
         0xff01 => parse_tls_extension_renegotiation_info_content(i),
         _      => { map!(i, take!(ext_len), |ext_data| { TlsExtension::Unknown(ext_type,ext_data) }) },

@@ -74,6 +74,9 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake) ->
         (TlsState::PskHelloDone,     &TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::PskCKE),
         // Resuming session
         (TlsState::AskResumeSession, &TlsMessageHandshake::ServerHello(_))       => Ok(TlsState::ResumeSession),
+        // TLS 1.3 1-RTT
+        // Re-use the ClientChangeCipherSpec state to indicate the next message will be encrypted
+        (TlsState::ClientHello,      &TlsMessageHandshake::ServerHelloV13(_))    => Ok(TlsState::ClientChangeCipherSpec),
         // Hello requests must be accepted at any time (except start), but ignored [RFC5246] 7.4.1.1
         (TlsState::None,             &TlsMessageHandshake::HelloRequest)         => Err(StateChangeError::InvalidTransition),
         (s,                          &TlsMessageHandshake::HelloRequest)         => Ok(s),
