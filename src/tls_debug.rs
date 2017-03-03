@@ -45,6 +45,16 @@ impl fmt::Debug for CipherU16 {
     }
 }
 
+pub struct SignatureSchemeU16 { pub d: u16 }
+impl fmt::Debug for SignatureSchemeU16 {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match SignatureScheme::from_u16(self.d) {
+            Some(ref c) => write!(fmt,"0x{:04x}({:?})",self.d,c),
+            None        => write!(fmt,"0x{:04x}(Unknown signature scheme)",self.d),
+        }
+    }
+}
+
 
 
 // ------------------------- tls.rs ------------------------------
@@ -74,6 +84,26 @@ impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
             .field("session_id", &self.session_id.map(|o|{HexSlice{d:o}}))
             .field("cipher", &CipherU16{d:self.cipher})
             .field("compression", &HexU8{d:self.compression})
+            .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
+            .finish()
+    }
+}
+
+impl<'a> fmt::Debug for TlsServerHelloV13Contents<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("TlsServerHelloV13Contents")
+            .field("version", &HexU16{d:self.version})
+            .field("random", &HexSlice{d:self.random})
+            .field("cipher", &CipherU16{d:self.cipher})
+            .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
+            .finish()
+    }
+}
+
+impl<'a> fmt::Debug for TlsHelloRetryContents<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("TlsHelloRetryContents")
+            .field("version", &HexU16{d:self.version})
             .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
             .finish()
     }
@@ -141,12 +171,11 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TlsExtension::SNI(ref v) => {
-                write!(fmt, "TlsExtension::SNI([").unwrap();
-                for &(ty,name) in v {
-                    let s = from_utf8(name).unwrap_or("<error decoding utf8 string>");
-                    write!(fmt, "type=0x{:x},name={:?},", ty, s).unwrap();
-                }
-            write!(fmt, "])")
+                let v : Vec<_> = v.iter().map(|&(ty,n)| {
+                    let s = from_utf8(n).unwrap_or("<error decoding utf8 string>");
+                    format!("type=0x{:x},name={}",ty, s)
+                }).collect();
+                write!(fmt, "TlsExtension::SNI({:?})", v)
             },
             TlsExtension::MaxFragmentLength(l) => write!(fmt, "TlsExtension::MaxFragmentLength({})", l),
             TlsExtension::StatusRequest(data) => write!(fmt, "TlsExtension::StatusRequest({:?})", data),
@@ -172,14 +201,37 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
                     };
                     (h2,s2)
                 }).collect();
+                // let v2 : Vec<_> = v.iter().map(|c|{
+                //     match SignatureScheme::from_u16(*c) {
+                //         Some(n) => format!("{:?}", n),
+                //         None    => format!("<Unknown signature scheme 0x{:x}/{}>", c, c),
+                //     }
+                // }).collect();
                 write!(fmt, "TlsExtension::SignatureAlgorithms({:?})", v2)
             },
+            TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
+            TlsExtension::KeyShare(data) => write!(fmt, "TlsExtension::KeyShare(data={:?})", HexSlice{d:data}),
+            TlsExtension::PreSharedKey(data) => write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice{d:data}),
+            TlsExtension::EarlyData => write!(fmt, "TlsExtension::EarlyData"),
+            TlsExtension::SupportedVersions(ref v) => {
+                let v2 : Vec<_> = v.iter().map(|c| { format!("0x{:x}",c) }).collect();
+                write!(fmt, "TlsExtension::SupportedVersions(v={:?})", v2)
+            },
+            TlsExtension::Cookie(data) => write!(fmt, "TlsExtension::Cookie(data={:?})", data),
+            TlsExtension::PskExchangeModes(ref v) => write!(fmt, "TlsExtension::PskExchangeModes({:?})", v),
             TlsExtension::Heartbeat(mode) => write!(fmt, "TlsExtension::Heartbeat(mode={})", mode),
-            TlsExtension::ALPN(ref v) => write!(fmt, "TlsExtension::ALPN({:?})", v),
+            TlsExtension::ALPN(ref v) => {
+                let v : Vec<_> = v.iter().map(|c| {
+                    let s = from_utf8(c).unwrap_or("<error decoding utf8 string>");
+                    format!("{}",s)
+                }).collect();
+                write!(fmt, "TlsExtension::ALPN({:?})", v)
+            },
+            TlsExtension::SignedCertificateTimestamp(data) => write!(fmt, "TlsExtension::SignedCertificateTimestamp(data={:?})", data),
+            TlsExtension::Padding(data) => write!(fmt, "TlsExtension::Padding(data={:?})", data),
             TlsExtension::EncryptThenMac => write!(fmt, "TlsExtension::EncryptThenMac"),
             TlsExtension::ExtendedMasterSecret => write!(fmt, "TlsExtension::ExtendedMasterSecret"),
             TlsExtension::NextProtocolNegotiation => write!(fmt, "TlsExtension::NextProtocolNegotiation"),
-            TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
             TlsExtension::RenegotiationInfo(data) => write!(fmt, "TlsExtension::RenegotiationInfo(data={:?})", data),
             TlsExtension::Unknown(id,data) => write!(fmt, "TlsExtension::Unknown(id=0x{:x},data={:?})", id, data),
         }
