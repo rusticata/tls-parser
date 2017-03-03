@@ -1,12 +1,13 @@
 # tls-parser
 
+[![LICENSE](https://img.shields.io/badge/License-LGPL%20v2.1-blue.svg)](LICENSE)
 [![Build Status](https://travis-ci.org/rusticata/tls-parser.svg?branch=master)](https://travis-ci.org/rusticata/tls-parser)
+[![Crates.io Version](https://img.shields.io/crates/v/tls-parser.svg)](https://crates.io/crates/tls-parser)
 
 ## Overview
 
 tls-parser is a parser for the TLS protocol. The parser supports protocols SSLv3 to TLSv1.2 (in particular,
-TLSv1.3 is not supported since not yet released, but support for draft 18 is implemented in the
-`tls13` branch).
+TLSv1.3 is supported and implemented as draft 18.
 
 The parser is based on [nom](https://github.com/rusticata/tls-parser) (see nom's documentation for return and
 error types).
