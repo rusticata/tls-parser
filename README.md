@@ -7,7 +7,7 @@
 ## Overview
 
 tls-parser is a parser for the TLS protocol. The parser supports protocols SSLv3 to TLSv1.2 (in particular,
-TLSv1.3 is supported and implemented as draft 18.
+TLSv1.3 is supported and implemented as draft 19.
 
 The parser is based on [nom](https://github.com/rusticata/tls-parser) (see nom's documentation for return and
 error types).
