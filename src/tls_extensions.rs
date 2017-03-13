@@ -6,7 +6,7 @@
 //! - [RFC7366](https://tools.ietf.org/html/rfc7366)
 //! - [RFC7627](https://tools.ietf.org/html/rfc7627)
 
-use nom::{be_u8,be_u16,IResult,Err,ErrorKind};
+use nom::{be_u8,be_u16,be_u32,IResult,Err,ErrorKind};
 
 enum_from_primitive! {
 /// TLS extension types,
@@ -51,7 +51,9 @@ pub enum TlsExtensionType {
     SupportedVersions     = 0x002b,
     Cookie                = 0x002c,
     PskExchangeModes      = 0x002d,
-    TicketEarlyDataInfo   = 0x002e,
+    TicketEarlyDataInfo   = 0x002e, // TLS 1.3 draft 18, removed in draft 19
+    CertificateAuthorities = 0x002f,
+    OidFilters            = 0x0030,
 
     NextProtocolNegotiation = 0x3374,
 
@@ -72,7 +74,7 @@ pub enum TlsExtension<'a>{
     SessionTicket(&'a[u8]),
     KeyShare(&'a[u8]),
     PreSharedKey(&'a[u8]),
-    EarlyData,
+    EarlyData(Option<u32>),
     SupportedVersions(Vec<u16>),
     Cookie(&'a[u8]),
     PskExchangeModes(Vec<u8>),
@@ -83,6 +85,8 @@ pub enum TlsExtension<'a>{
     Padding(&'a[u8]),
     EncryptThenMac,
     ExtendedMasterSecret,
+
+    OidFilters(Vec<OidFilter<'a>>),
 
     NextProtocolNegotiation,
 
@@ -113,6 +117,12 @@ enum_from_primitive!{
 pub enum SNIType {
     HostName = 0,
 }
+}
+
+#[derive(Clone,Debug,PartialEq)]
+pub struct OidFilter<'a> {
+    pub cert_ext_oid: &'a[u8],
+    pub cert_ext_val: &'a[u8],
 }
 
 
@@ -368,8 +378,8 @@ named!(pub parse_tls_extension_pre_shared_key<TlsExtension>,
 
 fn parse_tls_extension_early_data_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
-        ( TlsExtension::EarlyData )
+        o: cond!(ext_len > 0, be_u32) >>
+        ( TlsExtension::EarlyData(o) )
     )
 }
 
@@ -449,6 +459,23 @@ named!(pub parse_tls_extension_renegotiation_info_content<TlsExtension>,
     )
 );
 
+named!(parse_tls_oid_filter<OidFilter>,
+    do_parse!(
+        oid: length_bytes!(be_u8)  >>
+        val: length_bytes!(be_u16)  >>
+        ( OidFilter{cert_ext_oid:oid, cert_ext_val:val} )
+    )
+);
+
+/// Defined in TLS 1.3 draft 19
+fn parse_tls_extension_oid_filters(i: &[u8]) -> IResult<&[u8],TlsExtension> {
+    do_parse!(i,
+        l: be_u16 >>
+        v: flat_map!(take!(l),many0!(parse_tls_oid_filter)) >>
+        ( TlsExtension::OidFilters(v) )
+    )
+}
+
 named!(pub parse_tls_extension_unknown<TlsExtension>,
     do_parse!(
         ext_type: be_u16 >>
@@ -480,6 +507,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x002b => parse_tls_extension_supported_versions_content(i,ext_len),
         0x002c => parse_tls_extension_cookie_content(i,ext_len),
         0x002d => parse_tls_extension_psk_key_exchange_modes_content(i),
+        0x0030 => parse_tls_extension_oid_filters(i),
         0x3374 => parse_tls_extension_npn_content(i,ext_len),
         0xff01 => parse_tls_extension_renegotiation_info_content(i),
         _      => { map!(i, take!(ext_len), |ext_data| { TlsExtension::Unknown(ext_type,ext_data) }) },

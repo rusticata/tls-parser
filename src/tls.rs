@@ -21,6 +21,7 @@ pub enum TlsHandshakeType {
     ClientHello = 0x1,
     ServerHello = 0x02,
     NewSessionTicket = 0x04,
+    EndOfEarlyData = 0x05,
     HelloRetryRequest = 0x06,
     EncryptedExtensions = 0x08,
     Certificate = 0x0b,
@@ -52,6 +53,7 @@ pub enum TlsVersion {
     Tls13 = 0x0304,
 
     Tls13Draft18 = 0x7f12,
+    Tls13Draft19 = 0x7f13,
 }
 }
 
@@ -254,6 +256,7 @@ pub enum TlsMessageHandshake<'a> {
     ServerHello(TlsServerHelloContents<'a>),
     ServerHelloV13(TlsServerHelloV13Contents<'a>),
     NewSessionTicket(TlsNewSessionTicketContent<'a>),
+    EndOfEarlyData,
     HelloRetry(TlsHelloRetryContents<'a>),
     Certificate(TlsCertificateContents<'a>),
     ServerKeyExchange(TlsServerKeyExchangeContents<'a>),
@@ -608,6 +611,7 @@ named!(parse_tls_message_handshake<TlsMessage>,
                 /*TlsHandshakeType::ClientHello*/       0x01 => call!(parse_tls_handshake_msg_client_hello) |
                 /*TlsHandshakeType::ServerHello*/       0x02 => call!(parse_tls_handshake_msg_server_hello) |
                 /*TlsHandshakeType::NewSessionTicket*/  0x04 => call!(parse_tls_handshake_msg_newsessionticket,hl) |
+                /*TlsHandshakeType::EndOfEarlyData*/    0x05 => value!(TlsMessageHandshake::EndOfEarlyData) |
                 /*TlsHandshakeType::HelloRetryRequest*/ 0x06 => call!(parse_tls_handshake_msg_hello_retry) |
                 /*TlsHandshakeType::Certificate*/       0x0b => call!(parse_tls_handshake_msg_certificate) |
                 /*TlsHandshakeType::ServerKeyExchange*/ 0x0c => call!(parse_tls_handshake_msg_serverkeyexchange,hl) |

@@ -212,7 +212,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
             TlsExtension::KeyShare(data) => write!(fmt, "TlsExtension::KeyShare(data={:?})", HexSlice{d:data}),
             TlsExtension::PreSharedKey(data) => write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice{d:data}),
-            TlsExtension::EarlyData => write!(fmt, "TlsExtension::EarlyData"),
+            TlsExtension::EarlyData(o) => write!(fmt, "TlsExtension::EarlyData({:?})",o),
             TlsExtension::SupportedVersions(ref v) => {
                 let v2 : Vec<_> = v.iter().map(|c| { format!("0x{:x}",c) }).collect();
                 write!(fmt, "TlsExtension::SupportedVersions(v={:?})", v2)
@@ -231,6 +231,12 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::Padding(data) => write!(fmt, "TlsExtension::Padding(data={:?})", data),
             TlsExtension::EncryptThenMac => write!(fmt, "TlsExtension::EncryptThenMac"),
             TlsExtension::ExtendedMasterSecret => write!(fmt, "TlsExtension::ExtendedMasterSecret"),
+            TlsExtension::OidFilters(ref v) => {
+                let v : Vec<_> = v.iter().map(|c| {
+                    format!("{:?}",c)
+                }).collect();
+                write!(fmt, "TlsExtension::OidFilters({:?})", v)
+            },
             TlsExtension::NextProtocolNegotiation => write!(fmt, "TlsExtension::NextProtocolNegotiation"),
             TlsExtension::RenegotiationInfo(data) => write!(fmt, "TlsExtension::RenegotiationInfo(data={:?})", data),
             TlsExtension::Unknown(id,data) => write!(fmt, "TlsExtension::Unknown(id=0x{:x},data={:?})", id, data),
