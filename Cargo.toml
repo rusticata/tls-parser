@@ -4,9 +4,11 @@ license = "LGPL-2.1+"
 keywords = ["TLS","SSL","protocol","parser","nom"]
 homepage = "https://github.com/rusticata/tls-parser"
 repository = "https://github.com/rusticata/tls-parser.git"
+documentation = "https://docs.rs/tls-parser"
 name = "tls-parser"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
+categories = ["parsing"]
 build = "build.rs"
 
 [lib]
@@ -19,11 +21,14 @@ serialize = []
 [dependencies]
 nom = {version = "^2", features=["verbose-errors"] }
 phf = "0.7.16"
-enum_primitive = "0.1.0"
-rusticata-macros = "*"
+enum_primitive = "^0.1"
+rusticata-macros = "^0"
 
 # [dependencies.rusticata-macros]
 # path = "../rusticata-macros"
 
 [build-dependencies]
 phf_codegen = "0.7.16"
+
+[badges]
+travis-ci = { repository = "rusticata/tls-parser" }
