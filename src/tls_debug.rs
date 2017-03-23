@@ -127,9 +127,11 @@ impl<'a> fmt::Debug for TlsServerKeyExchangeContents<'a> {
 
 impl<'a> fmt::Debug for TlsClientKeyExchangeContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("TlsClientKeyExchangeContents")
-            .field("parameters", &HexSlice{d:self.parameters})
-            .finish()
+        match self {
+            &TlsClientKeyExchangeContents::Dh(ref p)      => fmt.write_fmt(format_args!("{:?}",HexSlice{d:p})),
+            &TlsClientKeyExchangeContents::Ecdh(ref p)    => fmt.write_fmt(format_args!("{:?}",p)),
+            &TlsClientKeyExchangeContents::Unknown(ref p) => fmt.write_fmt(format_args!("{:?}",HexSlice{d:p})),
+        }
     }
 }
 

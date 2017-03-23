@@ -2,7 +2,8 @@
 pub mod serialize {
 
 use tls::*;
-use tls_extensions::TlsExtension;
+use tls_ec::{ECPoint,NamedGroup};
+use tls_extensions::{TlsExtension,TlsExtensionType};
 use rusticata_macros::*;
 
 #[macro_export]
@@ -18,8 +19,42 @@ macro_rules! gen_tagged_extension(
     (($i:expr, $idx:expr), $tag:expr, $f:ident( $($args:tt)* )) => (
         gen_tagged_extension!(($i,$idx), $tag, $gen_call!($f( $($args)* )))
     );
+    ($x:expr, $tag:expr, $submac:ident!( $($args:tt)* )) => (
+        gen_tagged_extension!(($x.0, $x.1), $tag, $submac!( $($args)* )) );
+    ($x:expr, $tag:expr, $f:ident( $($args:tt)* )) => (
+        gen_tagged_extension!(($x.0, $x.1), $tag, $f( $($args)* )) );
 );
 
+#[macro_export]
+macro_rules! gen_length_bytes_be_u16(
+    (($i:expr, $idx:expr), $submac:ident!( $($args:tt)* )) => (
+        do_gen!(($i,$idx),
+            ofs:   gen_skip!(2) >>
+            start: $submac!( $($args)* ) >>
+            end:   gen_at_offset!(ofs,gen_be_u16!(end-start))
+        )
+    );
+    (($i:expr, $idx:expr), $f:ident( $($args:tt)* )) => (
+        gen_length_bytes_be_u16!(($i,$idx), $gen_call!($f( $($args)* )))
+    );
+    ($x:ident, $submac:ident!( $($args:tt)* )) => ( gen_length_bytes_be_u16!(($x.0,$x.1), $submac!( $($args)* )));
+    ($x:ident, $f:ident( $($args:tt)* )) => ( gen_length_bytes_be_u16!(($x.0,$x.1), $f( $($args)* )));
+);
+
+
+#[inline]
+pub fn gen_tls_named_group<'a>(x:(&'a mut [u8],usize),g:NamedGroup) -> Result<(&'a mut [u8],usize),GenError> {
+    set_be_u16(x, g as u16)
+}
+
+#[inline]
+pub fn gen_tls_ec_point<'a>(x:(&'a mut [u8],usize),p:ECPoint) -> Result<(&'a mut [u8],usize),GenError> {
+    do_gen!(
+        x,
+        gen_be_u8!(p.point.len() as u8) >>
+        gen_slice!(p.point)
+    )
+}
 
 pub fn gen_tls_ext_sni_hostname<'a,'b>(x:(&'a mut [u8],usize),h:&(u8,&'b[u8])) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
@@ -32,20 +67,36 @@ pub fn gen_tls_ext_sni_hostname<'a,'b>(x:(&'a mut [u8],usize),h:&(u8,&'b[u8])) -
 
 #[inline]
 pub fn gen_tls_ext_sni<'a,'b>(x:(&'a mut [u8],usize),m:&'b Vec<(u8,&'b[u8])>) -> Result<(&'a mut [u8],usize),GenError> {
-    gen_tagged_extension!((x.0,x.1), 0x0000, gen_many_ref!(m,gen_tls_ext_sni_hostname))
+    gen_tagged_extension!(x, 0x0000, gen_many_ref!(m,gen_tls_ext_sni_hostname))
 }
 
 #[inline]
 pub fn gen_tls_ext_max_fragment_length<'a,'b>(x:(&'a mut [u8],usize),l:u8) -> Result<(&'a mut [u8],usize),GenError> {
-    gen_tagged_extension!((x.0,x.1), 0x0001, gen_be_u8!(l))
+    gen_tagged_extension!(x, 0x0001, gen_be_u8!(l))
+}
+
+#[inline]
+pub fn gen_tls_ext_elliptic_curves<'a,'b>(x:(&'a mut [u8],usize),v:&'b Vec<u16>) -> Result<(&'a mut [u8],usize),GenError> {
+    gen_tagged_extension!(
+        x,
+        TlsExtensionType::SupportedGroups as u16,
+        gen_length_bytes_be_u16!(gen_many!(v,set_be_u16))
+    )
 }
 
 pub fn gen_tls_extension<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsExtension) -> Result<(&'a mut [u8],usize),GenError> {
     match m {
         &TlsExtension::SNI(ref v)           => gen_tls_ext_sni(x,&v),
         &TlsExtension::MaxFragmentLength(l) => gen_tls_ext_max_fragment_length(x,l),
+
+        &TlsExtension::EllipticCurves(ref v) => gen_tls_ext_elliptic_curves(x,v),
+
         _                                   => Err(GenError::NotYetImplemented),
     }
+}
+
+pub fn gen_tls_extensions<'a,'b>(x:(&'a mut [u8],usize),m:&'b Vec<TlsExtension>) -> Result<(&'a mut [u8],usize),GenError> {
+    gen_length_bytes_be_u16!(x, gen_many_ref!(m,gen_tls_extension))
 }
 
 #[inline]
@@ -126,16 +177,48 @@ pub fn gen_tls_finished<'a,'b>(x:(&'a mut [u8],usize),m:&'b [u8]) -> Result<(&'a
     )
 }
 
-pub fn gen_tls_clientkeyexchange<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsClientKeyExchangeContents) -> Result<(&'a mut [u8],usize),GenError> {
+pub fn gen_tls_clientkeyexchange_unknown<'a,'b>(x:(&'a mut [u8],usize),m:&'b [u8]) -> Result<(&'a mut [u8],usize),GenError> {
+    do_gen!(
+        x,
+        gen_be_u8!(TlsHandshakeType::ClientKeyExchange as u8) >>
+        gen_be_u24!(m.len()) >>
+        gen_slice!(m)
+    )
+}
+
+pub fn gen_tls_clientkeyexchange_dh<'a,'b>(x:(&'a mut [u8],usize),m:&'b [u8]) -> Result<(&'a mut [u8],usize),GenError> {
+
+    // for DH, length is 2 bytes
     do_gen!(
         x,
                  gen_be_u8!(TlsHandshakeType::ClientKeyExchange as u8) >>
         ofs_len: gen_skip!(3) >>
-        start:   gen_skip!(2) >>
-        s2:      gen_slice!(m.parameters) >>
-        end:     gen_at_offset!(start,gen_be_u16!(end-s2)) >>
+        start:   gen_be_u16!(m.len()) >>
+                 gen_slice!(m) >>
+        end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+    )
+}
+
+pub fn gen_tls_clientkeyexchange_ecdh<'a,'b>(x:(&'a mut [u8],usize),m:&'b ECPoint) -> Result<(&'a mut [u8],usize),GenError> {
+
+    // for ECDH, length is only 1 byte
+    do_gen!(
+        x,
+                 gen_be_u8!(TlsHandshakeType::ClientKeyExchange as u8) >>
+        ofs_len: gen_skip!(3) >>
+        start:   gen_skip!(1) >>
+        s2:      gen_slice!(m.point) >>
+        end:     gen_at_offset!(start,gen_be_u8!((end-s2) as u8)) >>
                  gen_at_offset!(ofs_len,gen_be_u24!(end-start))
     )
+}
+
+pub fn gen_tls_clientkeyexchange<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsClientKeyExchangeContents) -> Result<(&'a mut [u8],usize),GenError> {
+    match m {
+        &TlsClientKeyExchangeContents::Unknown(ref b) => gen_tls_clientkeyexchange_unknown(x,b),
+        &TlsClientKeyExchangeContents::Dh(ref b)      => gen_tls_clientkeyexchange_dh(x,b),
+        &TlsClientKeyExchangeContents::Ecdh(ref b)    => gen_tls_clientkeyexchange_ecdh(x,b),
+    }
 }
 
 pub fn gen_tls_messagehandshake<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsMessageHandshake) -> Result<(&'a mut [u8],usize),GenError> {

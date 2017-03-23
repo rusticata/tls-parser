@@ -108,7 +108,7 @@ pub enum ECCurveType {
 }
 
 /// EC Point
-#[derive(Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 pub struct ECPoint<'a> {
     pub point: &'a[u8],
 }
