@@ -4,7 +4,7 @@ pub mod serialize {
 use tls::*;
 use tls_ec::{ECPoint,NamedGroup};
 use tls_extensions::{TlsExtension,TlsExtensionType};
-use rusticata_macros::*;
+use cookie_factory::*;
 
 #[macro_export]
 macro_rules! gen_tagged_extension(
