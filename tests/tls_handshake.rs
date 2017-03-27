@@ -503,9 +503,8 @@ fn test_tls_record_clientkeyexchange() {
         },
         msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ClientKeyExchange(
-                TlsClientKeyExchangeContents {
-                    parameters: &bytes[9..],
-                })
+                TlsClientKeyExchangeContents::Unknown(&bytes[9..])
+                )
         )]
     };
     assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));

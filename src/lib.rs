@@ -37,6 +37,9 @@ extern crate phf;
 #[macro_use]
 extern crate rusticata_macros;
 
+#[macro_use]
+extern crate cookie_factory;
+
 pub use tls_alert::*;
 /// TLS alerts
 #[macro_use]
@@ -65,3 +68,6 @@ pub use tls::*;
 pub mod tls;
 
 mod tls_debug;
+
+pub mod tls_serialize;
+pub use tls_serialize::*;

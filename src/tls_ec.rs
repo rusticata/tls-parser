@@ -108,7 +108,7 @@ pub enum ECCurveType {
 }
 
 /// EC Point
-#[derive(Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 pub struct ECPoint<'a> {
     pub point: &'a[u8],
 }
@@ -125,7 +125,7 @@ pub struct ExplicitPrimeContent<'a> {
 }
 
 /// Elliptic curve parameters content (depending on EC type)
-#[derive(Debug,PartialEq)]
+#[derive(PartialEq)]
 pub enum ECParametersContent<'a> {
     ExplicitPrime(ExplicitPrimeContent<'a>),
     // TODO ExplicitChar2 is defined in [RFC4492] section 5.4
@@ -135,7 +135,7 @@ pub enum ECParametersContent<'a> {
 
 /// Elliptic curve parameters,
 /// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
-#[derive(Debug,PartialEq)]
+#[derive(PartialEq)]
 pub struct ECParameters<'a> {
     /// Should match a [ECCurveType](enum.ECCurveType.html) value
     pub curve_type: u8,

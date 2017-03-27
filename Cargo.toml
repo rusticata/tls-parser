@@ -14,11 +14,19 @@ build = "build.rs"
 [lib]
 name = "tls_parser"
 
+[features]
+default = []
+serialize = []
+
 [dependencies]
-nom = {version = "^2.0", features=["verbose-errors"] }
+nom = {version = "^2", features=["verbose-errors"] }
 phf = "0.7.16"
 enum_primitive = "^0.1"
-rusticata-macros = "^0"
+rusticata-macros = "0.3"
+cookie-factory = "0.2"
+
+# [dependencies.rusticata-macros]
+# path = "../rusticata-macros"
 
 [build-dependencies]
 phf_codegen = "0.7.16"

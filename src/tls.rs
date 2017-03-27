@@ -6,6 +6,7 @@ use nom::{be_u8,be_u16,be_u32,rest,IResult,ErrorKind,Err};
 
 use tls_alert::*;
 use tls_ciphers::*;
+use tls_ec::ECPoint;
 
 use enum_primitive::FromPrimitive;
 
@@ -220,8 +221,10 @@ pub struct TlsServerKeyExchangeContents<'a> {
 ///
 /// Content depends on the selected key exchange method.
 #[derive(Clone,PartialEq)]
-pub struct TlsClientKeyExchangeContents<'a> {
-    pub parameters: &'a[u8],
+pub enum TlsClientKeyExchangeContents<'a> {
+    Dh(&'a[u8]),
+    Ecdh(ECPoint<'a>),
+    Unknown(&'a[u8]),
 }
 
 /// Certificate status response, as defined in [RFC6066](https://tools.ietf.org/html/rfc6066) section 8
@@ -527,9 +530,8 @@ fn parse_tls_handshake_msg_clientkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u
         take!(len),
         |ext| {
             TlsMessageHandshake::ClientKeyExchange(
-                    TlsClientKeyExchangeContents {
-                        parameters: ext,
-                    })
+                TlsClientKeyExchangeContents::Unknown(ext)
+            )
         }
     )
 }

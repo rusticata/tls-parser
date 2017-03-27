@@ -127,9 +127,11 @@ impl<'a> fmt::Debug for TlsServerKeyExchangeContents<'a> {
 
 impl<'a> fmt::Debug for TlsClientKeyExchangeContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("TlsClientKeyExchangeContents")
-            .field("parameters", &HexSlice{d:self.parameters})
-            .finish()
+        match self {
+            &TlsClientKeyExchangeContents::Dh(ref p)      => fmt.write_fmt(format_args!("{:?}",HexSlice{d:p})),
+            &TlsClientKeyExchangeContents::Ecdh(ref p)    => fmt.write_fmt(format_args!("{:?}",p)),
+            &TlsClientKeyExchangeContents::Unknown(ref p) => fmt.write_fmt(format_args!("{:?}",HexSlice{d:p})),
+        }
     }
 }
 
@@ -162,6 +164,36 @@ impl<'a> fmt::Debug for ServerDHParams<'a> {
             .field("dh_p", &HexSlice{d:self.dh_p})
             .field("dh_g", &HexSlice{d:self.dh_g})
             .field("dh_ys", &HexSlice{d:self.dh_ys})
+            .finish()
+    }
+}
+
+// ------------------------- tls_ec.rs ------------------------------
+impl<'a> fmt::Debug for ECParametersContent<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &ECParametersContent::ExplicitPrime(ref p) => fmt.write_fmt(format_args!("ExplicitPrime({:?})",p)),
+            &ECParametersContent::ExplicitChar2(ref p) => fmt.write_fmt(format_args!("ExplicitChar2({:?})",HexSlice{d:p})),
+            &ECParametersContent::NamedGroup(p)    => {
+                let g = match NamedGroup::from_u16(p) {
+                    Some(n) => format!("{:?}", n),
+                    None    => format!("<Unknown named group 0x{:x}/{}>", p, p),
+                };
+                fmt.write_fmt(format_args!("{:?}",g))
+            },
+        }
+    }
+}
+
+impl<'a> fmt::Debug for ECParameters<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let ty = match ECCurveType::from_u8(self.curve_type) {
+            Some(n) => format!("{:?}", n),
+            None    => format!("<Unknown curve type 0x{:x}/{}>", self.curve_type, self.curve_type),
+        };
+        fmt.debug_struct("ECParameters")
+            .field("curve_type", &ty)
+            .field("params_content", &self.params_content)
             .finish()
     }
 }

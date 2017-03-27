@@ -3,8 +3,11 @@ sudo: false
 matrix:
   include:
     - rust: stable
+      env:
+       - FEATURES='serialize'
     - rust: nightly
       env:
+       - FEATURES='serialize'
        - BENCH=1
 script:
   - |
