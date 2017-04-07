@@ -3,6 +3,8 @@ use std::str::from_utf8;
 
 use enum_primitive::FromPrimitive;
 
+use rusticata_macros::debug::{HexU8,HexU16,HexSlice};
+
 use tls::*;
 use tls_alert::*;
 use tls_ciphers::*;
@@ -10,30 +12,6 @@ use tls_dh::*;
 use tls_ec::*;
 use tls_extensions::*;
 use tls_sign_hash::*;
-
-pub struct HexU8 { pub d: u8 }
-impl fmt::Debug for HexU8 {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt,"0x{:02x}",self.d)
-    }
-}
-
-pub struct HexU16 { pub d: u16 }
-impl fmt::Debug for HexU16 {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt,"0x{:04x}",self.d)
-    }
-}
-
-pub struct HexSlice<'a> { pub d: &'a[u8] }
-impl<'a> fmt::Debug for HexSlice<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let s : Vec<_> = self.d.iter().map(|&i|{
-            format!("{:02x}", i)
-        }).collect();
-        write!(fmt,"[{}]",s.join(" "))
-    }
-}
 
 pub struct CipherU16 { pub d: u16 }
 impl fmt::Debug for CipherU16 {
