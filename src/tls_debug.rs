@@ -78,9 +78,9 @@ impl<'a> fmt::Debug for TlsServerHelloV13Contents<'a> {
     }
 }
 
-impl<'a> fmt::Debug for TlsHelloRetryContents<'a> {
+impl<'a> fmt::Debug for TlsHelloRetryRequestContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("TlsHelloRetryContents")
+        fmt.debug_struct("TlsHelloRetryRequestContents")
             .field("version", &HexU16{d:self.version})
             .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
             .finish()

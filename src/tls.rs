@@ -150,8 +150,9 @@ pub struct TlsServerHelloV13Contents<'a> {
 
 /// TLS Hello Retry Request (TLS 1.3)
 #[derive(Clone,PartialEq)]
-pub struct TlsHelloRetryContents<'a> {
+pub struct TlsHelloRetryRequestContents<'a> {
     pub version: u16,
+    pub cipher: u16,
 
     pub ext: Option<&'a[u8]>,
 }
@@ -262,7 +263,7 @@ pub enum TlsMessageHandshake<'a> {
     ServerHelloV13(TlsServerHelloV13Contents<'a>),
     NewSessionTicket(TlsNewSessionTicketContent<'a>),
     EndOfEarlyData,
-    HelloRetry(TlsHelloRetryContents<'a>),
+    HelloRetryRequest(TlsHelloRetryRequestContents<'a>),
     Certificate(TlsCertificateContents<'a>),
     ServerKeyExchange(TlsServerKeyExchangeContents<'a>),
     CertificateRequest(TlsCertificateRequestContents<'a>),
@@ -471,14 +472,16 @@ fn parse_tls_handshake_msg_newsessionticket( i:&[u8], len: u64 ) -> IResult<&[u8
     )
 }
 
-named!(parse_tls_handshake_msg_hello_retry<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_hello_retry_request<TlsMessageHandshake>,
     do_parse!(
-        hv: be_u16 >>
+        hv:  be_u16 >>
+        c:   be_u16 >>
         ext: opt!(complete!(length_bytes!(be_u16))) >>
         (
-            TlsMessageHandshake::HelloRetry(
-                TlsHelloRetryContents {
+            TlsMessageHandshake::HelloRetryRequest(
+                TlsHelloRetryRequestContents {
                     version: hv,
+                    cipher: c,
                     ext: ext,
                     }
             )
@@ -616,7 +619,7 @@ named!(parse_tls_message_handshake<TlsMessage>,
                 /*TlsHandshakeType::ServerHello*/       0x02 => call!(parse_tls_handshake_msg_server_hello) |
                 /*TlsHandshakeType::NewSessionTicket*/  0x04 => call!(parse_tls_handshake_msg_newsessionticket,hl) |
                 /*TlsHandshakeType::EndOfEarlyData*/    0x05 => value!(TlsMessageHandshake::EndOfEarlyData) |
-                /*TlsHandshakeType::HelloRetryRequest*/ 0x06 => call!(parse_tls_handshake_msg_hello_retry) |
+                /*TlsHandshakeType::HelloRetryRequest*/ 0x06 => call!(parse_tls_handshake_msg_hello_retry_request) |
                 /*TlsHandshakeType::Certificate*/       0x0b => call!(parse_tls_handshake_msg_certificate) |
                 /*TlsHandshakeType::ServerKeyExchange*/ 0x0c => call!(parse_tls_handshake_msg_serverkeyexchange,hl) |
                 /*TlsHandshakeType::CertificateRequest*/ 0x0d => call!(parse_tls_handshake_msg_certificaterequest) |
