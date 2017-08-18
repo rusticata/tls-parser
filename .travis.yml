@@ -4,9 +4,20 @@ matrix:
   include:
     - rust: stable
       env:
+       - NAME="stable"
+       - FEATURES=''
+    - rust: nightly
+      env:
+       - NAME="nightly"
+       - FEATURES=''
+       - BENCH=1
+    - rust: stable
+      env:
+       - NAME="stable,serialize"
        - FEATURES='serialize'
     - rust: nightly
       env:
+       - NAME="nightly,serialize"
        - FEATURES='serialize'
        - BENCH=1
 script:
