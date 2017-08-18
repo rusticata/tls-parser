@@ -54,6 +54,7 @@ pub enum TlsExtensionType {
     TicketEarlyDataInfo   = 0x002e, // TLS 1.3 draft 18, removed in draft 19
     CertificateAuthorities = 0x002f,
     OidFilters            = 0x0030,
+    PostHandshakeAuth     = 0x0031, // TLS 1.3 draft 20
 
     NextProtocolNegotiation = 0x3374,
 
@@ -87,6 +88,7 @@ pub enum TlsExtension<'a>{
     ExtendedMasterSecret,
 
     OidFilters(Vec<OidFilter<'a>>),
+    PostHandshakeAuth,
 
     NextProtocolNegotiation,
 
@@ -476,6 +478,14 @@ fn parse_tls_extension_oid_filters(i: &[u8]) -> IResult<&[u8],TlsExtension> {
     )
 }
 
+/// Defined in TLS 1.3 draft 20
+fn parse_tls_extension_post_handshake_auth_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    do_parse!(i,
+        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        ( TlsExtension::PostHandshakeAuth )
+    )
+}
+
 named!(pub parse_tls_extension_unknown<TlsExtension>,
     do_parse!(
         ext_type: be_u16 >>
@@ -508,6 +518,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x002c => parse_tls_extension_cookie_content(i,ext_len),
         0x002d => parse_tls_extension_psk_key_exchange_modes_content(i),
         0x0030 => parse_tls_extension_oid_filters(i),
+        0x0031 => parse_tls_extension_post_handshake_auth_content(i,ext_len),
         0x3374 => parse_tls_extension_npn_content(i,ext_len),
         0xff01 => parse_tls_extension_renegotiation_info_content(i),
         _      => { map!(i, take!(ext_len), |ext_data| { TlsExtension::Unknown(ext_type,ext_data) }) },

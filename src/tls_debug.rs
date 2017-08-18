@@ -247,6 +247,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
                 }).collect();
                 write!(fmt, "TlsExtension::OidFilters({:?})", v)
             },
+            TlsExtension::PostHandshakeAuth => write!(fmt, "TlsExtension::PostHandshakeAuth"),
             TlsExtension::NextProtocolNegotiation => write!(fmt, "TlsExtension::NextProtocolNegotiation"),
             TlsExtension::RenegotiationInfo(data) => write!(fmt, "TlsExtension::RenegotiationInfo(data={:?})", data),
             TlsExtension::Unknown(id,data) => write!(fmt, "TlsExtension::Unknown(id=0x{:x},data={:?})", id, data),

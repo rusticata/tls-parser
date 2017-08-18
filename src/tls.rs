@@ -55,6 +55,8 @@ pub enum TlsVersion {
 
     Tls13Draft18 = 0x7f12,
     Tls13Draft19 = 0x7f13,
+    Tls13Draft20 = 0x7f14,
+    Tls13Draft21 = 0x7f15,
 }
 }
 
