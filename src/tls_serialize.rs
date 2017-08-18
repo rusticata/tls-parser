@@ -80,7 +80,7 @@ pub fn gen_tls_ext_elliptic_curves<'a,'b>(x:(&'a mut [u8],usize),v:&'b Vec<u16>)
     gen_tagged_extension!(
         x,
         TlsExtensionType::SupportedGroups as u16,
-        gen_length_bytes_be_u16!(gen_many!(v,set_be_u16))
+        gen_length_bytes_be_u16!(gen_many_byref!(v,set_be_u16))
     )
 }
 
@@ -131,9 +131,9 @@ pub fn gen_tls_clienthello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsClientHelloCon
                  gen_copy!(m.rand_data,28) >>
                  gen_tls_sessionid(&m.session_id) >>
                  gen_be_u16!((m.ciphers.len()*2) as u16) >>
-                 gen_many!(m.ciphers,set_be_u16) >>
+                 gen_many_byref!(&m.ciphers,set_be_u16) >>
                  gen_be_u8!(m.comp.len() as u8) >>
-                 gen_many!(m.comp,set_be_u8) >>
+                 gen_many_byref!(&m.comp,set_be_u8) >>
                  gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
         end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
     )

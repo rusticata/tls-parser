@@ -28,6 +28,9 @@ cookie-factory = "0.2"
 # [dependencies.rusticata-macros]
 # path = "../rusticata-macros"
 
+# [dependencies.cookie-factory]
+# path = "../cookie-factory"
+
 [build-dependencies]
 phf_codegen = "0.7.16"
 
