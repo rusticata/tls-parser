@@ -202,10 +202,12 @@ pub struct TlsCertificateContents<'a> {
 }
 
 /// Certificate request, as defined in [RFC5246](https://tools.ietf.org/html/rfc5246) section 7.4.4
+///
+/// Note: TLS 1.2 adds SignatureAndHashAlgorithm (chapter 7.4.4) but do not declare it in A.4.2
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsCertificateRequestContents<'a> {
     pub cert_types: Vec<u8>,
-    pub sig_hash_algs: Vec<u16>,
+    pub sig_hash_algs: Option<Vec<u16>>,
     /// A list of DER-encoded distinguished names. See
     /// [X.501](http://www.itu.int/rec/T-REC-X.501/en)
     pub unparsed_ca: Vec<&'a[u8]>,
@@ -544,15 +546,16 @@ fn parse_tls_handshake_msg_clientkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u
 fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
         cert_types:        length_count!(be_u8,be_u8) >>
-        sig_hash_algs_len: be_u16 >>
-        sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) >>
+        // sig_hash_algs_len: be_u16 >>
+        // sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) >>
         ca_len:            be_u16 >>
         ca:                flat_map!(take!(ca_len),many0!(length_bytes!(be_u16))) >>
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
                     cert_types: cert_types,
-                    sig_hash_algs: sig_hash_algs,
+                    // sig_hash_algs: Some(sig_hash_algs),
+                    sig_hash_algs: None,
                     unparsed_ca: ca,
                 }
             )
