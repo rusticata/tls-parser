@@ -543,11 +543,9 @@ fn parse_tls_handshake_msg_clientkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u
     )
 }
 
-fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_certrequest_nosigalg( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
         cert_types:        length_count!(be_u8,be_u8) >>
-        // sig_hash_algs_len: be_u16 >>
-        // sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) >>
         ca_len:            be_u16 >>
         ca:                flat_map!(take!(ca_len),many0!(length_bytes!(be_u16))) >>
         (
@@ -561,6 +559,30 @@ fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMe
             )
         )
     )
+}
+
+fn parse_certrequest_full( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
+    do_parse!(i,
+        cert_types:        length_count!(be_u8,be_u8) >>
+        sig_hash_algs_len: be_u16 >>
+        sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) >>
+        ca_len:            be_u16 >>
+        ca:                flat_map!(take!(ca_len),many0!(length_bytes!(be_u16))) >>
+        (
+            TlsMessageHandshake::CertificateRequest(
+                TlsCertificateRequestContents {
+                    cert_types: cert_types,
+                    sig_hash_algs: Some(sig_hash_algs),
+                    unparsed_ca: ca,
+                }
+            )
+        )
+    )
+}
+
+#[inline]
+fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
+    alt_complete!(i, parse_certrequest_full | parse_certrequest_nosigalg)
 }
 
 fn parse_tls_handshake_msg_finished( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {

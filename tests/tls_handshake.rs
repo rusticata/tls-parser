@@ -612,8 +612,10 @@ fn test_tls_record_cert_request_noca() {
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
                     cert_types: vec![0x01, 0x02, 0x40],
-                    sig_hash_algs: vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
-                                        0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203],
+                    sig_hash_algs: Some(
+                        vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
+                             0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203]
+                    ),
                     unparsed_ca: vec![],
                 })
         )]
@@ -649,8 +651,10 @@ fn test_tls_record_cert_request_ca() {
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
                     cert_types: vec![0x01, 0x02, 0x40],
-                    sig_hash_algs: vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
-                                        0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203],
+                    sig_hash_algs: Some(
+                        vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
+                             0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203]
+                    ),
                     unparsed_ca: vec![ca1],
                 })
         )]
