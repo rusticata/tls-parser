@@ -157,7 +157,8 @@ for i in ciphersuites.findAll ("record"):
   if i.xref:
     rfc_tmp = filter (lambda (var,val) : var == "data", i.xref.attrs)
     if len (rfc_tmp) > 0:
-      rfc = rfc_tmp[0][1][3:7]
+      # rfc = rfc_tmp[0][1][3:7]
+      rfc = rfc_tmp[0][1]
 
   real_value = "".join (map (lambda x : "%2.2x" % (int (x, 16)), value.split (",")))
 
