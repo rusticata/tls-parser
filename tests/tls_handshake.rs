@@ -554,7 +554,7 @@ static SERVER_HELLO1: &'static [u8] = &[
 #[test]
 fn test_tls_record_invalid_recordlength() {
     let mut v = SERVER_HELLO1.to_vec();
-    let mut bytes = v.as_mut_slice();
+    let bytes = v.as_mut_slice();
     bytes[4] = 0xff; // make record incomplete (longer than data)
     let expected = IResult::Incomplete(Needed::Size(260));
     let res = parse_tls_plaintext(&bytes);
@@ -564,7 +564,7 @@ fn test_tls_record_invalid_recordlength() {
 #[test]
 fn test_tls_record_invalid_recordlength2() {
     let mut v = SERVER_HELLO1.to_vec();
-    let mut bytes = v.as_mut_slice();
+    let bytes = v.as_mut_slice();
     bytes[4] = 0x00; // make record incomplete (shorter than data)
     let expected = IResult::Incomplete(Needed::Size(6));
     let res = parse_tls_plaintext(&bytes);
@@ -574,7 +574,7 @@ fn test_tls_record_invalid_recordlength2() {
 #[test]
 fn test_tls_record_invalid_messagelength() {
     let mut v = SERVER_HELLO1.to_vec();
-    let mut bytes = v.as_mut_slice();
+    let bytes = v.as_mut_slice();
     bytes[8] = 0xff; // create message larger than record
     let expected = IResult::Incomplete(Needed::Size(264));
     let res = parse_tls_plaintext(&bytes);
@@ -584,7 +584,7 @@ fn test_tls_record_invalid_messagelength() {
 #[test]
 fn test_tls_record_invalid_messagelength2() {
     let mut v = SERVER_HELLO1.to_vec();
-    let mut bytes = v.as_mut_slice();
+    let bytes = v.as_mut_slice();
     bytes[8] = 0x01; // create message shorter than record
     let expected = IResult::Incomplete(Needed::Size(11));
     let res = parse_tls_plaintext(&bytes);

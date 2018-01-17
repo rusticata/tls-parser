@@ -6,7 +6,7 @@
 //! - [RFC7366](https://tools.ietf.org/html/rfc7366)
 //! - [RFC7627](https://tools.ietf.org/html/rfc7627)
 
-use nom::{be_u8,be_u16,be_u32,IResult,Err,ErrorKind};
+use nom::{be_u8,be_u16,be_u32,IResult,ErrorKind};
 
 enum_from_primitive! {
 /// TLS extension types,
