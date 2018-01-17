@@ -1,6 +1,6 @@
 [package]
 description = "Parser for the TLS protocol"
-license = "LGPL-2.1+"
+license = "MIT/Apache-2.0"
 keywords = ["TLS","SSL","protocol","parser","nom"]
 homepage = "https://github.com/rusticata/tls-parser"
 repository = "https://github.com/rusticata/tls-parser.git"
