@@ -2,7 +2,7 @@
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.2
 
 use rusticata_macros::parse_uint24;
-use nom::{be_u8,be_u16,be_u32,rest,IResult,ErrorKind,Err};
+use nom::{be_u8,be_u16,be_u32,rest,IResult,ErrorKind};
 
 use tls_alert::*;
 use tls_ciphers::*;
@@ -396,7 +396,7 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         rand_time: be_u32 >>
         rand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
         sidlen:    be_u8 >> // check <= 32, can be 0
-                   error_if!(sidlen > 32, Err::Code(ErrorKind::Custom(128))) >>
+                   error_if!(sidlen > 32, ErrorKind::Custom(128)) >>
         sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
         ciphers:   flat_map!(length_bytes!(be_u16),parse_cipher_suites) >>
         comp_len:  take!(1) >>
@@ -416,7 +416,7 @@ named!(parse_tls_handshake_msg_server_hello_tlsv12<TlsMessageHandshake>,
         rand_time: be_u32 >>
         rand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
         sidlen:    be_u8 >> // check <= 32, can be 0
-                   error_if!(sidlen > 32, Err::Code(ErrorKind::Custom(128))) >>
+                   error_if!(sidlen > 32, ErrorKind::Custom(128)) >>
         sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
         cipher:    be_u16 >>
         comp:      be_u8 >>

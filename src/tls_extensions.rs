@@ -259,7 +259,7 @@ named!(pub parse_tls_extension_heartbeat<TlsExtension>,
     do_parse!(
         tag!([0x00,0x0f]) >>
         ext_len:  be_u16 >>
-        error_if!(ext_len != 1, Err::Code(ErrorKind::Custom(128))) >>
+        error_if!(ext_len != 1, ErrorKind::Custom(128)) >>
         ext: flat_map!(take!(ext_len),parse_tls_extension_heartbeat_content) >>
         ( ext )
     )
@@ -297,7 +297,7 @@ named!(pub parse_tls_extension_signed_certificate_timestamp_content<TlsExtension
 /// Encrypt-then-MAC is defined in [RFC7366]
 fn parse_tls_extension_encrypt_then_mac_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        error_if!(ext_len != 0, ErrorKind::Custom(128)) >>
         ( TlsExtension::EncryptThenMac )
     )
 }
@@ -315,7 +315,7 @@ named!(pub parse_tls_extension_encrypt_then_mac<TlsExtension>,
 /// Extended Master Secret is defined in [RFC7627]
 fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        error_if!(ext_len != 0, ErrorKind::Custom(128)) >>
         ( TlsExtension::ExtendedMasterSecret )
     )
 }
@@ -447,7 +447,7 @@ named!(pub parse_tls_extension_psk_key_exchange_modes<TlsExtension>,
 /// Defined in RFC-draft-agl-tls-nextprotoneg-03. Deprecated in favour of ALPN.
 fn parse_tls_extension_npn_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        error_if!(ext_len != 0, ErrorKind::Custom(128)) >>
         ( TlsExtension::NextProtocolNegotiation )
     )
 }
@@ -481,7 +481,7 @@ fn parse_tls_extension_oid_filters(i: &[u8]) -> IResult<&[u8],TlsExtension> {
 /// Defined in TLS 1.3 draft 20
 fn parse_tls_extension_post_handshake_auth_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, Err::Code(ErrorKind::Custom(128))) >>
+        error_if!(ext_len != 0, ErrorKind::Custom(128)) >>
         ( TlsExtension::PostHandshakeAuth )
     )
 }

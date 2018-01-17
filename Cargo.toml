@@ -22,7 +22,7 @@ serialize = []
 nom = {version = "^3", features=["verbose-errors"] }
 phf = "0.7.16"
 enum_primitive = "^0.1"
-rusticata-macros = "0.3.2"
+rusticata-macros = "0.4.0"
 cookie-factory = "0.2"
 
 # [dependencies.rusticata-macros]
