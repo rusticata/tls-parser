@@ -79,7 +79,7 @@ pub fn gen_tls_ext_max_fragment_length<'a,'b>(x:(&'a mut [u8],usize),l:u8) -> Re
 pub fn gen_tls_ext_elliptic_curves<'a,'b>(x:(&'a mut [u8],usize),v:&'b Vec<u16>) -> Result<(&'a mut [u8],usize),GenError> {
     gen_tagged_extension!(
         x,
-        TlsExtensionType::SupportedGroups as u16,
+        u16::from(TlsExtensionType::SupportedGroups),
         gen_length_bytes_be_u16!(gen_many_byref!(v,set_be_u16))
     )
 }
