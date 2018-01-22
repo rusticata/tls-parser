@@ -94,13 +94,30 @@ impl fmt::LowerHex for TlsVersion {
 }
 
 
-enum_from_primitive! {
 /// Heartbeat type, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520) section 3
-#[repr(u8)]
-pub enum TlsHeartbeatMessageType {
-    HeartBeatRequest  = 0x1,
-    HeartBeatResponse = 0x2,
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct TlsHeartbeatMessageType(u8);
+
+#[allow(non_upper_case_globals)]
+impl TlsHeartbeatMessageType {
+    pub const HeartBeatRequest  : TlsHeartbeatMessageType = TlsHeartbeatMessageType(0x1);
+    pub const HeartBeatResponse : TlsHeartbeatMessageType = TlsHeartbeatMessageType(0x2);
 }
+
+impl From<TlsHeartbeatMessageType> for u8 {
+    fn from(v: TlsHeartbeatMessageType) -> u8 { v.0 }
+}
+
+impl fmt::Display for TlsHeartbeatMessageType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Debug for TlsHeartbeatMessageType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 enum_from_primitive! {
@@ -327,7 +344,7 @@ pub struct TlsMessageApplicationData<'a>{
 /// they can (and this caused heartbleed).
 #[derive(Clone,Debug,PartialEq)]
 pub struct TlsMessageHeartbeat<'a>{
-    pub heartbeat_type: u8,
+    pub heartbeat_type: TlsHeartbeatMessageType,
     pub payload_len: u16,
     pub payload: &'a[u8],
 }
@@ -736,7 +753,7 @@ fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
         (
             TlsMessage::Heartbeat(
                 TlsMessageHeartbeat {
-                    heartbeat_type: hb_type,
+                    heartbeat_type: TlsHeartbeatMessageType(hb_type),
                     payload_len: hb_len,
                     payload: b,
                 }
