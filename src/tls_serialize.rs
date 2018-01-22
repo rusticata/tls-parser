@@ -116,7 +116,7 @@ pub fn gen_tls_sessionid<'a,'b>(x:(&'a mut [u8],usize),m:&Option<&'b [u8]>) -> R
 pub fn gen_tls_hellorequest<'a>(x:(&'a mut [u8],usize)) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
         x,
-        gen_be_u8!(TlsHandshakeType::HelloRequest as u8) >>
+        gen_be_u8!(u8::from(TlsHandshakeType::HelloRequest)) >>
         gen_be_u24!(0)
     )
 }
@@ -124,7 +124,7 @@ pub fn gen_tls_hellorequest<'a>(x:(&'a mut [u8],usize)) -> Result<(&'a mut [u8],
 pub fn gen_tls_clienthello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsClientHelloContents) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
         x,
-                 gen_be_u8!(TlsHandshakeType::ClientHello as u8) >>
+                 gen_be_u8!(u8::from(TlsHandshakeType::ClientHello)) >>
         ofs_len: gen_skip!(3) >>
         start:   gen_be_u16!(u16::from(m.version)) >>
                  gen_be_u32!(m.rand_time) >>
@@ -142,7 +142,7 @@ pub fn gen_tls_clienthello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsClientHelloCon
 pub fn gen_tls_serverhello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloContents) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
         x,
-                 gen_be_u8!(TlsHandshakeType::ServerHello as u8) >>
+                 gen_be_u8!(u8::from(TlsHandshakeType::ServerHello)) >>
         ofs_len: gen_skip!(3) >>
         start:   gen_be_u16!(u16::from(m.version)) >>
                  gen_be_u32!(m.rand_time) >>
@@ -158,7 +158,7 @@ pub fn gen_tls_serverhello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloCon
 pub fn gen_tls_serverhellov13<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloV13Contents) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
         x,
-                 gen_be_u8!(TlsHandshakeType::ServerHello as u8) >>
+                 gen_be_u8!(u8::from(TlsHandshakeType::ServerHello)) >>
         ofs_len: gen_skip!(3) >>
         start:   gen_copy!(m.random,32) >>
                  gen_be_u16!(m.cipher) >>
@@ -170,7 +170,7 @@ pub fn gen_tls_serverhellov13<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHello
 pub fn gen_tls_finished<'a,'b>(x:(&'a mut [u8],usize),m:&'b [u8]) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
         x,
-                 gen_be_u8!(TlsHandshakeType::ServerHello as u8) >>
+                 gen_be_u8!(u8::from(TlsHandshakeType::ServerHello)) >>
         ofs_len: gen_skip!(3) >>
         start:   gen_slice!(m) >>
         end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
@@ -180,7 +180,7 @@ pub fn gen_tls_finished<'a,'b>(x:(&'a mut [u8],usize),m:&'b [u8]) -> Result<(&'a
 pub fn gen_tls_clientkeyexchange_unknown<'a,'b>(x:(&'a mut [u8],usize),m:&'b [u8]) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
         x,
-        gen_be_u8!(TlsHandshakeType::ClientKeyExchange as u8) >>
+        gen_be_u8!(u8::from(TlsHandshakeType::ClientKeyExchange)) >>
         gen_be_u24!(m.len()) >>
         gen_slice!(m)
     )
@@ -191,7 +191,7 @@ pub fn gen_tls_clientkeyexchange_dh<'a,'b>(x:(&'a mut [u8],usize),m:&'b [u8]) ->
     // for DH, length is 2 bytes
     do_gen!(
         x,
-                 gen_be_u8!(TlsHandshakeType::ClientKeyExchange as u8) >>
+                 gen_be_u8!(u8::from(TlsHandshakeType::ClientKeyExchange)) >>
         ofs_len: gen_skip!(3) >>
         start:   gen_be_u16!(m.len()) >>
                  gen_slice!(m) >>
@@ -204,7 +204,7 @@ pub fn gen_tls_clientkeyexchange_ecdh<'a,'b>(x:(&'a mut [u8],usize),m:&'b ECPoin
     // for ECDH, length is only 1 byte
     do_gen!(
         x,
-                 gen_be_u8!(TlsHandshakeType::ClientKeyExchange as u8) >>
+                 gen_be_u8!(u8::from(TlsHandshakeType::ClientKeyExchange)) >>
         ofs_len: gen_skip!(3) >>
         start:   gen_skip!(1) >>
         s2:      gen_slice!(m.point) >>

@@ -10,37 +10,41 @@ use tls_ec::ECPoint;
 
 use std::fmt;
 
-enum_from_primitive! {
 /// Handshake type
 ///
 /// Handshake types are defined in [RFC5246](https://tools.ietf.org/html/rfc5246) and
 /// the [IANA HandshakeType
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-7)
-#[repr(u8)]
-pub enum TlsHandshakeType {
-    HelloRequest = 0x0,
-    ClientHello = 0x1,
-    ServerHello = 0x02,
-    NewSessionTicket = 0x04,
-    EndOfEarlyData = 0x05,
-    HelloRetryRequest = 0x06,
-    EncryptedExtensions = 0x08,
-    Certificate = 0x0b,
-    ServerKeyExchange = 0x0c,
-    CertificateRequest = 0x0d,
-    ServerDone = 0x0e,
-    CertificateVerify = 0x0f,
-    ClientKeyExchange = 0x10,
-    Finished = 0x14,
-    CertificateURL = 0x15,
-    CertificateStatus = 0x16,
-    KeyUpdate = 0x18,
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct TlsHandshakeType(u8);
 
-    NextProtocol = 0x43,
-}
+#[allow(non_upper_case_globals)]
+impl TlsHandshakeType {
+    pub const HelloRequest        : TlsHandshakeType = TlsHandshakeType(0x00);
+    pub const ClientHello         : TlsHandshakeType = TlsHandshakeType(0x01);
+    pub const ServerHello         : TlsHandshakeType = TlsHandshakeType(0x02);
+    pub const NewSessionTicket    : TlsHandshakeType = TlsHandshakeType(0x04);
+    pub const EndOfEarlyData      : TlsHandshakeType = TlsHandshakeType(0x05);
+    pub const HelloRetryRequest   : TlsHandshakeType = TlsHandshakeType(0x06);
+    pub const EncryptedExtensions : TlsHandshakeType = TlsHandshakeType(0x08);
+    pub const Certificate         : TlsHandshakeType = TlsHandshakeType(0x0b);
+    pub const ServerKeyExchange   : TlsHandshakeType = TlsHandshakeType(0x0c);
+    pub const CertificateRequest  : TlsHandshakeType = TlsHandshakeType(0x0d);
+    pub const ServerDone          : TlsHandshakeType = TlsHandshakeType(0x0e);
+    pub const CertificateVerify   : TlsHandshakeType = TlsHandshakeType(0x0f);
+    pub const ClientKeyExchange   : TlsHandshakeType = TlsHandshakeType(0x10);
+    pub const Finished            : TlsHandshakeType = TlsHandshakeType(0x14);
+    pub const CertificateURL      : TlsHandshakeType = TlsHandshakeType(0x15);
+    pub const CertificateStatus   : TlsHandshakeType = TlsHandshakeType(0x16);
+    pub const KeyUpdate           : TlsHandshakeType = TlsHandshakeType(0x18);
+
+    pub const NextProtocol        : TlsHandshakeType = TlsHandshakeType(0x43);
 }
 
-// enum_from_primitive! {
+impl From<TlsHandshakeType> for u8 {
+    fn from(v: TlsHandshakeType) -> u8 { v.0 }
+}
+
 /// TLS version
 ///
 /// Only the TLS version defined in the TLS message header is meaningful, the
