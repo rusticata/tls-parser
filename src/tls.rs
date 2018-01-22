@@ -120,16 +120,34 @@ impl fmt::Debug for TlsHeartbeatMessageType {
     }
 }
 
-enum_from_primitive! {
 /// Content type, as defined in IANA TLS ContentType registry
-#[repr(u8)]
-pub enum TlsRecordType {
-    ChangeCipherSpec = 0x14,
-    Alert = 0x15,
-    Handshake = 0x16,
-    ApplicationData = 0x17,
-    Heartbeat = 0x18,
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct TlsRecordType(u8);
+
+#[allow(non_upper_case_globals)]
+impl TlsRecordType {
+    pub const ChangeCipherSpec : TlsRecordType = TlsRecordType(0x14);
+    pub const Alert            : TlsRecordType = TlsRecordType(0x15);
+    pub const Handshake        : TlsRecordType = TlsRecordType(0x16);
+    pub const ApplicationData  : TlsRecordType = TlsRecordType(0x17);
+    pub const Heartbeat        : TlsRecordType = TlsRecordType(0x18);
 }
+
+impl From<TlsRecordType> for u8 {
+    fn from(v: TlsRecordType) -> u8 { v.0 }
+}
+
+impl fmt::Debug for TlsRecordType {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TlsRecordType::ChangeCipherSpec => fmt.write_str("TlsRecordType::ChangeCipherSpec"),
+            TlsRecordType::Alert            => fmt.write_str("TlsRecordType::Alert"),
+            TlsRecordType::Handshake        => fmt.write_str("Handshake::Alert"),
+            TlsRecordType::ApplicationData  => fmt.write_str("Handshake::ApplicationData"),
+            TlsRecordType::Heartbeat        => fmt.write_str("Handshake::Heartbeat"),
+            _                               => write!(fmt, "{:x}", self.0),
+        }
+    }
 }
 
 /// TLS Client Hello (from TLS 1.0 to TLS 1.2)
@@ -352,7 +370,7 @@ pub struct TlsMessageHeartbeat<'a>{
 /// TLS record header
 #[derive(Clone,PartialEq)]
 pub struct TlsRecordHeader {
-    pub record_type: u8,
+    pub record_type: TlsRecordType,
     pub version: u16,
     pub len: u16,
 }
@@ -429,7 +447,7 @@ named!(parse_tls_record_header<TlsRecordHeader>,
         l: be_u16 >>
         (
             TlsRecordHeader {
-                record_type: t,
+                record_type: TlsRecordType(t),
                 version: v,
                 len: l,
             }
@@ -770,11 +788,11 @@ fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
 /// strict protocol conformance).
 pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&[u8], Vec<TlsMessage>> {
     switch!(i, value!(hdr.record_type),
-            /*TlsRecordType::ChangeCipherSpec*/ 0x14 => many1!(parse_tls_message_changecipherspec) |
-            /*TlsRecordType::Alert*/            0x15 => many1!(parse_tls_message_alert) |
-            /*TlsRecordType::Handshake*/        0x16 => many1!(parse_tls_message_handshake) |
-            /*TlsRecordType::ApplicationData*/  0x17 => many1!(parse_tls_message_applicationdata) |
-            /*TlsRecordType::Heartbeat      */  0x18 => many1!(parse_tls_message_heartbeat)
+            TlsRecordType::ChangeCipherSpec => many1!(parse_tls_message_changecipherspec) |
+            TlsRecordType::Alert            => many1!(parse_tls_message_alert) |
+            TlsRecordType::Handshake        => many1!(parse_tls_message_handshake) |
+            TlsRecordType::ApplicationData  => many1!(parse_tls_message_applicationdata) |
+            TlsRecordType::Heartbeat        => many1!(parse_tls_message_heartbeat)
          )
 }
 

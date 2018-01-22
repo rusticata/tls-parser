@@ -115,7 +115,7 @@ impl<'a> fmt::Debug for TlsClientKeyExchangeContents<'a> {
 impl fmt::Debug for TlsRecordHeader {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsRecordHeader")
-            .field("type", &HexU8{d:self.record_type})
+            .field("type", &self.record_type)
             .field("version", &HexU16{d:self.version})
             .field("len", &self.len)
             .finish()

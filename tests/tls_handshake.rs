@@ -60,7 +60,7 @@ fn test_tls_record_clienthello() {
     let comp = vec![0x00];
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0301,
             len: 300,
         },
@@ -388,7 +388,7 @@ fn test_tls_record_serverhello() {
     let bytes = &SERVER_REPLY1[0..64];
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0303,
             len: 59,
         },
@@ -422,7 +422,7 @@ fn test_tls_record_certificate() {
     }
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0303,
             len: 3081,
         },
@@ -442,7 +442,7 @@ fn test_tls_record_serverkeyexchange() {
     let bytes = &SERVER_REPLY1[3150..3488];
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0303,
             len: 333,
         },
@@ -462,7 +462,7 @@ fn test_tls_record_serverdone() {
     let bytes = &SERVER_REPLY1[3488..];
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0303,
             len: 4,
         },
@@ -497,7 +497,7 @@ fn test_tls_record_clientkeyexchange() {
     let bytes = &CLIENT_REPLY1[0..75];
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0303,
             len: 70,
         },
@@ -516,7 +516,7 @@ fn test_tls_record_changecipherspec() {
     let bytes = &CLIENT_REPLY1[75..81];
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::ChangeCipherSpec as u8,
+            record_type: TlsRecordType::ChangeCipherSpec,
             version: 0x0303,
             len: 1,
         },
@@ -531,7 +531,7 @@ fn test_tls_record_encryptedhandshake() {
     let bytes = &CLIENT_REPLY1[81..];
     let expected = TlsEncrypted {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0303,
             len: bytes.len() as u16 - 5,
         },
@@ -604,7 +604,7 @@ fn test_tls_record_cert_request_noca() {
     let bytes = SERVER_CERTIFICATE_REQUEST_NOCA;
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0303,
             len: bytes.len() as u16 - 5,
         },
@@ -643,7 +643,7 @@ fn test_tls_record_cert_request_ca() {
     let ca1 = &bytes[49..];
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0303,
             len: bytes.len() as u16 - 5,
         },
@@ -814,7 +814,7 @@ fn test_tls_message_status_response() {
             )
     ];
     let hdr = TlsRecordHeader {
-        record_type: 0x16,
+        record_type: TlsRecordType::Handshake,
         version: 0x0,
         len: 0x0,
     };

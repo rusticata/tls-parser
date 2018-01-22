@@ -67,7 +67,7 @@ fn test_tls13_ch() {
     ];
     let expected_ch = TlsPlaintext{
         hdr: TlsRecordHeader{
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0301,
             len: 512,
         },
@@ -94,7 +94,7 @@ fn test_tls13_sh() {
     let bytes = TV_SERVER_HELLO_1;
     let expected_sh = TlsPlaintext{
         hdr: TlsRecordHeader{
-            record_type: TlsRecordType::Handshake as u8,
+            record_type: TlsRecordType::Handshake,
             version: 0x0301,
             len: 82,
         },
