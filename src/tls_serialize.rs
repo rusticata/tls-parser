@@ -126,7 +126,7 @@ pub fn gen_tls_clienthello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsClientHelloCon
         x,
                  gen_be_u8!(TlsHandshakeType::ClientHello as u8) >>
         ofs_len: gen_skip!(3) >>
-        start:   gen_be_u16!(m.version) >>
+        start:   gen_be_u16!(u16::from(m.version)) >>
                  gen_be_u32!(m.rand_time) >>
                  gen_copy!(m.rand_data,28) >>
                  gen_tls_sessionid(&m.session_id) >>
@@ -144,7 +144,7 @@ pub fn gen_tls_serverhello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloCon
         x,
                  gen_be_u8!(TlsHandshakeType::ServerHello as u8) >>
         ofs_len: gen_skip!(3) >>
-        start:   gen_be_u16!(m.version) >>
+        start:   gen_be_u16!(u16::from(m.version)) >>
                  gen_be_u32!(m.rand_time) >>
                  gen_copy!(m.rand_data,28) >>
                  gen_tls_sessionid(&m.session_id) >>
@@ -302,7 +302,7 @@ mod tests {
             msg: vec![TlsMessage::Handshake(
                      TlsMessageHandshake::ClientHello(
                          TlsClientHelloContents {
-                             version: 0x0303,
+                             version: TlsVersion::Tls12,
                              rand_time: 0xb29dd787,
                              rand_data: &rand_data,
                              session_id: None,
@@ -383,7 +383,7 @@ mod tests {
 
         let m = TlsMessageHandshake::ClientHello(
             TlsClientHelloContents {
-                version: 0x0303,
+                version: TlsVersion::Tls12,
                 rand_time: 0xb29dd787,
                 rand_data: &rand_data,
                 session_id: None,
@@ -424,7 +424,7 @@ mod tests {
 
         let m = TlsMessageHandshake::ServerHello(
             TlsServerHelloContents {
-                version: 0x0303,
+                version: TlsVersion::Tls12,
                 rand_time: 0xb29dd787,
                 rand_data: &rand_data,
                 session_id: None,

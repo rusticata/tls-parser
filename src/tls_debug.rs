@@ -36,13 +36,12 @@ impl fmt::Debug for SignatureSchemeU16 {
 
 
 // ------------------------- tls.rs ------------------------------
-//
 impl<'a> fmt::Debug for TlsClientHelloContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let v_ciphers : Vec<_> = self.ciphers.iter().map(|u|{CipherU16{d:*u}}).collect();
         let v_comp : Vec<_> = self.comp.iter().map(|u|{HexU8{d:*u}}).collect();
         fmt.debug_struct("TlsClientHelloContents")
-            .field("version", &HexU16{d:self.version})
+            .field("version", &self.version)
             .field("rand_time", &self.rand_time)
             .field("rand_data", &HexSlice{d:self.rand_data})
             .field("session_id", &self.session_id.map(|o|{HexSlice{d:o}}))
@@ -56,7 +55,7 @@ impl<'a> fmt::Debug for TlsClientHelloContents<'a> {
 impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsServerHelloContents")
-            .field("version", &HexU16{d:self.version})
+            .field("version", &self.version)
             .field("rand_time", &self.rand_time)
             .field("rand_data", &HexSlice{d:self.rand_data})
             .field("session_id", &self.session_id.map(|o|{HexSlice{d:o}}))
@@ -70,7 +69,7 @@ impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
 impl<'a> fmt::Debug for TlsServerHelloV13Contents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsServerHelloV13Contents")
-            .field("version", &HexU16{d:self.version})
+            .field("version", &self.version)
             .field("random", &HexSlice{d:self.random})
             .field("cipher", &CipherU16{d:self.cipher})
             .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
@@ -81,7 +80,7 @@ impl<'a> fmt::Debug for TlsServerHelloV13Contents<'a> {
 impl<'a> fmt::Debug for TlsHelloRetryRequestContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsHelloRetryRequestContents")
-            .field("version", &HexU16{d:self.version})
+            .field("version", &self.version)
             .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
             .finish()
     }

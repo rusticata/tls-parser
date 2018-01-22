@@ -74,7 +74,7 @@ fn test_tls13_ch() {
         msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ClientHello(
                     TlsClientHelloContents {
-                        version: 0x0303,
+                        version: TlsVersion::Tls12,
                         rand_time: 0xce05cfa3,
                         rand_data: &bytes[15..15+28],
                         session_id: None,
@@ -101,7 +101,7 @@ fn test_tls13_sh() {
         msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ServerHelloV13(
                     TlsServerHelloV13Contents {
-                        version: 0x07f12,
+                        version: TlsVersion::Tls13Draft18,
                         random: &bytes[11..11+32],
                         cipher: 0x1301,
                         ext: Some(&bytes[47..]),

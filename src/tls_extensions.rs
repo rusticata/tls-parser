@@ -66,11 +66,7 @@ impl TlsExtensionType {
 }
 
 impl From<TlsExtensionType> for u16 {
-    fn from(ext: TlsExtensionType) -> u16 {
-        match ext {
-            TlsExtensionType(u) => u,
-        }
-    }
+    fn from(ext: TlsExtensionType) -> u16 { ext.0 }
 }
 
 /// TLS extensions

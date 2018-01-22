@@ -67,7 +67,7 @@ fn test_tls_record_clienthello() {
         msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ClientHello(
                     TlsClientHelloContents {
-                        version: 0x0303,
+                        version: TlsVersion::Tls12,
                         rand_time: 0xb29dd787,
                         rand_data: &rand_data,
                         session_id: None,
@@ -395,7 +395,7 @@ fn test_tls_record_serverhello() {
         msg: vec![TlsMessage::Handshake(
             TlsMessageHandshake::ServerHello(
                     TlsServerHelloContents {
-                        version: 0x0303,
+                        version: TlsVersion::Tls12,
                         rand_time: 0x57c457da,
                         rand_data: &bytes[15..43],
                         session_id: None,

@@ -8,7 +8,7 @@ use tls_alert::*;
 use tls_ciphers::*;
 use tls_ec::ECPoint;
 
-use enum_primitive::FromPrimitive;
+use std::fmt;
 
 enum_from_primitive! {
 /// Handshake type
@@ -40,25 +40,55 @@ pub enum TlsHandshakeType {
 }
 }
 
-enum_from_primitive! {
+// enum_from_primitive! {
 /// TLS version
 ///
 /// Only the TLS version defined in the TLS message header is meaningful, the
 /// version defined in the record should be ignored or set to TLS 1.0
-#[repr(u16)]
-pub enum TlsVersion {
-    Ssl30 = 0x0300,
-    Tls10 = 0x0301,
-    Tls11 = 0x0302,
-    Tls12 = 0x0303,
-    Tls13 = 0x0304,
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct TlsVersion(u16);
 
-    Tls13Draft18 = 0x7f12,
-    Tls13Draft19 = 0x7f13,
-    Tls13Draft20 = 0x7f14,
-    Tls13Draft21 = 0x7f15,
+#[allow(non_upper_case_globals)]
+impl TlsVersion {
+    pub const Ssl30        : TlsVersion = TlsVersion(0x0300);
+    pub const Tls10        : TlsVersion = TlsVersion(0x0301);
+    pub const Tls11        : TlsVersion = TlsVersion(0x0302);
+    pub const Tls12        : TlsVersion = TlsVersion(0x0303);
+    pub const Tls13        : TlsVersion = TlsVersion(0x0304);
+
+    pub const Tls13Draft18 : TlsVersion = TlsVersion(0x7f12);
+    pub const Tls13Draft19 : TlsVersion = TlsVersion(0x7f13);
+    pub const Tls13Draft20 : TlsVersion = TlsVersion(0x7f14);
+    pub const Tls13Draft21 : TlsVersion = TlsVersion(0x7f15);
 }
+
+impl From<TlsVersion> for u16 {
+    fn from(v: TlsVersion) -> u16 { v.0 }
 }
+
+impl fmt::Debug for TlsVersion {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TlsVersion::Ssl30        => fmt.write_str("TlsVersion::Ssl30"),
+            TlsVersion::Tls10        => fmt.write_str("TlsVersion::Tls10"),
+            TlsVersion::Tls11        => fmt.write_str("TlsVersion::Tls11"),
+            TlsVersion::Tls12        => fmt.write_str("TlsVersion::Tls12"),
+            TlsVersion::Tls13        => fmt.write_str("TlsVersion::Tls13"),
+            TlsVersion::Tls13Draft18 => fmt.write_str("TlsVersion::Tls13Draft18"),
+            TlsVersion::Tls13Draft19 => fmt.write_str("TlsVersion::Tls13Draft19"),
+            TlsVersion::Tls13Draft20 => fmt.write_str("TlsVersion::Tls13Draft20"),
+            TlsVersion::Tls13Draft21 => fmt.write_str("TlsVersion::Tls13Draft21"),
+            _                        => write!(fmt, "{:x}", self.0),
+        }
+    }
+}
+
+impl fmt::LowerHex for TlsVersion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:x}", self.0)
+    }
+}
+
 
 enum_from_primitive! {
 /// Heartbeat type, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520) section 3
@@ -88,7 +118,7 @@ pub enum TlsRecordType {
 #[derive(Clone,PartialEq)]
 pub struct TlsClientHelloContents<'a> {
     /// TLS version of message
-    pub version: u16,
+    pub version: TlsVersion,
     pub rand_time: u32,
     pub rand_data: &'a[u8],
     pub session_id: Option<&'a[u8]>,
@@ -103,7 +133,7 @@ pub struct TlsClientHelloContents<'a> {
 impl<'a> TlsClientHelloContents<'a> {
     pub fn new(v:u16,rt:u32,rd:&'a[u8],sid:Option<&'a[u8]>,c:Vec<u16>,co:Vec<u8>,e:Option<&'a[u8]>) -> Self {
         TlsClientHelloContents {
-            version: v,
+            version: TlsVersion(v),
             rand_time: rt,
             rand_data: rd,
             session_id: sid,
@@ -113,8 +143,8 @@ impl<'a> TlsClientHelloContents<'a> {
         }
     }
 
-    pub fn get_version(&self) -> Option<TlsVersion> {
-        TlsVersion::from_u16(self.version)
+    pub fn get_version(&self) -> TlsVersion {
+        self.version
     }
 
     pub fn get_ciphers(&self) -> Vec<Option<&'static TlsCipherSuite>> {
@@ -128,7 +158,7 @@ impl<'a> TlsClientHelloContents<'a> {
 /// TLS Server Hello (from TLS 1.0 to TLS 1.2)
 #[derive(Clone,PartialEq)]
 pub struct TlsServerHelloContents<'a> {
-    pub version: u16,
+    pub version: TlsVersion,
     pub rand_time: u32,
     pub rand_data: &'a[u8],
     pub session_id: Option<&'a[u8]>,
@@ -141,7 +171,7 @@ pub struct TlsServerHelloContents<'a> {
 /// TLS Server Hello (TLS 1.3)
 #[derive(Clone,PartialEq)]
 pub struct TlsServerHelloV13Contents<'a> {
-    pub version: u16,
+    pub version: TlsVersion,
     pub random: &'a[u8],
     pub cipher: u16,
 
@@ -151,7 +181,7 @@ pub struct TlsServerHelloV13Contents<'a> {
 /// TLS Hello Retry Request (TLS 1.3)
 #[derive(Clone,PartialEq)]
 pub struct TlsHelloRetryRequestContents<'a> {
-    pub version: u16,
+    pub version: TlsVersion,
     pub cipher: u16,
 
     pub ext: Option<&'a[u8]>,
@@ -160,7 +190,7 @@ pub struct TlsHelloRetryRequestContents<'a> {
 impl<'a> TlsServerHelloContents<'a> {
     pub fn new(v:u16,rt:u32,rd:&'a[u8],sid:Option<&'a[u8]>,c:u16,co:u8,e:Option<&'a[u8]>) -> Self {
         TlsServerHelloContents {
-            version: v,
+            version: TlsVersion(v),
             rand_time: rt,
             rand_data: rd,
             session_id: sid,
@@ -170,8 +200,8 @@ impl<'a> TlsServerHelloContents<'a> {
         }
     }
 
-    pub fn get_version(&self) -> Option<TlsVersion> {
-        TlsVersion::from_u16(self.version)
+    pub fn get_version(&self) -> TlsVersion {
+        self.version
     }
 
     pub fn get_cipher(&self) -> Option<&'static TlsCipherSuite> {
@@ -438,7 +468,7 @@ named!(parse_tls_handshake_msg_server_hello_tlsv13draft<TlsMessageHandshake>,
         (
             TlsMessageHandshake::ServerHelloV13(
                 TlsServerHelloV13Contents {
-                    version: hv,
+                    version: TlsVersion(hv),
                     random: random,
                     cipher: cipher,
                     ext: ext,
@@ -482,7 +512,7 @@ named!(parse_tls_handshake_msg_hello_retry_request<TlsMessageHandshake>,
         (
             TlsMessageHandshake::HelloRetryRequest(
                 TlsHelloRetryRequestContents {
-                    version: hv,
+                    version: TlsVersion(hv),
                     cipher: c,
                     ext: ext,
                     }
