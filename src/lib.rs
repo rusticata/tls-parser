@@ -37,6 +37,7 @@ extern crate phf;
 #[macro_use]
 extern crate rusticata_macros;
 
+#[cfg(feature = "serialize")]
 #[macro_use]
 extern crate cookie_factory;
 
