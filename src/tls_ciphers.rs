@@ -111,10 +111,7 @@ impl TlsCipherSuite {
     }
 
     pub fn from_name<'a>(name: &'a str) -> Option<&'static TlsCipherSuite> {
-        for v in CIPHERS.values().filter(|&v| v.name == name) {
-            return Some(v);
-        }
-        None
+        CIPHERS.values().find(|&v| v.name == name)
     }
 }
 
