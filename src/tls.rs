@@ -16,7 +16,7 @@ use std::fmt;
 /// the [IANA HandshakeType
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-7)
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct TlsHandshakeType(u8);
+pub struct TlsHandshakeType(pub u8);
 
 #[allow(non_upper_case_globals)]
 impl TlsHandshakeType {
@@ -50,7 +50,7 @@ impl From<TlsHandshakeType> for u8 {
 /// Only the TLS version defined in the TLS message header is meaningful, the
 /// version defined in the record should be ignored or set to TLS 1.0
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct TlsVersion(u16);
+pub struct TlsVersion(pub u16);
 
 #[allow(non_upper_case_globals)]
 impl TlsVersion {
@@ -96,7 +96,7 @@ impl fmt::LowerHex for TlsVersion {
 
 /// Heartbeat type, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520) section 3
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct TlsHeartbeatMessageType(u8);
+pub struct TlsHeartbeatMessageType(pub u8);
 
 #[allow(non_upper_case_globals)]
 impl TlsHeartbeatMessageType {
@@ -122,7 +122,7 @@ impl fmt::Debug for TlsHeartbeatMessageType {
 
 /// Content type, as defined in IANA TLS ContentType registry
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct TlsRecordType(u8);
+pub struct TlsRecordType(pub u8);
 
 #[allow(non_upper_case_globals)]
 impl TlsRecordType {
