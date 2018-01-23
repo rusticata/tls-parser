@@ -3,25 +3,14 @@ use std::str::from_utf8;
 
 use enum_primitive::FromPrimitive;
 
-use rusticata_macros::debug::{HexU8,HexU16,HexSlice};
+use rusticata_macros::debug::{HexU16,HexSlice};
 
 use tls::*;
 use tls_alert::*;
-use tls_ciphers::*;
 use tls_dh::*;
 use tls_ec::*;
 use tls_extensions::*;
 use tls_sign_hash::*;
-
-pub struct CipherU16 { pub d: u16 }
-impl fmt::Debug for CipherU16 {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match TlsCipherSuite::from_id(self.d) {
-            Some(ref c) => write!(fmt,"0x{:04x}({})",self.d,c.name),
-            None        => write!(fmt,"0x{:04x}(Unknown cipher)",self.d),
-        }
-    }
-}
 
 pub struct SignatureSchemeU16 { pub d: u16 }
 impl fmt::Debug for SignatureSchemeU16 {
@@ -38,15 +27,13 @@ impl fmt::Debug for SignatureSchemeU16 {
 // ------------------------- tls.rs ------------------------------
 impl<'a> fmt::Debug for TlsClientHelloContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let v_ciphers : Vec<_> = self.ciphers.iter().map(|u|{CipherU16{d:*u}}).collect();
-        let v_comp : Vec<_> = self.comp.iter().map(|u|{HexU8{d:*u}}).collect();
         fmt.debug_struct("TlsClientHelloContents")
             .field("version", &self.version)
             .field("rand_time", &self.rand_time)
             .field("rand_data", &HexSlice{d:self.rand_data})
             .field("session_id", &self.session_id.map(|o|{HexSlice{d:o}}))
-            .field("ciphers", &v_ciphers)
-            .field("comp", &v_comp)
+            .field("ciphers", &self.ciphers)
+            .field("comp", &self.comp)
             .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
             .finish()
     }
@@ -59,8 +46,8 @@ impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
             .field("rand_time", &self.rand_time)
             .field("rand_data", &HexSlice{d:self.rand_data})
             .field("session_id", &self.session_id.map(|o|{HexSlice{d:o}}))
-            .field("cipher", &CipherU16{d:self.cipher})
-            .field("compression", &HexU8{d:self.compression})
+            .field("cipher", &self.cipher)
+            .field("compression", &self.compression)
             .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
             .finish()
     }
@@ -71,7 +58,7 @@ impl<'a> fmt::Debug for TlsServerHelloV13Contents<'a> {
         fmt.debug_struct("TlsServerHelloV13Contents")
             .field("version", &self.version)
             .field("random", &HexSlice{d:self.random})
-            .field("cipher", &CipherU16{d:self.cipher})
+            .field("cipher", &self.cipher)
             .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
             .finish()
     }

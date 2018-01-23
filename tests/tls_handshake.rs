@@ -57,7 +57,7 @@ fn test_tls_record_clienthello() {
         0x0005, 0x0004, 0xc012, 0xc008, 0x0016, 0x0013,
         0x0010, 0x000d, 0xc00d, 0xc003, 0x000a, 0x00ff
     ];
-    let comp = vec![0x00];
+    let comp = vec![TlsCompressionID(0x00)];
     let expected = TlsPlaintext {
         hdr: TlsRecordHeader {
             record_type: TlsRecordType::Handshake,
@@ -71,7 +71,7 @@ fn test_tls_record_clienthello() {
                         rand_time: 0xb29dd787,
                         rand_data: &rand_data,
                         session_id: None,
-                        ciphers: ciphers,
+                        ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                         comp: comp,
                         ext: Some(&bytes[220..]),
                     })
@@ -399,8 +399,8 @@ fn test_tls_record_serverhello() {
                         rand_time: 0x57c457da,
                         rand_data: &bytes[15..43],
                         session_id: None,
-                        cipher: 0xc02f,
-                        compression: 0,
+                        cipher: TlsCipherSuiteID(0xc02f),
+                        compression: TlsCompressionID(0),
                         ext: Some(&bytes[49..]),
                     })
         )]

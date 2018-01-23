@@ -78,8 +78,8 @@ fn test_tls13_ch() {
                         rand_time: 0xce05cfa3,
                         rand_data: &bytes[15..15+28],
                         session_id: None,
-                        ciphers: ciphers,
-                        comp: vec![0],
+                        ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
+                        comp: vec![TlsCompressionID(0)],
                         ext: Some(&bytes[112..]),
                     })
         )]
@@ -103,7 +103,7 @@ fn test_tls13_sh() {
                     TlsServerHelloV13Contents {
                         version: TlsVersion::Tls13Draft18,
                         random: &bytes[11..11+32],
-                        cipher: 0x1301,
+                        cipher: TlsCipherSuiteID(0x1301),
                         ext: Some(&bytes[47..]),
                     })
         )]

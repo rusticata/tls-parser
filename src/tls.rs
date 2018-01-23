@@ -8,6 +8,8 @@ use tls_alert::*;
 use tls_ciphers::*;
 use tls_ec::ECPoint;
 
+use std::ops::Deref;
+use std::convert::AsRef;
 use std::fmt;
 
 /// Handshake type
@@ -150,6 +152,79 @@ impl fmt::Debug for TlsRecordType {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct TlsCompressionID(pub u8);
+
+#[allow(non_upper_case_globals)]
+impl TlsCompressionID {
+    pub const Null : TlsCompressionID = TlsCompressionID(0x00);
+}
+
+impl From<TlsCompressionID> for u8 {
+    fn from(c: TlsCompressionID) -> u8 { c.0 }
+}
+
+impl Deref for TlsCompressionID {
+    type Target = u8;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+impl AsRef<u8> for TlsCompressionID {
+    fn as_ref(&self) -> &u8 { &self.0 }
+}
+
+impl fmt::Debug for TlsCompressionID {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TlsCompressionID::Null => f.write_str("TlsCompressionID::Null"),
+            _                      => write!(f, "{}", self.0)
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct TlsCipherSuiteID(pub u16);
+
+impl TlsCipherSuiteID {
+    pub fn get_ciphersuite(&self) -> Option<&'static TlsCipherSuite> {
+        TlsCipherSuite::from_id(self.0)
+    }
+}
+
+impl From<TlsCipherSuiteID> for u16 {
+    fn from(c: TlsCipherSuiteID) -> u16 { c.0 }
+}
+
+impl Deref for TlsCipherSuiteID {
+    type Target = u16;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+impl AsRef<u16> for TlsCipherSuiteID {
+    fn as_ref(&self) -> &u16 { &self.0 }
+}
+
+impl fmt::Display for TlsCipherSuiteID {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Debug for TlsCipherSuiteID {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match TlsCipherSuite::from_id(self.0) {
+            Some(ref c) => write!(f,"0x{:04x}({})",self.0,c.name),
+            None        => write!(f,"0x{:04x}(Unknown cipher)",self.0),
+        }
+    }
+}
+
+impl fmt::LowerHex for TlsCipherSuiteID {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:x}", self.0)
+    }
+}
+
 /// TLS Client Hello (from TLS 1.0 to TLS 1.2)
 ///
 /// Some fields are unparsed (for performance reasons), for ex to parse `ext`,
@@ -162,9 +237,9 @@ pub struct TlsClientHelloContents<'a> {
     pub rand_data: &'a[u8],
     pub session_id: Option<&'a[u8]>,
     /// A list of ciphers supported by client
-    pub ciphers: Vec<u16>,
+    pub ciphers: Vec<TlsCipherSuiteID>,
     /// A list of compression methods supported by client
-    pub comp: Vec<u8>,
+    pub comp: Vec<TlsCompressionID>,
 
     pub ext: Option<&'a[u8]>,
 }
@@ -176,8 +251,8 @@ impl<'a> TlsClientHelloContents<'a> {
             rand_time: rt,
             rand_data: rd,
             session_id: sid,
-            ciphers: c,
-            comp: co,
+            ciphers: c.iter().map(|&c| TlsCipherSuiteID(c)).collect(), // XXX this could be a nop, given both types are mapped to u16
+            comp: co.iter().map(|&c| TlsCompressionID(c)).collect(), // XXX this could be a nop, given both types are mapped to u8
             ext: e,
         }
     }
@@ -188,7 +263,7 @@ impl<'a> TlsClientHelloContents<'a> {
 
     pub fn get_ciphers(&self) -> Vec<Option<&'static TlsCipherSuite>> {
         self.ciphers.iter().map(|&x|
-            TlsCipherSuite::from_id(x)
+            x.get_ciphersuite()
         ).collect()
     }
 }
@@ -201,8 +276,8 @@ pub struct TlsServerHelloContents<'a> {
     pub rand_time: u32,
     pub rand_data: &'a[u8],
     pub session_id: Option<&'a[u8]>,
-    pub cipher: u16,
-    pub compression: u8,
+    pub cipher: TlsCipherSuiteID,
+    pub compression: TlsCompressionID,
 
     pub ext: Option<&'a[u8]>,
 }
@@ -212,7 +287,7 @@ pub struct TlsServerHelloContents<'a> {
 pub struct TlsServerHelloV13Contents<'a> {
     pub version: TlsVersion,
     pub random: &'a[u8],
-    pub cipher: u16,
+    pub cipher: TlsCipherSuiteID,
 
     pub ext: Option<&'a[u8]>,
 }
@@ -221,7 +296,7 @@ pub struct TlsServerHelloV13Contents<'a> {
 #[derive(Clone,PartialEq)]
 pub struct TlsHelloRetryRequestContents<'a> {
     pub version: TlsVersion,
-    pub cipher: u16,
+    pub cipher: TlsCipherSuiteID,
 
     pub ext: Option<&'a[u8]>,
 }
@@ -233,8 +308,8 @@ impl<'a> TlsServerHelloContents<'a> {
             rand_time: rt,
             rand_data: rd,
             session_id: sid,
-            cipher: c,
-            compression: co,
+            cipher: TlsCipherSuiteID(c),
+            compression: TlsCompressionID(co),
             ext: e,
         }
     }
@@ -244,7 +319,7 @@ impl<'a> TlsServerHelloContents<'a> {
     }
 
     pub fn get_cipher(&self) -> Option<&'static TlsCipherSuite> {
-        TlsCipherSuite::from_id(self.cipher)
+        self.cipher.get_ciphersuite()
     }
 }
 
@@ -509,7 +584,7 @@ named!(parse_tls_handshake_msg_server_hello_tlsv13draft<TlsMessageHandshake>,
                 TlsServerHelloV13Contents {
                     version: TlsVersion(hv),
                     random: random,
-                    cipher: cipher,
+                    cipher: TlsCipherSuiteID(cipher),
                     ext: ext,
                 }
             )
@@ -552,7 +627,7 @@ named!(parse_tls_handshake_msg_hello_retry_request<TlsMessageHandshake>,
             TlsMessageHandshake::HelloRetryRequest(
                 TlsHelloRetryRequestContents {
                     version: TlsVersion(hv),
-                    cipher: c,
+                    cipher: TlsCipherSuiteID(c),
                     ext: ext,
                     }
             )

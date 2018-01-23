@@ -41,6 +41,22 @@ macro_rules! gen_length_bytes_be_u16(
     ($x:ident, $f:ident( $($args:tt)* )) => ( gen_length_bytes_be_u16!(($x.0,$x.1), $f( $($args)* )));
 );
 
+#[macro_export]
+macro_rules! gen_many_deref(
+    (($i:expr, $idx:expr), $l:expr, $f:expr) => (
+        $l.into_iter().fold(
+            Ok(($i,$idx)),
+            |r,&v| {
+                match r {
+                    Err(e) => Err(e),
+                    Ok(x) => { $f(x, (*v)) },
+                }
+            }
+        )
+    );
+);
+
+
 
 #[inline]
 pub fn gen_tls_named_group<'a>(x:(&'a mut [u8],usize),g:NamedGroup) -> Result<(&'a mut [u8],usize),GenError> {
@@ -131,9 +147,9 @@ pub fn gen_tls_clienthello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsClientHelloCon
                  gen_copy!(m.rand_data,28) >>
                  gen_tls_sessionid(&m.session_id) >>
                  gen_be_u16!((m.ciphers.len()*2) as u16) >>
-                 gen_many_byref!(&m.ciphers,set_be_u16) >>
+                 gen_many_deref!(&m.ciphers,set_be_u16) >>
                  gen_be_u8!(m.comp.len() as u8) >>
-                 gen_many_byref!(&m.comp,set_be_u8) >>
+                 gen_many_deref!(&m.comp,set_be_u8) >>
                  gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
         end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
     )
@@ -148,8 +164,8 @@ pub fn gen_tls_serverhello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloCon
                  gen_be_u32!(m.rand_time) >>
                  gen_copy!(m.rand_data,28) >>
                  gen_tls_sessionid(&m.session_id) >>
-                 gen_be_u16!(m.cipher) >>
-                 gen_be_u8!(m.compression) >>
+                 gen_be_u16!(*m.cipher) >>
+                 gen_be_u8!(*m.compression) >>
                  gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
         end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
     )
@@ -161,7 +177,7 @@ pub fn gen_tls_serverhellov13<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHello
                  gen_be_u8!(u8::from(TlsHandshakeType::ServerHello)) >>
         ofs_len: gen_skip!(3) >>
         start:   gen_copy!(m.random,32) >>
-                 gen_be_u16!(m.cipher) >>
+                 gen_be_u16!(*m.cipher) >>
                  gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
         end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
     )
@@ -291,7 +307,7 @@ mod tests {
             0x0005, 0x0004, 0xc012, 0xc008, 0x0016, 0x0013,
             0x0010, 0x000d, 0xc00d, 0xc003, 0x000a, 0x00ff
         ];
-        let comp = vec![0x00];
+        let comp = vec![TlsCompressionID(0x00)];
 
         let expected = TlsPlaintext {
             hdr: TlsRecordHeader {
@@ -306,7 +322,7 @@ mod tests {
                              rand_time: 0xb29dd787,
                              rand_data: &rand_data,
                              session_id: None,
-                             ciphers: ciphers,
+                             ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                              comp: comp,
                              ext: None,
                          })
@@ -379,7 +395,7 @@ mod tests {
         0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9,
         0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4];
         let ciphers = vec![ 0xc030, 0xc02c ];
-        let comp = vec![0x00];
+        let comp = vec![TlsCompressionID(0x00)];
 
         let m = TlsMessageHandshake::ClientHello(
             TlsClientHelloContents {
@@ -387,7 +403,7 @@ mod tests {
                 rand_time: 0xb29dd787,
                 rand_data: &rand_data,
                 session_id: None,
-                ciphers: ciphers,
+                ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                 comp: comp,
                 ext: None,
             });
@@ -428,8 +444,8 @@ mod tests {
                 rand_time: 0xb29dd787,
                 rand_data: &rand_data,
                 session_id: None,
-                cipher: 0xc030,
-                compression: 0,
+                cipher: TlsCipherSuiteID(0xc030),
+                compression: TlsCompressionID(0),
                 ext: None,
             });
 
