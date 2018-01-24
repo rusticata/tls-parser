@@ -66,6 +66,8 @@ impl TlsVersion {
     pub const Tls13Draft19 : TlsVersion = TlsVersion(0x7f13);
     pub const Tls13Draft20 : TlsVersion = TlsVersion(0x7f14);
     pub const Tls13Draft21 : TlsVersion = TlsVersion(0x7f15);
+    pub const Tls13Draft22 : TlsVersion = TlsVersion(0x7f16);
+    pub const Tls13Draft23 : TlsVersion = TlsVersion(0x7f17);
 }
 
 impl From<TlsVersion> for u16 {
@@ -84,6 +86,8 @@ impl fmt::Debug for TlsVersion {
             TlsVersion::Tls13Draft19 => fmt.write_str("TlsVersion::Tls13Draft19"),
             TlsVersion::Tls13Draft20 => fmt.write_str("TlsVersion::Tls13Draft20"),
             TlsVersion::Tls13Draft21 => fmt.write_str("TlsVersion::Tls13Draft21"),
+            TlsVersion::Tls13Draft22 => fmt.write_str("TlsVersion::Tls13Draft22"),
+            TlsVersion::Tls13Draft23 => fmt.write_str("TlsVersion::Tls13Draft23"),
             _                        => write!(fmt, "{:x}", self.0),
         }
     }
@@ -282,9 +286,9 @@ pub struct TlsServerHelloContents<'a> {
     pub ext: Option<&'a[u8]>,
 }
 
-/// TLS Server Hello (TLS 1.3)
+/// TLS Server Hello (TLS 1.3 draft 18)
 #[derive(Clone,PartialEq)]
-pub struct TlsServerHelloV13Contents<'a> {
+pub struct TlsServerHelloV13Draft18Contents<'a> {
     pub version: TlsVersion,
     pub random: &'a[u8],
     pub cipher: TlsCipherSuiteID,
@@ -406,7 +410,7 @@ pub enum TlsMessageHandshake<'a> {
     HelloRequest,
     ClientHello(TlsClientHelloContents<'a>),
     ServerHello(TlsServerHelloContents<'a>),
-    ServerHelloV13(TlsServerHelloV13Contents<'a>),
+    ServerHelloV13Draft18(TlsServerHelloV13Draft18Contents<'a>),
     NewSessionTicket(TlsNewSessionTicketContent<'a>),
     EndOfEarlyData,
     HelloRetryRequest(TlsHelloRetryRequestContents<'a>),
@@ -573,15 +577,15 @@ named!(parse_tls_handshake_msg_server_hello_tlsv12<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_handshake_msg_server_hello_tlsv13draft<TlsMessageHandshake>,
+named!(parse_tls_handshake_msg_server_hello_tlsv13draft18<TlsMessageHandshake>,
     do_parse!(
         hv:     be_u16 >>
         random: take!(32) >>
         cipher: be_u16 >>
         ext:    opt!(complete!(length_bytes!(be_u16))) >>
         (
-            TlsMessageHandshake::ServerHelloV13(
-                TlsServerHelloV13Contents {
+            TlsMessageHandshake::ServerHelloV13Draft18(
+                TlsServerHelloV13Draft18Contents {
                     version: TlsVersion(hv),
                     random: random,
                     cipher: TlsCipherSuiteID(cipher),
@@ -594,7 +598,7 @@ named!(parse_tls_handshake_msg_server_hello_tlsv13draft<TlsMessageHandshake>,
 
 named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
     switch!(peek!(be_u16),
-        0x7f12 => call!(parse_tls_handshake_msg_server_hello_tlsv13draft) |
+        0x7f12 => call!(parse_tls_handshake_msg_server_hello_tlsv13draft18) |
         0x0303 => call!(parse_tls_handshake_msg_server_hello_tlsv12) |
         0x0302 => call!(parse_tls_handshake_msg_server_hello_tlsv12) |
         0x0301 => call!(parse_tls_handshake_msg_server_hello_tlsv12)

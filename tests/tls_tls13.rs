@@ -99,8 +99,8 @@ fn test_tls13_sh() {
             len: 82,
         },
         msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::ServerHelloV13(
-                    TlsServerHelloV13Contents {
+            TlsMessageHandshake::ServerHelloV13Draft18(
+                    TlsServerHelloV13Draft18Contents {
                         version: TlsVersion::Tls13Draft18,
                         random: &bytes[11..11+32],
                         cipher: TlsCipherSuiteID(0x1301),
@@ -109,7 +109,7 @@ fn test_tls13_sh() {
         )]
     };
     let expected_ext = vec![
-        TlsExtension::KeyShare(&bytes[51..]),
+        TlsExtension::KeyShareOld(&bytes[51..]),
     ];
     let ires = parse_tls_plaintext(&bytes);
     assert_eq!(ires, IResult::Done(empty, expected_sh));
@@ -117,7 +117,7 @@ fn test_tls13_sh() {
 
     let msg = &res.1.msg[0];
     let ext_raw = match msg {
-        &TlsMessage::Handshake(TlsMessageHandshake::ServerHelloV13(ref sh)) => sh.ext.unwrap(),
+        &TlsMessage::Handshake(TlsMessageHandshake::ServerHelloV13Draft18(ref sh)) => sh.ext.unwrap(),
         _ => { assert!(false); empty },
     };
     let res_ext = parse_tls_extensions(ext_raw);

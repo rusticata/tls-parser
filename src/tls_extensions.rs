@@ -47,7 +47,7 @@ impl TlsExtensionType {
 
     pub const SessionTicketTLS      : TlsExtensionType               = TlsExtensionType(0x0023);
 
-    pub const KeyShare              : TlsExtensionType               = TlsExtensionType(0x0028);
+    pub const KeyShareOld           : TlsExtensionType               = TlsExtensionType(0x0028); // move to 51 in TLS 1.3 draft 23
     pub const PreSharedKey          : TlsExtensionType               = TlsExtensionType(0x0029);
     pub const EarlyData             : TlsExtensionType               = TlsExtensionType(0x002a);
     pub const SupportedVersions     : TlsExtensionType               = TlsExtensionType(0x002b);
@@ -57,6 +57,8 @@ impl TlsExtensionType {
     pub const CertificateAuthorities : TlsExtensionType              = TlsExtensionType(0x002f);
     pub const OidFilters            : TlsExtensionType               = TlsExtensionType(0x0030);
     pub const PostHandshakeAuth     : TlsExtensionType               = TlsExtensionType(0x0031); // TLS 1.3 draft 20
+    pub const SigAlgorithmsCert     : TlsExtensionType               = TlsExtensionType(0x0032); // TLS 1.3 draft 23
+    pub const KeyShare              : TlsExtensionType               = TlsExtensionType(0x0033); // TLS 1.3 draft 23
 
     pub const NextProtocolNegotiation : TlsExtensionType             = TlsExtensionType(0x3374);
 
@@ -80,6 +82,7 @@ pub enum TlsExtension<'a>{
     EcPointFormats(&'a[u8]),
     SignatureAlgorithms(Vec<(u8,u8)>),
     SessionTicket(&'a[u8]),
+    KeyShareOld(&'a[u8]),
     KeyShare(&'a[u8]),
     PreSharedKey(&'a[u8]),
     EarlyData(Option<u32>),
@@ -115,6 +118,7 @@ impl<'a> From<&'a TlsExtension<'a>> for TlsExtensionType {
             &TlsExtension::EcPointFormats(_)             => TlsExtensionType::EcPointFormats,
             &TlsExtension::SignatureAlgorithms(_)        => TlsExtensionType::SignatureAlgorithms,
             &TlsExtension::SessionTicket(_)              => TlsExtensionType::SessionTicketTLS,
+            &TlsExtension::KeyShareOld(_)                => TlsExtensionType::KeyShareOld,
             &TlsExtension::KeyShare(_)                   => TlsExtensionType::KeyShare,
             &TlsExtension::PreSharedKey(_)               => TlsExtensionType::PreSharedKey,
             &TlsExtension::EarlyData(_)                  => TlsExtensionType::EarlyData,
@@ -384,6 +388,13 @@ named!(pub parse_tls_extension_session_ticket<TlsExtension>,
     )
 );
 
+fn parse_tls_extension_key_share_old_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    map!(i,
+        take!(ext_len),
+        |ext_data| { TlsExtension::KeyShareOld(ext_data) }
+    )
+}
+
 fn parse_tls_extension_key_share_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     map!(i,
         take!(ext_len),
@@ -393,7 +404,7 @@ fn parse_tls_extension_key_share_content(i: &[u8], ext_len:u16) -> IResult<&[u8]
 
 named!(pub parse_tls_extension_key_share<TlsExtension>,
     do_parse!(
-        tag!([0x00,0x28]) >>
+        tag!([0x00,0x33]) >>
         ext_len:  be_u16 >>
         ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_key_share_content,ext_len)) >>
         ( ext )
@@ -432,12 +443,28 @@ named!(pub parse_tls_extension_early_data<TlsExtension>,
     )
 );
 
+// TLS 1.3 draft 23
+//       struct {
+//           select (Handshake.msg_type) {
+//               case client_hello:
+//                    ProtocolVersion versions<2..254>;
+// 
+//               case server_hello: /* and HelloRetryRequest */
+//                    ProtocolVersion selected_version;
+//           };
+//       } SupportedVersions;
+// XXX the content depends on the current message type
+// XXX first case has length 1 + 2*n, while the second case has length 2
 fn parse_tls_extension_supported_versions_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
-    do_parse!(i,
-        _n: be_u8 >>
-        l: flat_map!(take!(ext_len-1),many0!(be_u16)) >>
-        ( TlsExtension::SupportedVersions(l) )
-    )
+    if ext_len == 2 {
+        map!(i, be_u16, |x| TlsExtension::SupportedVersions(vec![x]))
+    } else {
+        do_parse!(i,
+                  _n: be_u8 >>
+                  l: flat_map!(take!(ext_len-1),many0!(be_u16)) >>
+                  ( TlsExtension::SupportedVersions(l) )
+        )
+    }
 }
 
 named!(pub parse_tls_extension_supported_versions<TlsExtension>,
@@ -549,7 +576,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x0016 => parse_tls_extension_encrypt_then_mac_content(i,ext_len),
         0x0017 => parse_tls_extension_extended_master_secret_content(i,ext_len),
         0x0023 => parse_tls_extension_session_ticket_content(i,ext_len),
-        0x0028 => parse_tls_extension_key_share_content(i,ext_len),
+        0x0028 => parse_tls_extension_key_share_old_content(i,ext_len),
         0x0029 => parse_tls_extension_pre_shared_key_content(i,ext_len),
         0x002a => parse_tls_extension_early_data_content(i,ext_len),
         0x002b => parse_tls_extension_supported_versions_content(i,ext_len),
@@ -557,6 +584,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x002d => parse_tls_extension_psk_key_exchange_modes_content(i),
         0x0030 => parse_tls_extension_oid_filters(i),
         0x0031 => parse_tls_extension_post_handshake_auth_content(i,ext_len),
+        0x0033 => parse_tls_extension_key_share_content(i,ext_len),
         0x3374 => parse_tls_extension_npn_content(i,ext_len),
         0xff01 => parse_tls_extension_renegotiation_info_content(i),
         _      => { map!(i, take!(ext_len), |ext_data| { TlsExtension::Unknown(ext_type,ext_data) }) },

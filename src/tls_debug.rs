@@ -53,9 +53,9 @@ impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
     }
 }
 
-impl<'a> fmt::Debug for TlsServerHelloV13Contents<'a> {
+impl<'a> fmt::Debug for TlsServerHelloV13Draft18Contents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("TlsServerHelloV13Contents")
+        fmt.debug_struct("TlsServerHelloV13Draft18Contents")
             .field("version", &self.version)
             .field("random", &HexSlice{d:self.random})
             .field("cipher", &self.cipher)
@@ -206,6 +206,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
                 write!(fmt, "TlsExtension::SignatureAlgorithms({:?})", v2)
             },
             TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
+            TlsExtension::KeyShareOld(data) => write!(fmt, "TlsExtension::KeyShareOld(data={:?})", HexSlice{d:data}),
             TlsExtension::KeyShare(data) => write!(fmt, "TlsExtension::KeyShare(data={:?})", HexSlice{d:data}),
             TlsExtension::PreSharedKey(data) => write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice{d:data}),
             TlsExtension::EarlyData(o) => write!(fmt, "TlsExtension::EarlyData({:?})",o),

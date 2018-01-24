@@ -39,6 +39,8 @@ enum_from_primitive! {
 #[repr(u16)]
 pub enum SignatureScheme {
     RsaPkcs1Sha1 = 0x0201,
+    EcdsaSha1 = 0203,
+
     RsaPkcs1Sha256 = 0x0401,
     RsaPkcs1Sha384 = 0x0501,
     RsaPkcs1Sha512 = 0x0601,
@@ -47,9 +49,13 @@ pub enum SignatureScheme {
     EcdsaSecp384r1Sha384 = 0x0503,
     EcdsaSecp521r1Sha512 = 0x0603,
 
-    RsaPssSha256 = 0x0804,
-    RsaPssSha384 = 0x0805,
-    RsaPssSha512 = 0x0806,
+    RsaPssRsaeSha256 = 0x0804,
+    RsaPssRsaeSha384 = 0x0805,
+    RsaPssRsaeSha512 = 0x0806,
+
+    RsaPssPssSha256 = 0x0809,
+    RsaPssPssSha384 = 0x080a,
+    RsaPssPssSha512 = 0x080b,
 
     Ed25519 = 0x0807,
     Ed448 = 0x0808,

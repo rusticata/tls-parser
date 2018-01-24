@@ -171,7 +171,7 @@ pub fn gen_tls_serverhello<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloCon
     )
 }
 
-pub fn gen_tls_serverhellov13<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloV13Contents) -> Result<(&'a mut [u8],usize),GenError> {
+pub fn gen_tls_serverhellov13draft18<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsServerHelloV13Draft18Contents) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
         x,
                  gen_be_u8!(u8::from(TlsHandshakeType::ServerHello)) >>
@@ -242,7 +242,7 @@ pub fn gen_tls_messagehandshake<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsMessageHa
         &TlsMessageHandshake::HelloRequest => gen_tls_hellorequest(x),
         &TlsMessageHandshake::ClientHello(ref m) => gen_tls_clienthello(x,m),
         &TlsMessageHandshake::ServerHello(ref m) => gen_tls_serverhello(x,m),
-        &TlsMessageHandshake::ServerHelloV13(ref m) => gen_tls_serverhellov13(x,m),
+        &TlsMessageHandshake::ServerHelloV13Draft18(ref m) => gen_tls_serverhellov13draft18(x,m),
         &TlsMessageHandshake::ClientKeyExchange(ref m) => gen_tls_clientkeyexchange(x,m),
         &TlsMessageHandshake::Finished(ref m) => gen_tls_finished(x,m),
         _ => Err(GenError::NotYetImplemented),
