@@ -1,3 +1,5 @@
+#[macro_use] extern crate pretty_assertions;
+
 extern crate nom;
 extern crate tls_parser;
 

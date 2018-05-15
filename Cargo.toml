@@ -25,11 +25,8 @@ enum_primitive = "^0.1"
 rusticata-macros = "0.4.0"
 cookie-factory = "0.2"
 
-# [dependencies.rusticata-macros]
-# path = "../rusticata-macros"
-
-# [dependencies.cookie-factory]
-# path = "../cookie-factory"
+[dev-dependencies]
+pretty_assertions = "0.5.0"
 
 [build-dependencies]
 phf_codegen = "0.7.16"
