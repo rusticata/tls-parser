@@ -4,7 +4,6 @@ extern crate tls_parser;
 
 mod tls_dh {
 use tls_parser::*;
-use nom::IResult;
 
 static ECDHE_PARAMS: &'static [u8] = &[
     0x03, 0x00, 0x19, 0x85, 0x04, 0x01, 0xd1, 0x50, 0x12, 0xf4, 0xc4, 0xcf, 0xd4, 0xc2, 0x1f, 0xe8,
@@ -56,7 +55,7 @@ fn test_tls_ecdhe_params() {
         data: &bytes[141..],
     };
     let res = pair!(bytes,parse_ecdh_params,parse_digitally_signed);
-    assert_eq!(res, IResult::Done(empty, (expected1,expected2)));
+    assert_eq!(res, Ok((empty, (expected1,expected2))));
 }
 
 static DHE_PARAMS: &'static [u8] = &[
@@ -144,7 +143,7 @@ fn test_tls_dhe_params() {
         data: &bytes[778..],
     };
     let res = pair!(bytes,parse_dh_params,parse_digitally_signed);
-    assert_eq!(res, IResult::Done(empty, (expected1,expected2)));
+    assert_eq!(res, Ok((empty, (expected1,expected2))));
 }
 
 } // mod tls_dh

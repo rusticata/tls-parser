@@ -5,7 +5,7 @@ extern crate tls_parser;
 
 mod tls_handshake {
 use tls_parser::*;
-use nom::{IResult,Needed};
+use nom::{Err,Needed};
 
 
 #[test]
@@ -80,7 +80,7 @@ fn test_tls_record_clienthello() {
         )]
     };
     let res = parse_tls_plaintext(&bytes);
-    assert_eq!(res, IResult::Done(empty, expected));
+    assert_eq!(res, Ok((empty, expected)));
 }
 
 
@@ -407,7 +407,7 @@ fn test_tls_record_serverhello() {
                     })
         )]
     };
-    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
 }
 
 #[test]
@@ -435,7 +435,7 @@ fn test_tls_record_certificate() {
                 })
             )]
     };
-    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
 }
 
 #[test]
@@ -455,7 +455,7 @@ fn test_tls_record_serverkeyexchange() {
                 })
         )]
     };
-    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
 }
 
 #[test]
@@ -472,7 +472,7 @@ fn test_tls_record_serverdone() {
             TlsMessageHandshake::ServerDone(empty),
         )]
     };
-    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
 }
 
 // client response, composed of 3 records:
@@ -509,7 +509,7 @@ fn test_tls_record_clientkeyexchange() {
                 )
         )]
     };
-    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
 }
 
 #[test]
@@ -524,7 +524,7 @@ fn test_tls_record_changecipherspec() {
         },
         msg: vec![TlsMessage::ChangeCipherSpec],
     };
-    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
 }
 
 #[test]
@@ -541,7 +541,7 @@ fn test_tls_record_encryptedhandshake() {
                 blob: &bytes[5..],
             }
     };
-    assert_eq!(parse_tls_encrypted(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_encrypted(&bytes), Ok((empty, expected)));
 }
 
 static SERVER_HELLO1: &'static [u8] = &[
@@ -558,7 +558,7 @@ fn test_tls_record_invalid_recordlength() {
     let mut v = SERVER_HELLO1.to_vec();
     let bytes = v.as_mut_slice();
     bytes[4] = 0xff; // make record incomplete (longer than data)
-    let expected = IResult::Incomplete(Needed::Size(260));
+    let expected = Err(Err::Incomplete(Needed::Size(255)));
     let res = parse_tls_plaintext(&bytes);
     assert_eq!(res, expected);
 }
@@ -568,9 +568,8 @@ fn test_tls_record_invalid_recordlength2() {
     let mut v = SERVER_HELLO1.to_vec();
     let bytes = v.as_mut_slice();
     bytes[4] = 0x00; // make record incomplete (shorter than data)
-    let expected = IResult::Incomplete(Needed::Size(6));
     let res = parse_tls_plaintext(&bytes);
-    assert_eq!(res, expected);
+    assert!(res.is_err());
 }
 
 #[test]
@@ -578,9 +577,8 @@ fn test_tls_record_invalid_messagelength() {
     let mut v = SERVER_HELLO1.to_vec();
     let bytes = v.as_mut_slice();
     bytes[8] = 0xff; // create message larger than record
-    let expected = IResult::Incomplete(Needed::Size(264));
     let res = parse_tls_plaintext(&bytes);
-    assert_eq!(res, expected);
+    assert!(res.is_err());
 }
 
 #[test]
@@ -588,9 +586,8 @@ fn test_tls_record_invalid_messagelength2() {
     let mut v = SERVER_HELLO1.to_vec();
     let bytes = v.as_mut_slice();
     bytes[8] = 0x01; // create message shorter than record
-    let expected = IResult::Incomplete(Needed::Size(11));
     let res = parse_tls_plaintext(&bytes);
-    assert_eq!(res, expected);
+    assert!(res.is_err());
 }
 
 static SERVER_CERTIFICATE_REQUEST_NOCA: &'static [u8] = &[
@@ -622,7 +619,7 @@ fn test_tls_record_cert_request_noca() {
                 })
         )]
     };
-    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
 }
 
 static SERVER_CERTIFICATE_REQUEST_CA: &'static [u8] = &[
@@ -661,7 +658,7 @@ fn test_tls_record_cert_request_ca() {
                 })
         )]
     };
-    assert_eq!(parse_tls_plaintext(&bytes), IResult::Done(empty, expected));
+    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
 }
 
 static SERVER_STATUS_RESPONSE: &'static [u8] = &[
@@ -821,7 +818,7 @@ fn test_tls_message_status_response() {
         len: 0x0,
     };
     let res = parse_tls_record_with_header(&bytes,hdr.clone());
-    assert_eq!(res, IResult::Done(empty, expected));
+    assert_eq!(res, Ok((empty, expected)));
 }
 
 } // mod tls_handshake

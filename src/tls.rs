@@ -507,14 +507,16 @@ pub struct TlsRawRecord<'a> {
 
 
 named!(parse_cipher_suites<Vec<u16> >,
-    many0!(be_u16)
+    many0!(complete!(be_u16))
 );
 
 named!(parse_certs<Vec<RawCertificate> >,
     many0!(
-        do_parse!(
-            s: length_bytes!(parse_uint24)
-            >> ( RawCertificate{ data: s } )
+        complete!(
+            map!(
+                length_bytes!(parse_uint24),
+                |s| RawCertificate{ data: s }
+                )
         )
     )
 );
@@ -695,7 +697,7 @@ fn parse_certrequest_nosigalg( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> 
     do_parse!(i,
         cert_types:        length_count!(be_u8,be_u8) >>
         ca_len:            be_u16 >>
-        ca:                flat_map!(take!(ca_len),many0!(length_bytes!(be_u16))) >>
+        ca:                flat_map!(take!(ca_len),many0!(complete!(length_bytes!(be_u16)))) >>
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
@@ -713,9 +715,9 @@ fn parse_certrequest_full( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
         cert_types:        length_count!(be_u8,be_u8) >>
         sig_hash_algs_len: be_u16 >>
-        sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(be_u16)) >>
+        sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(complete!(be_u16))) >>
         ca_len:            be_u16 >>
-        ca:                flat_map!(take!(ca_len),many0!(length_bytes!(be_u16))) >>
+        ca:                flat_map!(take!(ca_len),many0!(complete!(length_bytes!(be_u16)))) >>
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
@@ -867,11 +869,11 @@ fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
 /// strict protocol conformance).
 pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&[u8], Vec<TlsMessage>> {
     switch!(i, value!(hdr.record_type),
-            TlsRecordType::ChangeCipherSpec => many1!(parse_tls_message_changecipherspec) |
-            TlsRecordType::Alert            => many1!(parse_tls_message_alert) |
-            TlsRecordType::Handshake        => many1!(parse_tls_message_handshake) |
-            TlsRecordType::ApplicationData  => many1!(parse_tls_message_applicationdata) |
-            TlsRecordType::Heartbeat        => many1!(parse_tls_message_heartbeat)
+            TlsRecordType::ChangeCipherSpec => many1!(complete!(parse_tls_message_changecipherspec)) |
+            TlsRecordType::Alert            => many1!(complete!(parse_tls_message_alert)) |
+            TlsRecordType::Handshake        => many1!(complete!(parse_tls_message_handshake)) |
+            TlsRecordType::ApplicationData  => many1!(complete!(parse_tls_message_applicationdata)) |
+            TlsRecordType::Heartbeat        => many1!(complete!(parse_tls_message_heartbeat))
          )
 }
 

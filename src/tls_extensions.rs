@@ -180,7 +180,7 @@ named!(pub parse_tls_extension_sni_content<TlsExtension>,
     do_parse!(
         list_len: be_u16 >>
         v: flat_map!(take!(list_len),
-            many0!(parse_tls_extension_sni_hostname)
+            many0!(complete!(parse_tls_extension_sni_hostname))
         ) >>
         ( TlsExtension::SNI(v) )
     )
@@ -216,7 +216,7 @@ named!(pub parse_tls_extension_max_fragment_length<TlsExtension>,
 /// Status Request [RFC6066]
 fn parse_tls_extension_status_request_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     match ext_len {
-        0 => IResult::Done(i,TlsExtension::StatusRequest(None)),
+        0 => Ok((i,TlsExtension::StatusRequest(None))),
         _ => {
                 do_parse!(i,
                     status_type: be_u8 >>
@@ -240,7 +240,7 @@ named!(pub parse_tls_extension_elliptic_curves_content<TlsExtension>,
     do_parse!(
         list_len: be_u16 >>
         l: flat_map!(take!(list_len),
-            many0!(be_u16)
+            many0!(complete!(be_u16))
         ) >>
         ( TlsExtension::EllipticCurves(l) )
     )
@@ -275,7 +275,7 @@ named!(pub parse_tls_extension_signature_algorithms_content<TlsExtension>,
     do_parse!(
         list_len: be_u16 >>
         l: flat_map!(take!(list_len),
-            many0!(pair!(be_u8,be_u8))
+            many0!(complete!(pair!(be_u8,be_u8)))
         ) >>
         ( TlsExtension::SignatureAlgorithms(l) )
     )
@@ -601,5 +601,5 @@ named!(pub parse_tls_extension<TlsExtension>,
 );
 
 named!(pub parse_tls_extensions<Vec<TlsExtension> >,
-    many0!(parse_tls_extension)
+    many0!(complete!(parse_tls_extension))
 );

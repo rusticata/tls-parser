@@ -1,9 +1,11 @@
+#[macro_use]
+extern crate pretty_assertions;
+
 extern crate nom;
 extern crate tls_parser;
 
 mod tls_extensions {
 use tls_parser::*;
-use nom::IResult;
 
 static CLIENT_EXTENSIONS1: &'static [u8] = &[
     0x00, 0x00, 0x00, 0x13, 0x00, 0x11, 0x00, 0x00, 0x0e, 0x77, 0x77, 0x77, 0x2e, 0x67, 0x6f, 0x6f,
@@ -22,7 +24,7 @@ fn test_tls_extensions() {
     let bytes = CLIENT_EXTENSIONS1;
     let ec_point_formats = &[0,1,2];
     let ext1 = &[0, 0, 0, 0];
-    let expected = IResult::Done(empty, vec![
+    let expected = Ok((empty, vec![
         TlsExtension::SNI(vec![(0,b"www.google.com")]),
         TlsExtension::EcPointFormats(ec_point_formats),
         TlsExtension::EllipticCurves(vec![23, 25, 28, 27, 24, 26, 22, 14, 13, 11, 12, 9, 10]),
@@ -32,7 +34,7 @@ fn test_tls_extensions() {
         ]),
         TlsExtension::StatusRequest(Some((0x1,ext1))),
         TlsExtension::Heartbeat(1),
-    ]);
+    ]));
 
     let res = parse_tls_extensions(bytes);
 
@@ -45,9 +47,9 @@ fn test_tls_extension_max_fragment_length() {
     let bytes = &[
         0x00, 0x01, 0x00, 0x01, 0x04
     ];
-    let expected = IResult::Done(empty,
+    let expected = Ok((empty,
         TlsExtension::MaxFragmentLength(4),
-    );
+    ));
 
     let res = parse_tls_extension(bytes);
 
@@ -63,7 +65,7 @@ fn test_tls_extension_alpn() {
         0x02, 0x68, 0x32, 0x08, 0x73, 0x70, 0x64, 0x79, 0x2f, 0x33, 0x2e, 0x31,
         0x08, 0x68, 0x74, 0x74, 0x70, 0x2f, 0x31, 0x2e, 0x31
     ];
-    let expected = IResult::Done(empty,
+    let expected = Ok((empty,
         TlsExtension::ALPN(vec![
                            b"h2-16",
                            b"h2-15",
@@ -72,7 +74,7 @@ fn test_tls_extension_alpn() {
                            b"spdy/3.1",
                            b"http/1.1",
         ]),
-    );
+    ));
 
     let res = parse_tls_extension(bytes);
 
@@ -85,9 +87,9 @@ fn test_tls_extension_encrypt_then_mac() {
     let bytes = &[
         0x00, 0x16, 0x00, 0x00
     ];
-    let expected = IResult::Done(empty,
+    let expected = Ok((empty,
         TlsExtension::EncryptThenMac,
-    );
+    ));
 
     let res = parse_tls_extension(bytes);
 
@@ -100,9 +102,9 @@ fn test_tls_extension_extended_master_secret() {
     let bytes = &[
         0x00, 0x17, 0x00, 0x00
     ];
-    let expected = IResult::Done(empty,
+    let expected = Ok((empty,
         TlsExtension::ExtendedMasterSecret,
-    );
+    ));
 
     let res = parse_tls_extension(bytes);
 
@@ -115,9 +117,9 @@ fn test_tls_extension_npn() {
     let bytes = &[
         0x33, 0x74, 0x00, 0x00
     ];
-    let expected = IResult::Done(empty,
+    let expected = Ok((empty,
         TlsExtension::NextProtocolNegotiation,
-    );
+    ));
 
     let res = parse_tls_extension(bytes);
 
@@ -130,12 +132,12 @@ fn test_tls_extension_list() {
     let bytes = &[
         0, 5, 0, 0, 0, 23, 0, 0, 255, 1, 0, 1, 0
     ];
-    let expected = IResult::Done(empty, vec![
+    let expected = Ok((empty, vec![
         TlsExtension::StatusRequest(None),
         TlsExtension::ExtendedMasterSecret,
         TlsExtension::RenegotiationInfo(&[]),
     ]
-    );
+    ));
 
     let res = parse_tls_extensions(bytes);
     println!("{:?}",res);
@@ -151,11 +153,11 @@ fn test_tls_extension_keyshare_helloretryrequest() {
         0xff, 0x20, 0x7a, 0x79, 0x82, 0xfd, 0x34, 0x12, 0xfc, 0xae, 0x8d, 0xd8, 0xe3, 0x1e, 0xf4,
         0x5d, 0xe6, 0x61, 0x09, 0x3b, 0x7f, 0xa5, 0x81, 0x12, 0x63,
         0x00, 0x2b, 0x00, 0x02, 0x7f, 0x17];
-    let expected = IResult::Done(empty, vec![
+    let expected = Ok((empty, vec![
         TlsExtension::KeyShare(&bytes[4..40]),
         TlsExtension::SupportedVersions(vec![0x7f17])
     ]
-    );
+    ));
 
     let res = parse_tls_extensions(bytes);
     assert_eq!(res,expected);

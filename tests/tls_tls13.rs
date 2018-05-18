@@ -3,7 +3,6 @@ extern crate tls_parser;
 
 mod tls_13 {
 use tls_parser::*;
-use nom::IResult;
 
 // Test vectors from https://tools.ietf.org/html/draft-thomson-tls-tls13-vectors-01
 
@@ -85,7 +84,7 @@ fn test_tls13_ch() {
         )]
     };
     let ires = parse_tls_plaintext(&bytes);
-    assert_eq!(ires, IResult::Done(empty, expected_ch));
+    assert_eq!(ires, Ok((empty, expected_ch)));
 }
 
 #[test]
@@ -112,7 +111,7 @@ fn test_tls13_sh() {
         TlsExtension::KeyShareOld(&bytes[51..]),
     ];
     let ires = parse_tls_plaintext(&bytes);
-    assert_eq!(ires, IResult::Done(empty, expected_sh));
+    assert_eq!(ires, Ok((empty, expected_sh)));
     let res = ires.unwrap();
 
     let msg = &res.1.msg[0];
@@ -121,7 +120,7 @@ fn test_tls13_sh() {
         _ => { assert!(false); empty },
     };
     let res_ext = parse_tls_extensions(ext_raw);
-    assert_eq!(res_ext, IResult::Done(empty, expected_ext));
+    assert_eq!(res_ext, Ok((empty, expected_ext)));
 }
 
 } // mod tls_13
