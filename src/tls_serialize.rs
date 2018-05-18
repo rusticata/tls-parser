@@ -337,7 +337,7 @@ mod tests {
             match res {
                 Ok((b,_)) => {
                     let res_reparse = parse_tls_plaintext(b);
-                    assert_eq!(res_reparse,IResult::Done(&b""[..],expected));
+                    assert_eq!(res_reparse,Ok((&b""[..],expected)));
                 },
                 Err(e)    => println!("Error: {:?}",e),
             };
