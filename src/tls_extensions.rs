@@ -461,7 +461,7 @@ fn parse_tls_extension_supported_versions_content(i: &[u8], ext_len:u16) -> IRes
     } else {
         do_parse!(i,
                   _n: be_u8 >>
-                  l: flat_map!(take!(ext_len-1),many0!(be_u16)) >>
+                  l: flat_map!(take!(ext_len-1),many0!(complete!(be_u16))) >>
                   ( TlsExtension::SupportedVersions(l) )
         )
     }
@@ -495,8 +495,8 @@ named!(pub parse_tls_extension_cookie<TlsExtension>,
 named!(pub parse_tls_extension_psk_key_exchange_modes_content<TlsExtension>,
     do_parse!(
         l: be_u8 >>
-        v: flat_map!(take!(l),many0!(be_u8)) >>
-        ( TlsExtension::PskExchangeModes(v) )
+        v: take!(l) >>
+        ( TlsExtension::PskExchangeModes(v.to_vec()) )
     )
 );
 
@@ -538,7 +538,7 @@ named!(parse_tls_oid_filter<OidFilter>,
 fn parse_tls_extension_oid_filters(i: &[u8]) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
         l: be_u16 >>
-        v: flat_map!(take!(l),many0!(parse_tls_oid_filter)) >>
+        v: flat_map!(take!(l),many0!(complete!(parse_tls_oid_filter))) >>
         ( TlsExtension::OidFilters(v) )
     )
 }
