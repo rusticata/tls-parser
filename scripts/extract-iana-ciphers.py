@@ -165,8 +165,12 @@ for i in ciphersuites.findAll ("record"):
   minver = 0x0300
   maxver = 0xffff
   
-  (_kxau, encmac) = desc.split("_WITH_")
-  kxau = _kxau.split ("_")[1:]
+  if rfc == "rfc8446":
+    kxau = ["TLS13"]
+    encmac = desc[4:] # skip "TLS_"
+  else:
+    (_kxau, encmac) = desc.split("_WITH_")
+    kxau = _kxau.split ("_")[1:]
   export = 0
   if kxau[-1] == "EXPORT":
     export = 1

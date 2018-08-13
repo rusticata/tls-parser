@@ -23,6 +23,8 @@ pub enum TlsCipherKx {
     Dhe,
     Ecdh,
     Ecdhe,
+    Eccpwd,
+    Tls13,
 }
 }
 
@@ -41,6 +43,8 @@ pub enum TlsCipherAu {
     Rsa,
     Dhe,
     Ecdsa,
+    Eccpwd,
+    Tls13,
 }
 }
 
