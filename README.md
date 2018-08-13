@@ -7,7 +7,7 @@
 
 ## Overview
 
-tls-parser is a parser for the TLS protocol. The parser supports protocols SSLv3 to TLSv1.2 (in particular,
+tls-parser is a parser for the TLS protocol. The parser supports protocols SSLv3 to TLSv1.2.
 TLSv1.3 is supported and implemented as draft 23.
 
 The parser is based on [nom](https://github.com/rusticata/tls-parser) (see nom's documentation for return and
@@ -164,7 +164,7 @@ They are built when running `cargo build`.
 To ease updating the list from the
 [IANA TLS
 parameters](http://www.iana.org/assignments/tls-parameters/tls-parameters.xml),
-a script is provided ([scripts/extract-iana-ciphers.py](scripts/extract-iana-ciphers.py).
+a script is provided ([scripts/extract-iana-ciphers.py](scripts/extract-iana-ciphers.py)).
 This script will download and pre-parse the list from IANA, and produce a file containing
 all ciphersuites names and parameters.
 
