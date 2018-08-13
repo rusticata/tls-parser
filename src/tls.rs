@@ -878,13 +878,14 @@ fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
 /// Note that message length is checked (not required for parser safety, but for
 /// strict protocol conformance).
 pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&[u8], Vec<TlsMessage>> {
-    switch!(i, value!(hdr.record_type),
-            TlsRecordType::ChangeCipherSpec => many1!(complete!(parse_tls_message_changecipherspec)) |
-            TlsRecordType::Alert            => many1!(complete!(parse_tls_message_alert)) |
-            TlsRecordType::Handshake        => many1!(complete!(parse_tls_message_handshake)) |
-            TlsRecordType::ApplicationData  => many1!(complete!(parse_tls_message_applicationdata)) |
-            TlsRecordType::Heartbeat        => many1!(complete!(parse_tls_message_heartbeat))
-         )
+    match hdr.record_type {
+        TlsRecordType::ChangeCipherSpec => many1!(i, complete!(parse_tls_message_changecipherspec)),
+        TlsRecordType::Alert            => many1!(i, complete!(parse_tls_message_alert)),
+        TlsRecordType::Handshake        => many1!(i, complete!(parse_tls_message_handshake)),
+        TlsRecordType::ApplicationData  => many1!(i, complete!(parse_tls_message_applicationdata)),
+        TlsRecordType::Heartbeat        => many1!(i, complete!(parse_tls_message_heartbeat)),
+        _                               => Err(Err::Error(error_position!(i, ErrorKind::Switch)))
+    }
 }
 
 
