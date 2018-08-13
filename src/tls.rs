@@ -1,7 +1,7 @@
 //! # TLS parser
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.2
 
-use nom::{be_u8,be_u16,be_u24,be_u32,rest,IResult,ErrorKind};
+use nom::{be_u8,be_u16,be_u24,be_u32,rest,IResult,Err,ErrorKind};
 
 use tls_alert::*;
 use tls_ciphers::*;
@@ -248,14 +248,14 @@ pub struct TlsClientHelloContents<'a> {
 }
 
 impl<'a> TlsClientHelloContents<'a> {
-    pub fn new(v:u16,rt:u32,rd:&'a[u8],sid:Option<&'a[u8]>,c:Vec<u16>,co:Vec<u8>,e:Option<&'a[u8]>) -> Self {
+    pub fn new(v:u16,rt:u32,rd:&'a[u8],sid:Option<&'a[u8]>,c:Vec<TlsCipherSuiteID>,co:Vec<TlsCompressionID>,e:Option<&'a[u8]>) -> Self {
         TlsClientHelloContents {
             version: TlsVersion(v),
             rand_time: rt,
             rand_data: rd,
             session_id: sid,
-            ciphers: c.iter().map(|&c| TlsCipherSuiteID(c)).collect(), // XXX this could be a nop, given both types are mapped to u16
-            comp: co.iter().map(|&c| TlsCompressionID(c)).collect(), // XXX this could be a nop, given both types are mapped to u8
+            ciphers: c,
+            comp: co,
             ext: e,
         }
     }
@@ -504,10 +504,20 @@ pub struct TlsRawRecord<'a> {
 
 
 
+fn parse_cipher_suites(i:&[u8], len:usize) -> IResult<&[u8],Vec<TlsCipherSuiteID>> {
+    if len == 0 { return Ok((i,Vec::new())) }
+    if len%2 == 1 || len > i.len() { return Err(Err::Error(error_position!(i, ErrorKind::LengthValue))); }
+    let v = (&i[..len]).chunks(2).map(|chunk| {
+                            TlsCipherSuiteID((chunk[0] as u16) << 8 | chunk[1] as u16) }).collect();
+    Ok((&i[len..],v))
+}
 
-named!(parse_cipher_suites<Vec<u16> >,
-    many0!(complete!(be_u16))
-);
+fn parse_compressions_algs(i:&[u8], len:usize) -> IResult<&[u8],Vec<TlsCompressionID>> {
+    if len == 0 { return Ok((i,Vec::new())) }
+    if len > i.len() { return Err(Err::Error(error_position!(i, ErrorKind::LengthValue))); }
+    let v = (&i[..len]).iter().map(|&it| { TlsCompressionID(it) }).collect();
+    Ok((&i[len..],v))
+}
 
 named!(parse_certs<Vec<RawCertificate> >,
     many0!(
@@ -547,13 +557,14 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         sidlen:    be_u8 >> // check <= 32, can be 0
                    error_if!(sidlen > 32, ErrorKind::Custom(128)) >>
         sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
-        ciphers:   flat_map!(length_bytes!(be_u16),parse_cipher_suites) >>
-        comp_len:  take!(1) >>
-        comp:      count!(be_u8, comp_len[0] as usize) >>
+        ciphers_len: be_u16 >>
+        ciphers:   call!(parse_cipher_suites, ciphers_len as usize) >>
+        comp_len:  be_u8 >>
+        comp:      call!(parse_compressions_algs, comp_len as usize) >>
         ext:       opt!(complete!(length_bytes!(be_u16))) >>
         (
             TlsMessageHandshake::ClientHello(
-                TlsClientHelloContents::new(v,rand_time,rand_data,sid,ciphers,comp,ext)
+                TlsClientHelloContents::new(v,rand_time,rand_data,sid,ciphers,comp.to_vec(),ext)
             )
         )
     )
