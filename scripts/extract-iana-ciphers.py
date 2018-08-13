@@ -278,7 +278,7 @@ for i in ciphersuites.findAll ("record"):
     print hashfun
     raise "Unsupported."
   
-  if encmode == "GCM":
+  if encmode == "GCM" or encmode == "CCM":
     mac = "AEAD"
     macsize = encsize
     minver = 0x303
