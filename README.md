@@ -140,6 +140,9 @@ Here is a non-exhaustive list of RFCs this parser is based on:
   Extended Master Secret Extension
 - [RFC 7919](https://tools.ietf.org/html/rfc7919): Negotiated Finite Field Diffie-Hellman Ephemeral Parameters
   for Transport Layer Security (TLS)
+- [RFC 8422](https://tools.ietf.org/html/rfc8422): Elliptic Curve Cryptography (ECC) Cipher Suites
+  for Transport Layer Security (TLS) Versions 1.2 and Earlier
+- [RFC 8446](https://tools.ietf.org/html/rfc8446): The Transport Layer Security (TLS) Protocol Version 1.3
 - [draft-agl-tls-nextprotoneg-03](https://tools.ietf.org/html/draft-agl-tls-nextprotoneg-03): Transport Layer Security (TLS) Next Protocol Negotiation Extension
 
 ## FAQ and limitations
@@ -156,12 +159,16 @@ should probably be interpreted as an alert.
 
 ### Where are located the TLS CipherSuites ?
 
-They are built when running `cargo build`, to ease updating the list from the
-[IANA TLS
-parameters](http://www.iana.org/assignments/tls-parameters/tls-parameters.xml).
+They are built when running `cargo build`.
 
-The file is parsed using [a script](scripts/convert_ciphers_to_rust.py). During
-the build, the [build.rs](build.rs) parses the list and produces a static,
+To ease updating the list from the
+[IANA TLS
+parameters](http://www.iana.org/assignments/tls-parameters/tls-parameters.xml),
+a script is provided ([scripts/extract-iana-ciphers.py](scripts/extract-iana-ciphers.py).
+This script will download and pre-parse the list from IANA, and produce a file containing
+all ciphersuites names and parameters.
+
+During the build, [build.rs](build.rs) parses this file and produces a static,
 read-only hash table of all known ciphers and their properties.
 
 ## License

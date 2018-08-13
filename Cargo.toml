@@ -9,6 +9,7 @@ name = "tls-parser"
 version = "0.6.0"
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 categories = ["parsing"]
+readme = "README.md"
 build = "build.rs"
 
 include = [
