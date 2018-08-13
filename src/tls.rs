@@ -1,8 +1,7 @@
 //! # TLS parser
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.2
 
-use rusticata_macros::parse_uint24;
-use nom::{be_u8,be_u16,be_u32,rest,IResult,ErrorKind};
+use nom::{be_u8,be_u16,be_u24,be_u32,rest,IResult,ErrorKind};
 
 use tls_alert::*;
 use tls_ciphers::*;
@@ -514,7 +513,7 @@ named!(parse_certs<Vec<RawCertificate> >,
     many0!(
         complete!(
             map!(
-                length_bytes!(parse_uint24),
+                length_bytes!(be_u24),
                 |s| RawCertificate{ data: s }
                 )
         )
@@ -609,7 +608,7 @@ named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
 );
 
 // RFC 5077   Stateless TLS Session Resumption
-fn parse_tls_handshake_msg_newsessionticket( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_tls_handshake_msg_newsessionticket( i:&[u8], len: usize ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
         hint: be_u32 >>
         raw:  take!(len - 4) >>
@@ -643,7 +642,7 @@ named!(parse_tls_handshake_msg_hello_retry_request<TlsMessageHandshake>,
 
 named!(parse_tls_handshake_msg_certificate<TlsMessageHandshake>,
     do_parse!(
-        cert_len: parse_uint24 >>
+        cert_len: be_u24 >>
         certs:    flat_map!(take!(cert_len),parse_certs) >>
         (
             TlsMessageHandshake::Certificate(
@@ -655,7 +654,7 @@ named!(parse_tls_handshake_msg_certificate<TlsMessageHandshake>,
     )
 );
 
-fn parse_tls_handshake_msg_serverkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_tls_handshake_msg_serverkeyexchange( i:&[u8], len: usize ) -> IResult<&[u8], TlsMessageHandshake> {
     map!(i,
         take!(len),
         |ext| {
@@ -668,21 +667,21 @@ fn parse_tls_handshake_msg_serverkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u
     )
 }
 
-fn parse_tls_handshake_msg_serverdone( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_tls_handshake_msg_serverdone( i:&[u8], len: usize ) -> IResult<&[u8], TlsMessageHandshake> {
     map!(i,
         take!(len),
         |ext| { TlsMessageHandshake::ServerDone(ext) }
     )
 }
 
-fn parse_tls_handshake_msg_certificateverify( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_tls_handshake_msg_certificateverify( i:&[u8], len: usize ) -> IResult<&[u8], TlsMessageHandshake> {
     map!(i,
         take!(len),
         |blob| { TlsMessageHandshake::CertificateVerify(blob) }
     )
 }
 
-fn parse_tls_handshake_msg_clientkeyexchange( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_tls_handshake_msg_clientkeyexchange( i:&[u8], len: usize ) -> IResult<&[u8], TlsMessageHandshake> {
     map!(i,
         take!(len),
         |ext| {
@@ -735,7 +734,7 @@ fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMe
     alt_complete!(i, parse_certrequest_full | parse_certrequest_nosigalg)
 }
 
-fn parse_tls_handshake_msg_finished( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_tls_handshake_msg_finished( i:&[u8], len: usize ) -> IResult<&[u8], TlsMessageHandshake> {
     map!(i,
         take!(len),
         |blob| { TlsMessageHandshake::Finished(blob) }
@@ -748,7 +747,7 @@ fn parse_tls_handshake_msg_finished( i:&[u8], len: u64 ) -> IResult<&[u8], TlsMe
 named!(parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
     do_parse!(
         status_type: be_u8 >>
-        blob:        length_bytes!(parse_uint24) >>
+        blob:        length_bytes!(be_u24) >>
         ( TlsMessageHandshake::CertificateStatus(
                 TlsCertificateStatusContents{
                     status_type:status_type,
@@ -786,22 +785,22 @@ fn parse_tls_handshake_msg_key_update( i:&[u8] ) -> IResult<&[u8], TlsMessageHan
 named!(parse_tls_message_handshake<TlsMessage>,
     do_parse!(
         ht: be_u8 >>
-        hl: parse_uint24 >>
+        hl: be_u24 >>
         m: flat_map!(take!(hl),
             switch!(value!(ht),
                 /*TlsHandshakeType::HelloRequest*/      0x00 => call!(parse_tls_handshake_msg_hello_request) |
                 /*TlsHandshakeType::ClientHello*/       0x01 => call!(parse_tls_handshake_msg_client_hello) |
                 /*TlsHandshakeType::ServerHello*/       0x02 => call!(parse_tls_handshake_msg_server_hello) |
-                /*TlsHandshakeType::NewSessionTicket*/  0x04 => call!(parse_tls_handshake_msg_newsessionticket,hl) |
+                /*TlsHandshakeType::NewSessionTicket*/  0x04 => call!(parse_tls_handshake_msg_newsessionticket,hl as usize) |
                 /*TlsHandshakeType::EndOfEarlyData*/    0x05 => value!(TlsMessageHandshake::EndOfEarlyData) |
                 /*TlsHandshakeType::HelloRetryRequest*/ 0x06 => call!(parse_tls_handshake_msg_hello_retry_request) |
                 /*TlsHandshakeType::Certificate*/       0x0b => call!(parse_tls_handshake_msg_certificate) |
-                /*TlsHandshakeType::ServerKeyExchange*/ 0x0c => call!(parse_tls_handshake_msg_serverkeyexchange,hl) |
+                /*TlsHandshakeType::ServerKeyExchange*/ 0x0c => call!(parse_tls_handshake_msg_serverkeyexchange,hl as usize) |
                 /*TlsHandshakeType::CertificateRequest*/ 0x0d => call!(parse_tls_handshake_msg_certificaterequest) |
-                /*TlsHandshakeType::ServerDone*/        0x0e => call!(parse_tls_handshake_msg_serverdone,hl) |
-                /*TlsHandshakeType::CertificateVerify*/ 0x0f => call!(parse_tls_handshake_msg_certificateverify,hl) |
-                /*TlsHandshakeType::ClientKeyExchange*/ 0x10 => call!(parse_tls_handshake_msg_clientkeyexchange,hl) |
-                /*TlsHandshakeType::Finished*/          0x14 => call!(parse_tls_handshake_msg_finished,hl) |
+                /*TlsHandshakeType::ServerDone*/        0x0e => call!(parse_tls_handshake_msg_serverdone,hl as usize) |
+                /*TlsHandshakeType::CertificateVerify*/ 0x0f => call!(parse_tls_handshake_msg_certificateverify,hl as usize) |
+                /*TlsHandshakeType::ClientKeyExchange*/ 0x10 => call!(parse_tls_handshake_msg_clientkeyexchange,hl as usize) |
+                /*TlsHandshakeType::Finished*/          0x14 => call!(parse_tls_handshake_msg_finished,hl as usize) |
                 /*TlsHandshakeType::CertificateURL*/    /*0x15 => call!(parse_tls_handshake_msg_certificateurl) |*/
                 /*TlsHandshakeType::CertificateStatus*/ 0x16 => call!(parse_tls_handshake_msg_certificatestatus) |
                 /*TlsHandshakeType::KeyUpdate*/         0x18 => call!(parse_tls_handshake_msg_key_update) |

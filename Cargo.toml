@@ -22,7 +22,7 @@ serialize = []
 nom = {version = "4.0", features=["verbose-errors"] }
 phf = "0.7.16"
 enum_primitive = "^0.1"
-rusticata-macros = {version="0.5.0", git='https://github.com/rusticata/rusticata-macros.git', branch='nom4'}
+rusticata-macros = "1.0"
 cookie-factory = "0.2"
 
 [dev-dependencies]
