@@ -28,6 +28,7 @@ tls-parser = "0.6.0"
   - warning: this is a breaking change
 - Fix wrong extension ID for padding and signed timestamp
 - Rewrite parse_cipher_suites and parse_compressions_algs to be faster
+- Update ciphersuites to 2018-08-13
 
 ## Parsing records
 
