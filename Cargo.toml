@@ -11,6 +11,19 @@ authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 categories = ["parsing"]
 build = "build.rs"
 
+include = [
+  "LICENSE-*",
+  ".gitignore",
+  ".travis.yml",
+  "Cargo.toml",
+  "benches/*.rs",
+  "build.rs",
+  "src/*.rs",
+  "tests/*.rs",
+  "scripts/tls-ciphersuites.txt",
+  "scripts/extract-iana-ciphers.py"
+]
+
 [lib]
 name = "tls_parser"
 
