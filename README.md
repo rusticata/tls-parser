@@ -8,7 +8,7 @@
 ## Overview
 
 tls-parser is a parser for the TLS protocol. The parser supports protocols SSLv3 to TLSv1.2 (in particular,
-TLSv1.3 is supported and implemented as draft 19.
+TLSv1.3 is supported and implemented as draft 23.
 
 The parser is based on [nom](https://github.com/rusticata/tls-parser) (see nom's documentation for return and
 error types).
@@ -17,8 +17,17 @@ The parser is published on `crates.io`.
 To use it, add the following to your `Cargo.toml` file:
 ```
 [dependencies]
-tls-parser = "0.3.0"
+tls-parser = "0.6.0"
 ```
+
+## Changes
+
+### 0.6.0
+
+- Upgrade to nom 4.0
+  - warning: this is a breaking change
+- Fix wrong extension ID for padding and signed timestamp
+- Rewrite parse_cipher_suites and parse_compressions_algs to be faster
 
 ## Parsing records
 
