@@ -283,7 +283,6 @@ pub fn gen_tls_plaintext<'a,'b>(x:(&'a mut [u8],usize),p:&'b TlsPlaintext) -> Re
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::IResult;
 
     #[test]
     fn serialize_plaintext() {
