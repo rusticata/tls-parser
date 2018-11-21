@@ -1,12 +1,13 @@
-use nom::{be_u8,be_u16};
+use nom::{be_u8,be_u16,Err,ErrorKind,IResult};
 
-enum_from_primitive! {
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
 /// [IANA Supported Groups
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8)
-#[derive(Debug,PartialEq)]
-#[repr(u16)]
-pub enum NamedGroup {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct NamedGroup(pub u16);
+
+newtype_enum! {
+impl debug NamedGroup {
     Sect163k1 = 1,
     Sect163r1 = 2,
     Sect163r2 = 3,
@@ -94,13 +95,14 @@ pub struct ECCurve<'a> {
     pub b: &'a[u8],
 }
 
-enum_from_primitive! {
 /// Elliptic curve types, as defined in the
 /// [IANA EC Curve Type Registry
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-10)
-#[derive(Debug,PartialEq)]
-#[repr(u8)]
-pub enum ECCurveType {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct ECCurveType(pub u8);
+
+newtype_enum! {
+impl display ECCurveType {
     ExplicitPrime = 1,
     ExplicitChar2 = 2,
     NamedGroup = 3,
@@ -130,7 +132,7 @@ pub enum ECParametersContent<'a> {
     ExplicitPrime(ExplicitPrimeContent<'a>),
     // TODO ExplicitChar2 is defined in [RFC4492] section 5.4
     ExplicitChar2(&'a[u8]),
-    NamedGroup(u16),
+    NamedGroup(NamedGroup),
 }
 
 /// Elliptic curve parameters,
@@ -138,7 +140,7 @@ pub enum ECParametersContent<'a> {
 #[derive(PartialEq)]
 pub struct ECParameters<'a> {
     /// Should match a [ECCurveType](enum.ECCurveType.html) value
-    pub curve_type: u8,
+    pub curve_type: ECCurveType,
     pub params_content: ECParametersContent<'a>,
 }
 
@@ -148,6 +150,16 @@ pub struct ECParameters<'a> {
 pub struct ServerECDHParams<'a> {
     pub curve_params: ECParameters<'a>,
     pub public: ECPoint<'a>,
+}
+
+/// Parse the entire input as a list of named groups (curves)
+pub fn parse_named_groups(i: &[u8]) -> IResult<&[u8],Vec<NamedGroup>> {
+    let len = i.len();
+    if len == 0 { return Ok((i,Vec::new())) }
+    if len%2 == 1 || len > i.len() { return Err(Err::Error(error_position!(i, ErrorKind::LengthValue))); }
+    let v = (&i[..len]).chunks(2).map(|chunk| {
+                            NamedGroup((chunk[0] as u16) << 8 | chunk[1] as u16) }).collect();
+    Ok((&i[len..],v))
 }
 
 named!(parse_ec_point<ECPoint>,
@@ -184,7 +196,7 @@ named!(parse_ec_explicit_prime_content<ECParametersContent>,
 );
 
 named!(parse_ec_named_curve_content<ECParametersContent>,
-    map!(be_u16,|c|{ECParametersContent::NamedGroup(c)})
+    map!(be_u16,|c|{ECParametersContent::NamedGroup(NamedGroup(c))})
 );
 
 named!(pub parse_ec_parameters<ECParameters>,
@@ -196,7 +208,7 @@ named!(pub parse_ec_parameters<ECParameters>,
         ) >>
         (
             ECParameters{
-                curve_type: curve_type,
+                curve_type: ECCurveType(curve_type),
                 params_content: d,
             }
         )

@@ -1,21 +1,23 @@
-enum_from_primitive! {
 /// TLS alert severity
-#[derive(Debug,PartialEq)]
-#[repr(u8)]
-pub enum TlsAlertSeverity {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TlsAlertSeverity(pub u8);
+
+newtype_enum!{
+impl display TlsAlertSeverity {
     Warning = 0x01,
-    Fatal   = 0x02,
+    Fatal   = 0x02
 }
 }
 
-enum_from_primitive! {
 /// TLS alert description
 ///
 /// Alerts are defined in the [IANA TLS Alert
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-6)
-#[derive(Debug,PartialEq)]
-#[repr(u8)]
-pub enum TlsAlertDescription {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TlsAlertDescription(pub u8);
+
+newtype_enum!{
+impl display TlsAlertDescription {
     CloseNotify            = 0x00,
     EndOfEarlyData         = 0x01,
     UnexpectedMessage      = 0x0A,
@@ -50,7 +52,7 @@ pub enum TlsAlertDescription {
     BadCertHashValue       = 0x72,
     UnknownPskIdentity     = 0x73,
     CertificateRequired    = 0x74,
-    NoApplicationProtocol  = 0x78, // [RFC7301]
+    NoApplicationProtocol  = 0x78 // [RFC7301]
 }
 }
 
@@ -58,36 +60,41 @@ pub enum TlsAlertDescription {
 #[derive(Clone,PartialEq)]
 pub struct TlsMessageAlert {
     /// Should match a [TlsAlertSeverity](enum.TlsAlertSeverity.html) value
-    pub severity: u8,
-    /// Should match a [TlsAlertSeverity](enum.TlsAlertDescription.html) value
-    pub code: u8,
+    pub severity: TlsAlertSeverity,
+    /// Should match a [TlsAlertDescription](enum.TlsAlertDescription.html) value
+    pub code: TlsAlertDescription,
 }
 
 #[cfg(test)]
 mod tests {
     use tls_alert::*;
-    use enum_primitive::FromPrimitive;
 
 #[test]
 fn test_tlsalert_cast_severity() {
     let a = TlsAlertSeverity::Warning;
 
-    let a_u8 = a as u8;
+    let a_u8 = a.0;
     assert_eq!(a_u8, 0x01);
 
-    let b = TlsAlertSeverity::from_u8(a_u8);
-    assert_eq!(b, Some(TlsAlertSeverity::Warning));
+    let b = TlsAlertSeverity(a_u8);
+    assert_eq!(b, TlsAlertSeverity::Warning);
+
+    let s = format!("{}", b);
+    assert_eq!(s, "Warning");
+
+    let s = format!("{}", TlsAlertSeverity(129));
+    assert_eq!(s, "TlsAlertSeverity(129 / 0x81)");
 }
 
 #[test]
 fn test_tlsalert_cast_description() {
     let a = TlsAlertDescription::HandshakeFailure;
 
-    let a_u8 = a as u8;
+    let a_u8 = a.0;
     assert_eq!(a_u8, 0x28);
 
-    let b = TlsAlertDescription::from_u8(a_u8);
-    assert_eq!(b, Some(TlsAlertDescription::HandshakeFailure));
+    let b = TlsAlertDescription(a_u8);
+    assert_eq!(b, TlsAlertDescription::HandshakeFailure);
 }
 
 } // mod tests

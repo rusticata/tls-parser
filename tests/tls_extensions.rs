@@ -24,15 +24,16 @@ fn test_tls_extensions() {
     let bytes = CLIENT_EXTENSIONS1;
     let ec_point_formats = &[0,1,2];
     let ext1 = &[0, 0, 0, 0];
+    let ecc : Vec<_> = vec![23, 25, 28, 27, 24, 26, 22, 14, 13, 11, 12, 9, 10].iter().map(|&x| NamedGroup(x)).collect();
     let expected = Ok((empty, vec![
-        TlsExtension::SNI(vec![(0,b"www.google.com")]),
+        TlsExtension::SNI(vec![(SNIType::HostName,b"www.google.com")]),
         TlsExtension::EcPointFormats(ec_point_formats),
-        TlsExtension::EllipticCurves(vec![23, 25, 28, 27, 24, 26, 22, 14, 13, 11, 12, 9, 10]),
+        TlsExtension::EllipticCurves(ecc),
         TlsExtension::SessionTicket(&empty),
         TlsExtension::SignatureAlgorithms(vec![
             (6, 1), (6, 2), (6, 3), (5, 1), (5, 2), (5, 3), (4, 1), (4, 2), (4, 3), (3, 1), (3, 2), (3, 3), (2, 1), (2, 2), (2, 3)
         ]),
-        TlsExtension::StatusRequest(Some((0x1,ext1))),
+        TlsExtension::StatusRequest(Some((CertificateStatusType::OCSP,ext1))),
         TlsExtension::Heartbeat(1),
     ]));
 
@@ -155,12 +156,40 @@ fn test_tls_extension_keyshare_helloretryrequest() {
         0x00, 0x2b, 0x00, 0x02, 0x7f, 0x17];
     let expected = Ok((empty, vec![
         TlsExtension::KeyShare(&bytes[4..40]),
-        TlsExtension::SupportedVersions(vec![0x7f17])
+        TlsExtension::SupportedVersions(vec![TlsVersion(0x7f17)])
     ]
     ));
 
     let res = parse_tls_extensions(bytes);
     assert_eq!(res,expected);
+}
+
+#[test]
+fn test_tls_extension_signed_certificate_timestamp() {
+    let empty = &b""[..];
+    let bytes = &[
+        0x00, 0x12, 0x00, 0x00,
+    ];
+    let expected = Ok((empty,
+        TlsExtension::SignedCertificateTimestamp(None),
+    ));
+
+    let res = parse_tls_extension(bytes);
+
+    assert_eq!(res,expected);
+}
+
+#[test]
+fn test_tls_extension_grease() {
+    let empty = &b""[..];
+    let bytes = &[
+        0x3a, 0x3a, 0x00, 0x01, 0x00,
+    ];
+    let expected = TlsExtension::Grease(0x3a3a,&[0x00]);
+
+    let res = parse_tls_extension(bytes);
+
+    assert_eq!(res,Ok((empty,expected)));
 }
 
 } // mod tls_extensions

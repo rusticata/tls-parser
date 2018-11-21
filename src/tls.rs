@@ -19,27 +19,28 @@ use std::fmt;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct TlsHandshakeType(pub u8);
 
-#[allow(non_upper_case_globals)]
-impl TlsHandshakeType {
-    pub const HelloRequest        : TlsHandshakeType = TlsHandshakeType(0x00);
-    pub const ClientHello         : TlsHandshakeType = TlsHandshakeType(0x01);
-    pub const ServerHello         : TlsHandshakeType = TlsHandshakeType(0x02);
-    pub const NewSessionTicket    : TlsHandshakeType = TlsHandshakeType(0x04);
-    pub const EndOfEarlyData      : TlsHandshakeType = TlsHandshakeType(0x05);
-    pub const HelloRetryRequest   : TlsHandshakeType = TlsHandshakeType(0x06);
-    pub const EncryptedExtensions : TlsHandshakeType = TlsHandshakeType(0x08);
-    pub const Certificate         : TlsHandshakeType = TlsHandshakeType(0x0b);
-    pub const ServerKeyExchange   : TlsHandshakeType = TlsHandshakeType(0x0c);
-    pub const CertificateRequest  : TlsHandshakeType = TlsHandshakeType(0x0d);
-    pub const ServerDone          : TlsHandshakeType = TlsHandshakeType(0x0e);
-    pub const CertificateVerify   : TlsHandshakeType = TlsHandshakeType(0x0f);
-    pub const ClientKeyExchange   : TlsHandshakeType = TlsHandshakeType(0x10);
-    pub const Finished            : TlsHandshakeType = TlsHandshakeType(0x14);
-    pub const CertificateURL      : TlsHandshakeType = TlsHandshakeType(0x15);
-    pub const CertificateStatus   : TlsHandshakeType = TlsHandshakeType(0x16);
-    pub const KeyUpdate           : TlsHandshakeType = TlsHandshakeType(0x18);
+newtype_enum!{
+impl debug TlsHandshakeType {
+    HelloRequest        = 0x00,
+    ClientHello         = 0x01,
+    ServerHello         = 0x02,
+    NewSessionTicket    = 0x04,
+    EndOfEarlyData      = 0x05,
+    HelloRetryRequest   = 0x06,
+    EncryptedExtensions = 0x08,
+    Certificate         = 0x0b,
+    ServerKeyExchange   = 0x0c,
+    CertificateRequest  = 0x0d,
+    ServerDone          = 0x0e,
+    CertificateVerify   = 0x0f,
+    ClientKeyExchange   = 0x10,
+    Finished            = 0x14,
+    CertificateURL      = 0x15,
+    CertificateStatus   = 0x16,
+    KeyUpdate           = 0x18,
 
-    pub const NextProtocol        : TlsHandshakeType = TlsHandshakeType(0x43);
+    NextProtocol        = 0x43,
+}
 }
 
 impl From<TlsHandshakeType> for u8 {
@@ -53,43 +54,25 @@ impl From<TlsHandshakeType> for u8 {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct TlsVersion(pub u16);
 
-#[allow(non_upper_case_globals)]
-impl TlsVersion {
-    pub const Ssl30        : TlsVersion = TlsVersion(0x0300);
-    pub const Tls10        : TlsVersion = TlsVersion(0x0301);
-    pub const Tls11        : TlsVersion = TlsVersion(0x0302);
-    pub const Tls12        : TlsVersion = TlsVersion(0x0303);
-    pub const Tls13        : TlsVersion = TlsVersion(0x0304);
+newtype_enum!{
+impl debug TlsVersion {
+    Ssl30        = 0x0300,
+    Tls10        = 0x0301,
+    Tls11        = 0x0302,
+    Tls12        = 0x0303,
+    Tls13        = 0x0304,
 
-    pub const Tls13Draft18 : TlsVersion = TlsVersion(0x7f12);
-    pub const Tls13Draft19 : TlsVersion = TlsVersion(0x7f13);
-    pub const Tls13Draft20 : TlsVersion = TlsVersion(0x7f14);
-    pub const Tls13Draft21 : TlsVersion = TlsVersion(0x7f15);
-    pub const Tls13Draft22 : TlsVersion = TlsVersion(0x7f16);
-    pub const Tls13Draft23 : TlsVersion = TlsVersion(0x7f17);
+    Tls13Draft18 = 0x7f12,
+    Tls13Draft19 = 0x7f13,
+    Tls13Draft20 = 0x7f14,
+    Tls13Draft21 = 0x7f15,
+    Tls13Draft22 = 0x7f16,
+    Tls13Draft23 = 0x7f17,
+}
 }
 
 impl From<TlsVersion> for u16 {
     fn from(v: TlsVersion) -> u16 { v.0 }
-}
-
-impl fmt::Debug for TlsVersion {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TlsVersion::Ssl30        => fmt.write_str("TlsVersion::Ssl30"),
-            TlsVersion::Tls10        => fmt.write_str("TlsVersion::Tls10"),
-            TlsVersion::Tls11        => fmt.write_str("TlsVersion::Tls11"),
-            TlsVersion::Tls12        => fmt.write_str("TlsVersion::Tls12"),
-            TlsVersion::Tls13        => fmt.write_str("TlsVersion::Tls13"),
-            TlsVersion::Tls13Draft18 => fmt.write_str("TlsVersion::Tls13Draft18"),
-            TlsVersion::Tls13Draft19 => fmt.write_str("TlsVersion::Tls13Draft19"),
-            TlsVersion::Tls13Draft20 => fmt.write_str("TlsVersion::Tls13Draft20"),
-            TlsVersion::Tls13Draft21 => fmt.write_str("TlsVersion::Tls13Draft21"),
-            TlsVersion::Tls13Draft22 => fmt.write_str("TlsVersion::Tls13Draft22"),
-            TlsVersion::Tls13Draft23 => fmt.write_str("TlsVersion::Tls13Draft23"),
-            _                        => write!(fmt, "{:x}", self.0),
-        }
-    }
 }
 
 impl fmt::LowerHex for TlsVersion {
@@ -103,64 +86,42 @@ impl fmt::LowerHex for TlsVersion {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct TlsHeartbeatMessageType(pub u8);
 
-#[allow(non_upper_case_globals)]
-impl TlsHeartbeatMessageType {
-    pub const HeartBeatRequest  : TlsHeartbeatMessageType = TlsHeartbeatMessageType(0x1);
-    pub const HeartBeatResponse : TlsHeartbeatMessageType = TlsHeartbeatMessageType(0x2);
+newtype_enum!{
+impl debug TlsHeartbeatMessageType {
+    HeartBeatRequest  = 0x1,
+    HeartBeatResponse = 0x2,
+}
 }
 
 impl From<TlsHeartbeatMessageType> for u8 {
     fn from(v: TlsHeartbeatMessageType) -> u8 { v.0 }
 }
 
-impl fmt::Display for TlsHeartbeatMessageType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl fmt::Debug for TlsHeartbeatMessageType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 /// Content type, as defined in IANA TLS ContentType registry
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct TlsRecordType(pub u8);
 
-#[allow(non_upper_case_globals)]
-impl TlsRecordType {
-    pub const ChangeCipherSpec : TlsRecordType = TlsRecordType(0x14);
-    pub const Alert            : TlsRecordType = TlsRecordType(0x15);
-    pub const Handshake        : TlsRecordType = TlsRecordType(0x16);
-    pub const ApplicationData  : TlsRecordType = TlsRecordType(0x17);
-    pub const Heartbeat        : TlsRecordType = TlsRecordType(0x18);
+newtype_enum!{
+impl debug TlsRecordType {
+    ChangeCipherSpec = 0x14,
+    Alert            = 0x15,
+    Handshake        = 0x16,
+    ApplicationData  = 0x17,
+    Heartbeat        = 0x18,
+}
 }
 
 impl From<TlsRecordType> for u8 {
     fn from(v: TlsRecordType) -> u8 { v.0 }
 }
 
-impl fmt::Debug for TlsRecordType {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TlsRecordType::ChangeCipherSpec => fmt.write_str("TlsRecordType::ChangeCipherSpec"),
-            TlsRecordType::Alert            => fmt.write_str("TlsRecordType::Alert"),
-            TlsRecordType::Handshake        => fmt.write_str("Handshake::Alert"),
-            TlsRecordType::ApplicationData  => fmt.write_str("Handshake::ApplicationData"),
-            TlsRecordType::Heartbeat        => fmt.write_str("Handshake::Heartbeat"),
-            _                               => write!(fmt, "{:x}", self.0),
-        }
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct TlsCompressionID(pub u8);
 
-#[allow(non_upper_case_globals)]
-impl TlsCompressionID {
-    pub const Null : TlsCompressionID = TlsCompressionID(0x00);
+newtype_enum!{
+impl debug TlsCompressionID {
+    Null = 0x00,
+}
 }
 
 impl From<TlsCompressionID> for u8 {
@@ -174,15 +135,6 @@ impl Deref for TlsCompressionID {
 
 impl AsRef<u8> for TlsCompressionID {
     fn as_ref(&self) -> &u8 { &self.0 }
-}
-
-impl fmt::Debug for TlsCompressionID {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TlsCompressionID::Null => f.write_str("TlsCompressionID::Null"),
-            _                      => write!(f, "{}", self.0)
-        }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -394,10 +346,12 @@ pub struct TlsNextProtocolContent<'a> {
     pub padding: &'a[u8],
 }
 
-enum_from_primitive! {
 /// Key update request (TLS 1.3)
-#[repr(u8)]
-pub enum KeyUpdateRequest {
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct KeyUpdateRequest(pub u8);
+
+newtype_enum!{
+impl KeyUpdateRequest {
     NotRequested  = 0x0,
     Requested     = 0x1,
 }
@@ -516,6 +470,15 @@ fn parse_compressions_algs(i:&[u8], len:usize) -> IResult<&[u8],Vec<TlsCompressi
     if len == 0 { return Ok((i,Vec::new())) }
     if len > i.len() { return Err(Err::Error(error_position!(i, ErrorKind::LengthValue))); }
     let v = (&i[..len]).iter().map(|&it| { TlsCompressionID(it) }).collect();
+    Ok((&i[len..],v))
+}
+
+pub(crate) fn parse_tls_versions(i:&[u8]) -> IResult<&[u8],Vec<TlsVersion>> {
+    let len = i.len();
+    if len == 0 { return Ok((i,Vec::new())) }
+    if len%2 == 1 || len > i.len() { return Err(Err::Error(error_position!(i, ErrorKind::LengthValue))); }
+    let v = (&i[..len]).chunks(2).map(|chunk| {
+                            TlsVersion((chunk[0] as u16) << 8 | chunk[1] as u16) }).collect();
     Ok((&i[len..],v))
 }
 
@@ -836,8 +799,8 @@ named!(parse_tls_message_alert<TlsMessage>,
         c: be_u8 >>
         ( TlsMessage::Alert(
                 TlsMessageAlert {
-                    severity: s,
-                    code: c,
+                    severity: TlsAlertSeverity(s),
+                    code: TlsAlertDescription(c),
             }
         ) )
     )

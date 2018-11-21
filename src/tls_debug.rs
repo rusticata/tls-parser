@@ -113,7 +113,7 @@ impl fmt::Debug for TlsRecordHeader {
 impl fmt::Debug for TlsMessageAlert {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsMessageAlert")
-            .field("severity", &TlsAlertSeverity::from_u8(self.severity))
+            .field("severity", &self.severity)
             .field("code", &self.code)
             .finish()
     }
@@ -138,25 +138,15 @@ impl<'a> fmt::Debug for ECParametersContent<'a> {
         match self {
             &ECParametersContent::ExplicitPrime(ref p) => fmt.write_fmt(format_args!("ExplicitPrime({:?})",p)),
             &ECParametersContent::ExplicitChar2(ref p) => fmt.write_fmt(format_args!("ExplicitChar2({:?})",HexSlice{d:p})),
-            &ECParametersContent::NamedGroup(p)    => {
-                let g = match NamedGroup::from_u16(p) {
-                    Some(n) => format!("{:?}", n),
-                    None    => format!("<Unknown named group 0x{:x}/{}>", p, p),
-                };
-                fmt.write_fmt(format_args!("{:?}",g))
-            },
+            &ECParametersContent::NamedGroup(p)    => write!(fmt, "{}", p),
         }
     }
 }
 
 impl<'a> fmt::Debug for ECParameters<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let ty = match ECCurveType::from_u8(self.curve_type) {
-            Some(n) => format!("{:?}", n),
-            None    => format!("<Unknown curve type 0x{:x}/{}>", self.curve_type, self.curve_type),
-        };
         fmt.debug_struct("ECParameters")
-            .field("curve_type", &ty)
+            .field("curve_type", &format!("{}",self.curve_type))
             .field("params_content", &self.params_content)
             .finish()
     }
@@ -169,7 +159,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::SNI(ref v) => {
                 let v : Vec<_> = v.iter().map(|&(ty,n)| {
                     let s = from_utf8(n).unwrap_or("<error decoding utf8 string>");
-                    format!("type=0x{:x},name={}",ty, s)
+                    format!("type={},name={}",ty, s)
                 }).collect();
                 write!(fmt, "TlsExtension::SNI({:?})", v)
             },
@@ -177,10 +167,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::StatusRequest(data) => write!(fmt, "TlsExtension::StatusRequest({:?})", data),
             TlsExtension::EllipticCurves(ref v) => {
                 let v2 : Vec<_> = v.iter().map(|&curve| {
-                    match NamedGroup::from_u16(curve) {
-                        Some(n) => format!("{:?}", n),
-                        None    => format!("<Unknown curve 0x{:x}/{}>", curve, curve),
-                    }
+                    format!("{}", curve)
                 }).collect();
                 write!(fmt, "TlsExtension::EllipticCurves({:?})", v2)
             },
@@ -211,7 +198,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::PreSharedKey(data) => write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice{d:data}),
             TlsExtension::EarlyData(o) => write!(fmt, "TlsExtension::EarlyData({:?})",o),
             TlsExtension::SupportedVersions(ref v) => {
-                let v2 : Vec<_> = v.iter().map(|c| { format!("0x{:x}",c) }).collect();
+                let v2 : Vec<_> = v.iter().map(|c| { format!("{}",c) }).collect();
                 write!(fmt, "TlsExtension::SupportedVersions(v={:?})", v2)
             },
             TlsExtension::Cookie(data) => write!(fmt, "TlsExtension::Cookie(data={:?})", data),
@@ -237,7 +224,8 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::PostHandshakeAuth => write!(fmt, "TlsExtension::PostHandshakeAuth"),
             TlsExtension::NextProtocolNegotiation => write!(fmt, "TlsExtension::NextProtocolNegotiation"),
             TlsExtension::RenegotiationInfo(data) => write!(fmt, "TlsExtension::RenegotiationInfo(data={:?})", data),
-            TlsExtension::Unknown(id,data) => write!(fmt, "TlsExtension::Unknown(id=0x{:x},data={:?})", id, data),
+            TlsExtension::Grease(t,data) => write!(fmt, "TlsExtension::Grease(0x{:x},data={:?})", t, HexSlice{d:data}),
+            TlsExtension::Unknown(t,data) => write!(fmt, "TlsExtension::Unknown(type=0x{:x},data={:?})", t.0, data),
         }
     }
 }

@@ -9,61 +9,69 @@
 use nom::{be_u8,be_u16,be_u32,IResult,ErrorKind};
 use std::convert::From;
 
+use tls::{parse_tls_versions,TlsVersion};
+use tls_ec::{parse_named_groups,NamedGroup};
+
 /// TLS extension types,
 /// defined in the [IANA Transport Layer Security (TLS)
 /// Extensions](http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml)
 /// registry
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TlsExtensionType(u16);
+pub struct TlsExtensionType(pub u16);
 
-#[allow(non_upper_case_globals)]
+newtype_enum!{
+impl display TlsExtensionType {
+    ServerName                          = 0x0000, // [RFC6066]
+    MaxFragmentLength                   = 0x0001,
+    ClientCertificate                   = 0x0002,
+    TrustedCaKeys                       = 0x0003,
+    TruncatedHMac                       = 0x0004,
+    StatusRequest                       = 0x0005, // [RFC6066]
+    UserMapping                         = 0x0006,
+    ClientAuthz                         = 0x0007,
+    ServerAuthz                         = 0x0008,
+    CertType                            = 0x0009,
+    SupportedGroups                     = 0x000a, // [RFC4492][RFC7919]
+    EcPointFormats                      = 0x000b, // [RFC4492]
+    Srp                                 = 0x000c, // [RFC5054]
+    SignatureAlgorithms                 = 0x000d,
+    UseSrtp                             = 0x000e,
+    Heartbeat                           = 0x000f,
+    ApplicationLayerProtocolNegotiation = 0x0010, // [RFC7301]
+    StatusRequestv2                     = 0x0011,
+    SignedCertificateTimestamp          = 0x0012,
+    ClientCertificateType               = 0x0013,
+    ServerCertificateType               = 0x0014,
+    Padding                             = 0x0015, // [RFC7685]
+    EncryptThenMac                      = 0x0016,
+    ExtendedMasterSecret                = 0x0017,
+    TokenBinding                        = 0x0018,
+    CachedInfo                          = 0x0019,
+
+    SessionTicketTLS                    = 0x0023,
+
+    KeyShareOld                         = 0x0028, // move to 51 in TLS 1.3 draft 23
+    PreSharedKey                        = 0x0029,
+    EarlyData                           = 0x002a,
+    SupportedVersions                   = 0x002b,
+    Cookie                              = 0x002c,
+    PskExchangeModes                    = 0x002d,
+    TicketEarlyDataInfo                 = 0x002e, // TLS 1.3 draft 18, removed in draft 19
+    CertificateAuthorities              = 0x002f,
+    OidFilters                          = 0x0030,
+    PostHandshakeAuth                   = 0x0031, // TLS 1.3 draft 20
+    SigAlgorithmsCert                   = 0x0032, // TLS 1.3 draft 23
+    KeyShare                            = 0x0033, // TLS 1.3 draft 23
+
+    NextProtocolNegotiation             = 0x3374,
+
+    Grease                              = 0xfafa,
+
+    RenegotiationInfo                   = 0xff01,
+}
+}
+
 impl TlsExtensionType {
-    pub const ServerName            : TlsExtensionType               = TlsExtensionType(0x0000); // [RFC6066]
-    pub const MaxFragmentLength     : TlsExtensionType               = TlsExtensionType(0x0001);
-    pub const ClientCertificate     : TlsExtensionType               = TlsExtensionType(0x0002);
-    pub const TrustedCaKeys         : TlsExtensionType               = TlsExtensionType(0x0003);
-    pub const TruncatedHMac         : TlsExtensionType               = TlsExtensionType(0x0004);
-    pub const StatusRequest         : TlsExtensionType               = TlsExtensionType(0x0005);
-    pub const UserMapping           : TlsExtensionType               = TlsExtensionType(0x0006);
-    pub const ClientAuthz           : TlsExtensionType               = TlsExtensionType(0x0007);
-    pub const ServerAuthz           : TlsExtensionType               = TlsExtensionType(0x0008);
-    pub const CertType              : TlsExtensionType               = TlsExtensionType(0x0009);
-    pub const SupportedGroups       : TlsExtensionType               = TlsExtensionType(0x000a); // [RFC4492][RFC7919]
-    pub const EcPointFormats        : TlsExtensionType               = TlsExtensionType(0x000b); // [RFC4492]
-    pub const Srp                   : TlsExtensionType               = TlsExtensionType(0x000c); // [RFC5054]
-    pub const SignatureAlgorithms   : TlsExtensionType               = TlsExtensionType(0x000d);
-    pub const UseSrtp               : TlsExtensionType               = TlsExtensionType(0x000e);
-    pub const Heartbeat             : TlsExtensionType               = TlsExtensionType(0x000f);
-    pub const ApplicationLayerProtocolNegotiation : TlsExtensionType = TlsExtensionType(0x0010); // [RFC7301]
-    pub const StatusRequestv2       : TlsExtensionType               = TlsExtensionType(0x0011);
-    pub const SignedCertificateTimestamp : TlsExtensionType          = TlsExtensionType(0x0012);
-    pub const ClientCertificateType : TlsExtensionType               = TlsExtensionType(0x0013);
-    pub const ServerCertificateType : TlsExtensionType               = TlsExtensionType(0x0014);
-    pub const Padding               : TlsExtensionType               = TlsExtensionType(0x0015); // [RFC7685]
-    pub const EncryptThenMac        : TlsExtensionType               = TlsExtensionType(0x0016);
-    pub const ExtendedMasterSecret  : TlsExtensionType               = TlsExtensionType(0x0017);
-    pub const TokenBinding          : TlsExtensionType               = TlsExtensionType(0x0018);
-    pub const CachedInfo            : TlsExtensionType               = TlsExtensionType(0x0019);
-
-    pub const SessionTicketTLS      : TlsExtensionType               = TlsExtensionType(0x0023);
-
-    pub const KeyShareOld           : TlsExtensionType               = TlsExtensionType(0x0028); // move to 51 in TLS 1.3 draft 23
-    pub const PreSharedKey          : TlsExtensionType               = TlsExtensionType(0x0029);
-    pub const EarlyData             : TlsExtensionType               = TlsExtensionType(0x002a);
-    pub const SupportedVersions     : TlsExtensionType               = TlsExtensionType(0x002b);
-    pub const Cookie                : TlsExtensionType               = TlsExtensionType(0x002c);
-    pub const PskExchangeModes      : TlsExtensionType               = TlsExtensionType(0x002d);
-    pub const TicketEarlyDataInfo   : TlsExtensionType               = TlsExtensionType(0x002e); // TLS 1.3 draft 18, removed in draft 19
-    pub const CertificateAuthorities : TlsExtensionType              = TlsExtensionType(0x002f);
-    pub const OidFilters            : TlsExtensionType               = TlsExtensionType(0x0030);
-    pub const PostHandshakeAuth     : TlsExtensionType               = TlsExtensionType(0x0031); // TLS 1.3 draft 20
-    pub const SigAlgorithmsCert     : TlsExtensionType               = TlsExtensionType(0x0032); // TLS 1.3 draft 23
-    pub const KeyShare              : TlsExtensionType               = TlsExtensionType(0x0033); // TLS 1.3 draft 23
-
-    pub const NextProtocolNegotiation : TlsExtensionType             = TlsExtensionType(0x3374);
-
-    pub const RenegotiationInfo     : TlsExtensionType               = TlsExtensionType(0xff01);
-
     pub fn from_u16(t: u16) -> TlsExtensionType { TlsExtensionType(t) }
 }
 
@@ -75,10 +83,10 @@ impl From<TlsExtensionType> for u16 {
 ///
 #[derive(Clone,PartialEq)]
 pub enum TlsExtension<'a>{
-    SNI(Vec<(u8,&'a[u8])>),
+    SNI(Vec<(SNIType,&'a[u8])>),
     MaxFragmentLength(u8),
-    StatusRequest(Option<(u8,&'a[u8])>),
-    EllipticCurves(Vec<u16>),
+    StatusRequest(Option<(CertificateStatusType,&'a[u8])>),
+    EllipticCurves(Vec<NamedGroup>),
     EcPointFormats(&'a[u8]),
     SignatureAlgorithms(Vec<(u8,u8)>),
     SessionTicket(&'a[u8]),
@@ -86,7 +94,7 @@ pub enum TlsExtension<'a>{
     KeyShare(&'a[u8]),
     PreSharedKey(&'a[u8]),
     EarlyData(Option<u32>),
-    SupportedVersions(Vec<u16>),
+    SupportedVersions(Vec<TlsVersion>),
     Cookie(&'a[u8]),
     PskExchangeModes(Vec<u8>),
     Heartbeat(u8),
@@ -104,7 +112,9 @@ pub enum TlsExtension<'a>{
 
     RenegotiationInfo(&'a[u8]),
 
-    Unknown(u16,&'a[u8]),
+    Grease(u16,&'a[u8]),
+
+    Unknown(TlsExtensionType,&'a[u8]),
 }
 
 
@@ -135,31 +145,43 @@ impl<'a> From<&'a TlsExtension<'a>> for TlsExtensionType {
             &TlsExtension::PostHandshakeAuth             => TlsExtensionType::PostHandshakeAuth,
             &TlsExtension::NextProtocolNegotiation       => TlsExtensionType::NextProtocolNegotiation,
             &TlsExtension::RenegotiationInfo(_)          => TlsExtensionType::RenegotiationInfo,
-            &TlsExtension::Unknown(x,_)                  => TlsExtensionType(x)
+            &TlsExtension::Grease(_,_)                   => TlsExtensionType::Grease,
+            &TlsExtension::Unknown(x,_)                  => x
         }
     }
 }
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct KeyShareEntry<'a> {
-    pub group: u16,  // NamedGroup
+    pub group: NamedGroup,  // NamedGroup
     pub kx: &'a[u8], // Key Exchange Data
 }
 
-enum_from_primitive!{
-#[derive(Clone,Debug,PartialEq)]
-#[repr(u8)]
-pub enum PskKeyExchangeMode {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PskKeyExchangeMode(pub u8);
+
+newtype_enum!{
+impl PskKeyExchangeMode {
     Psk    = 0,
     PskDhe = 1,
 }
 }
 
-enum_from_primitive!{
-#[derive(Clone,Debug,PartialEq)]
-#[repr(u8)]
-pub enum SNIType {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SNIType(pub u8);
+
+newtype_enum!{
+impl display SNIType {
     HostName = 0,
+}
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct CertificateStatusType(pub u8);
+
+newtype_enum!{
+impl debug CertificateStatusType {
+    OCSP = 1,
 }
 }
 
@@ -172,8 +194,12 @@ pub struct OidFilter<'a> {
 
 
 
-named!(pub parse_tls_extension_sni_hostname<(u8,&[u8])>,
-    pair!(be_u8,length_bytes!(be_u16))
+named!(pub parse_tls_extension_sni_hostname<(SNIType,&[u8])>,
+    do_parse!(
+        t: be_u8 >>
+        v: length_bytes!(be_u16) >>
+        ( SNIType(t), v )
+    )
 );
 
 named!(pub parse_tls_extension_sni_content<TlsExtension>,
@@ -221,7 +247,7 @@ fn parse_tls_extension_status_request_content(i: &[u8], ext_len:u16) -> IResult<
                 do_parse!(i,
                     status_type: be_u8 >>
                     request: take!(ext_len-1) >>
-                    ( TlsExtension::StatusRequest(Some((status_type,request))) )
+                    ( TlsExtension::StatusRequest(Some((CertificateStatusType(status_type),request))) )
                 )
         },
     }
@@ -237,12 +263,9 @@ named!(pub parse_tls_extension_status_request<TlsExtension>,
 );
 
 named!(pub parse_tls_extension_elliptic_curves_content<TlsExtension>,
-    do_parse!(
-        list_len: be_u16 >>
-        l: flat_map!(take!(list_len),
-            many0!(complete!(be_u16))
-        ) >>
-        ( TlsExtension::EllipticCurves(l) )
+    flat_map!(
+        length_bytes!(be_u16),
+        map!(parse_named_groups, |x| TlsExtension::EllipticCurves(x))
     )
 );
 
@@ -331,7 +354,7 @@ fn parse_tls_extension_padding_content(i: &[u8], ext_len:u16) -> IResult<&[u8],T
 /// Defined in [RFC6962]
 named!(pub parse_tls_extension_signed_certificate_timestamp_content<TlsExtension>,
     map!(
-        opt!(length_bytes!(be_u16)),
+        opt!(complete!(length_bytes!(be_u16))),
         |d| { TlsExtension::SignedCertificateTimestamp(d) }
     )
 );
@@ -457,11 +480,12 @@ named!(pub parse_tls_extension_early_data<TlsExtension>,
 // XXX first case has length 1 + 2*n, while the second case has length 2
 fn parse_tls_extension_supported_versions_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     if ext_len == 2 {
-        map!(i, be_u16, |x| TlsExtension::SupportedVersions(vec![x]))
+        map!(i, be_u16, |x| TlsExtension::SupportedVersions(vec![TlsVersion(x)]))
     } else {
         do_parse!(i,
                   _n: be_u8 >>
-                  l: flat_map!(take!(ext_len-1),many0!(complete!(be_u16))) >>
+                  // l: flat_map!(take!(ext_len-1),many0!(complete!(be_u16))) >>
+                  l: flat_map!(take!(ext_len-1),parse_tls_versions) >>
                   ( TlsExtension::SupportedVersions(l) )
         )
     }
@@ -556,12 +580,19 @@ named!(pub parse_tls_extension_unknown<TlsExtension>,
         ext_type: be_u16 >>
         ext_len:  be_u16 >>
         ext_data: take!(ext_len) >>
-        ( TlsExtension::Unknown(ext_type,ext_data) )
+        ( TlsExtension::Unknown(TlsExtensionType(ext_type),ext_data) )
     )
 );
 
 
 fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult<&[u8],TlsExtension> {
+    if ext_type & 0x0f0f == 0x0a0a {
+        return map!(
+            i,
+            take!(ext_len),
+            |d| TlsExtension::Grease(ext_type,d)
+        );
+    }
     match ext_type {
         0x0000 => parse_tls_extension_sni_content(i),
         0x0001 => parse_tls_extension_max_fragment_length_content(i),
@@ -587,7 +618,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x0033 => parse_tls_extension_key_share_content(i,ext_len),
         0x3374 => parse_tls_extension_npn_content(i,ext_len),
         0xff01 => parse_tls_extension_renegotiation_info_content(i),
-        _      => { map!(i, take!(ext_len), |ext_data| { TlsExtension::Unknown(ext_type,ext_data) }) },
+        _      => { map!(i, take!(ext_len), |ext_data| { TlsExtension::Unknown(TlsExtensionType(ext_type),ext_data) }) },
     }
 }
 

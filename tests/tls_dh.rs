@@ -40,8 +40,8 @@ fn test_tls_ecdhe_params() {
     let point_data = &bytes[4..137];
     let expected1 = ServerECDHParams {
         curve_params: ECParameters {
-            curve_type: 3,
-            params_content: ECParametersContent::NamedGroup(NamedGroup::Secp521r1 as u16),
+            curve_type: ECCurveType::NamedGroup,
+            params_content: ECParametersContent::NamedGroup(NamedGroup::Secp521r1),
         },
         public: ECPoint{
             point: point_data,
