@@ -3,7 +3,7 @@ pub mod serialize {
 
 use tls::*;
 use tls_ec::{ECPoint,NamedGroup};
-use tls_extensions::{TlsExtension,TlsExtensionType};
+use tls_extensions::{SNIType,TlsExtension,TlsExtensionType};
 use cookie_factory::*;
 
 #[macro_export]
@@ -60,7 +60,7 @@ macro_rules! gen_many_deref(
 
 #[inline]
 pub fn gen_tls_named_group<'a>(x:(&'a mut [u8],usize),g:NamedGroup) -> Result<(&'a mut [u8],usize),GenError> {
-    set_be_u16(x, g as u16)
+    set_be_u16(x, g.0)
 }
 
 #[inline]
@@ -72,17 +72,17 @@ pub fn gen_tls_ec_point<'a>(x:(&'a mut [u8],usize),p:ECPoint) -> Result<(&'a mut
     )
 }
 
-pub fn gen_tls_ext_sni_hostname<'a,'b>(x:(&'a mut [u8],usize),h:&(u8,&'b[u8])) -> Result<(&'a mut [u8],usize),GenError> {
+pub fn gen_tls_ext_sni_hostname<'a,'b>(x:(&'a mut [u8],usize),h:&(SNIType,&'b[u8])) -> Result<(&'a mut [u8],usize),GenError> {
     do_gen!(
         x,
-        gen_be_u8!(h.0 as u8) >>
+        gen_be_u8!((h.0).0 as u8) >>
         gen_be_u16!(h.1.len() as u16) >>
         gen_slice!(h.1)
     )
 }
 
 #[inline]
-pub fn gen_tls_ext_sni<'a,'b>(x:(&'a mut [u8],usize),m:&'b Vec<(u8,&'b[u8])>) -> Result<(&'a mut [u8],usize),GenError> {
+pub fn gen_tls_ext_sni<'a,'b>(x:(&'a mut [u8],usize),m:&'b Vec<(SNIType,&'b[u8])>) -> Result<(&'a mut [u8],usize),GenError> {
     gen_tagged_extension!(x, 0x0000, gen_many_ref!(m,gen_tls_ext_sni_hostname))
 }
 
@@ -92,17 +92,17 @@ pub fn gen_tls_ext_max_fragment_length<'a,'b>(x:(&'a mut [u8],usize),l:u8) -> Re
 }
 
 #[inline]
-pub fn gen_tls_ext_elliptic_curves<'a,'b>(x:(&'a mut [u8],usize),v:&'b Vec<u16>) -> Result<(&'a mut [u8],usize),GenError> {
+pub fn gen_tls_ext_elliptic_curves<'a,'b>(x:(&'a mut [u8],usize),v:&'b Vec<NamedGroup>) -> Result<(&'a mut [u8],usize),GenError> {
     gen_tagged_extension!(
         x,
         u16::from(TlsExtensionType::SupportedGroups),
-        gen_length_bytes_be_u16!(gen_many_byref!(v,set_be_u16))
+        gen_length_bytes_be_u16!(gen_many_byref!(v,gen_tls_named_group))
     )
 }
 
 pub fn gen_tls_extension<'a,'b>(x:(&'a mut [u8],usize),m:&'b TlsExtension) -> Result<(&'a mut [u8],usize),GenError> {
     match m {
-        &TlsExtension::SNI(ref v)           => gen_tls_ext_sni(x,&v),
+        &TlsExtension::SNI(ref v)           => gen_tls_ext_sni(x,v),
         &TlsExtension::MaxFragmentLength(l) => gen_tls_ext_max_fragment_length(x,l),
 
         &TlsExtension::EllipticCurves(ref v) => gen_tls_ext_elliptic_curves(x,v),
@@ -366,7 +366,7 @@ mod tests {
         let mut mem : [u8; 256] = [0; 256];
         let s = &mut mem[..];
         let ext = vec![
-            TlsExtension::SNI(vec![(0,b"www.google.com")]),
+            TlsExtension::SNI(vec![(SNIType::HostName,b"www.google.com")]),
         ];
 
         let res = gen_many_ref!((s,0),ext,gen_tls_extension);
