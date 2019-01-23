@@ -38,7 +38,6 @@ extern crate phf;
 extern crate rusticata_macros;
 
 #[cfg(feature = "serialize")]
-#[macro_use]
 extern crate cookie_factory;
 
 pub use tls_alert::*;
