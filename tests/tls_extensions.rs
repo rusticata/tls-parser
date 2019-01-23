@@ -31,7 +31,7 @@ fn test_tls_extensions() {
         TlsExtension::EllipticCurves(ecc),
         TlsExtension::SessionTicket(&empty),
         TlsExtension::SignatureAlgorithms(vec![
-            (6, 1), (6, 2), (6, 3), (5, 1), (5, 2), (5, 3), (4, 1), (4, 2), (4, 3), (3, 1), (3, 2), (3, 3), (2, 1), (2, 2), (2, 3)
+            0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403, 0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203,
         ]),
         TlsExtension::StatusRequest(Some((CertificateStatusType::OCSP,ext1))),
         TlsExtension::Heartbeat(1),

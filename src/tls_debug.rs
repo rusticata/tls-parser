@@ -12,16 +12,6 @@ use tls_ec::*;
 use tls_extensions::*;
 use tls_sign_hash::*;
 
-pub struct SignatureSchemeU16 { pub d: u16 }
-impl fmt::Debug for SignatureSchemeU16 {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match SignatureScheme::from_u16(self.d) {
-            Some(ref c) => write!(fmt,"0x{:04x}({:?})",self.d,c),
-            None        => write!(fmt,"0x{:04x}(Unknown signature scheme)",self.d),
-        }
-    }
-}
-
 
 
 // ------------------------- tls.rs ------------------------------
@@ -173,23 +163,9 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             },
             TlsExtension::EcPointFormats(v) => write!(fmt, "TlsExtension::EcPointFormats({:?})", v),
             TlsExtension::SignatureAlgorithms(ref v) => {
-                let v2 : Vec<_> = v.iter().map(|&(h,s)| {
-                    let h2 = match HashAlgorithm::from_u8(h) {
-                        Some(n) => format!("{:?}", n),
-                        None    => format!("<Unknown hash 0x{:x}/{}>", h, h),
-                    };
-                    let s2 = match SignAlgorithm::from_u8(s) {
-                        Some(n) => format!("{:?}", n),
-                        None    => format!("<Unknown signature 0x{:x}/{}>", s, s),
-                    };
-                    (h2,s2)
+                let v2 : Vec<_> = v.iter().map(|&alg| {
+                    format!("{}", alg)
                 }).collect();
-                // let v2 : Vec<_> = v.iter().map(|c|{
-                //     match SignatureScheme::from_u16(*c) {
-                //         Some(n) => format!("{:?}", n),
-                //         None    => format!("<Unknown signature scheme 0x{:x}/{}>", c, c),
-                //     }
-                // }).collect();
                 write!(fmt, "TlsExtension::SignatureAlgorithms({:?})", v2)
             },
             TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
@@ -231,9 +207,9 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
 }
 
 // ------------------------- tls_sign_hash.rs ------------------------------
-impl fmt::Debug for HashSignAlgorithm {
+impl fmt::Debug for SignatureAndHashAlgorithm {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("HashSignAlgorithm")
+        fmt.debug_struct("SignatureAndHashAlgorithm")
             .field("hash", &HashAlgorithm::from_u8(self.hash))
             .field("sign", &SignAlgorithm::from_u8(self.sign))
             .finish()

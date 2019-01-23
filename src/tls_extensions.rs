@@ -88,7 +88,7 @@ pub enum TlsExtension<'a>{
     StatusRequest(Option<(CertificateStatusType,&'a[u8])>),
     EllipticCurves(Vec<NamedGroup>),
     EcPointFormats(&'a[u8]),
-    SignatureAlgorithms(Vec<(u8,u8)>),
+    SignatureAlgorithms(Vec<u16>),
     SessionTicket(&'a[u8]),
     KeyShareOld(&'a[u8]),
     KeyShare(&'a[u8]),
@@ -298,9 +298,9 @@ named!(pub parse_tls_extension_signature_algorithms_content<TlsExtension>,
     do_parse!(
         list_len: be_u16 >>
         l: flat_map!(take!(list_len),
-            many0!(complete!(pair!(be_u8,be_u8)))
+            many0!(complete!(be_u16))
         ) >>
-        ( TlsExtension::SignatureAlgorithms(l) )
+        ( TlsExtension::SignatureAlgorithms(l) ) // XXX SignatureAlgorithms or SignatureScheme
     )
 );
 

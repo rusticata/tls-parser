@@ -28,38 +28,61 @@ pub enum SignAlgorithm {
 }
 
 #[derive(PartialEq)]
-pub struct HashSignAlgorithm {
+pub struct SignatureAndHashAlgorithm {
     pub hash: u8,
     pub sign: u8,
 }
 
-/// Signature algorithms, as defined in [draft-ietf-tls-tls13-18]
-enum_from_primitive! {
-#[derive(Debug,PartialEq)]
-#[repr(u16)]
-pub enum SignatureScheme {
-    RsaPkcs1Sha1 = 0x0201,
-    EcdsaSha1 = 0203,
+/// Signature algorithms, as defined in [RFC8446] 4.2.3
+#[derive(Debug, PartialEq, Eq)]
+pub struct SignatureScheme(pub u16);
 
-    RsaPkcs1Sha256 = 0x0401,
-    RsaPkcs1Sha384 = 0x0501,
-    RsaPkcs1Sha512 = 0x0601,
+newtype_enum! {
+impl display SignatureScheme {
+    /* RSASSA-PKCS1-v1_5 algorithms */
+    rsa_pkcs1_sha256 = 0x0401,
+    rsa_pkcs1_sha384 = 0x0501,
+    rsa_pkcs1_sha512 = 0x0601,
 
-    EcdsaSecp256r1Sha256 = 0x0403,
-    EcdsaSecp384r1Sha384 = 0x0503,
-    EcdsaSecp521r1Sha512 = 0x0603,
+    /* ECDSA algorithms */
+    ecdsa_secp256r1_sha256 = 0x0403,
+    ecdsa_secp384r1_sha384 = 0x0503,
+    ecdsa_secp521r1_sha512 = 0x0603,
 
-    RsaPssRsaeSha256 = 0x0804,
-    RsaPssRsaeSha384 = 0x0805,
-    RsaPssRsaeSha512 = 0x0806,
+    /* RSASSA-PSS algorithms with public key OID rsaEncryption */
+    rsa_pss_rsae_sha256 = 0x0804,
+    rsa_pss_rsae_sha384 = 0x0805,
+    rsa_pss_rsae_sha512 = 0x0806,
 
-    RsaPssPssSha256 = 0x0809,
-    RsaPssPssSha384 = 0x080a,
-    RsaPssPssSha512 = 0x080b,
+    /* EdDSA algorithms */
+    ed25519 = 0x0807,
+    ed448 = 0x0808,
 
-    Ed25519 = 0x0807,
-    Ed448 = 0x0808,
+    /* RSASSA-PSS algorithms with public key OID RSASSA-PSS */
+    rsa_pss_pss_sha256 = 0x0809,
+    rsa_pss_pss_sha384 = 0x080a,
+    rsa_pss_pss_sha512 = 0x080b,
+
+    /* Legacy algorithms */
+    rsa_pkcs1_sha1 = 0x0201,
+    ecdsa_sha1 = 0x0203,
 }
+}
+
+impl SignatureScheme {
+    pub fn is_reserved(&self) -> bool {
+        self.0 >= 0xfe00 && self.0 < 0xff00
+    }
+
+    /// Get Hash algorithm (for tls <= 1.2) for legacy extension format
+    pub fn hash_alg(&self) -> u8 {
+        ((self.0 >> 8) & 0xff) as u8
+    }
+
+    /// Get Signature algorithm (for tls <= 1.2) for legacy extension format
+    pub fn sign_alg(&self) -> u8 {
+        (self.0 & 0xff) as u8
+    }
 }
 
 
@@ -69,7 +92,7 @@ pub enum SignatureScheme {
 /// DigitallySigned structure from [RFC5246] section 4.7
 #[derive(PartialEq)]
 pub struct DigitallySigned<'a> {
-    pub alg: Option<HashSignAlgorithm>,
+    pub alg: Option<SignatureAndHashAlgorithm>,
     // pub alg: Option<u16>, // SignatureScheme
     pub data: &'a[u8],
 }
@@ -92,7 +115,7 @@ named!(pub parse_digitally_signed<DigitallySigned>,
         s: be_u8 >>
         d: length_bytes!(be_u16) >>
         ( DigitallySigned{
-            alg: Some( HashSignAlgorithm{ hash:h, sign:s } ),
+            alg: Some( SignatureAndHashAlgorithm{ hash:h, sign:s } ),
             data: d,
         })
     )
