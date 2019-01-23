@@ -13,6 +13,7 @@ impl display HashAlgorithm {
     Sha256 = 4,
     Sha384 = 5,
     Sha512 = 6,
+    Intrinsic = 8, // [RFC8422]
 }
 }
 
@@ -26,6 +27,8 @@ impl display SignAlgorithm {
     Rsa = 1,
     Dsa = 2,
     Ecdsa = 3,
+    Ed25519 = 7, // [RFC8422]
+    Ed448 = 8, // [RFC8422]
 }
 }
 
