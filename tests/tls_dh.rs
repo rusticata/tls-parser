@@ -49,8 +49,8 @@ fn test_tls_ecdhe_params() {
     };
     let expected2 = DigitallySigned {
         alg: Some(SignatureAndHashAlgorithm{
-            hash: HashAlgorithm::Sha1 as u8,
-            sign: SignAlgorithm::Rsa as u8,
+            hash: HashAlgorithm::Sha1,
+            sign: SignAlgorithm::Rsa,
         }),
         data: &bytes[141..],
     };
@@ -137,8 +137,8 @@ fn test_tls_dhe_params() {
     };
     let expected2 = DigitallySigned {
         alg: Some(SignatureAndHashAlgorithm{
-            hash: HashAlgorithm::Sha512 as u8,
-            sign: SignAlgorithm::Rsa as u8,
+            hash: HashAlgorithm::Sha512,
+            sign: SignAlgorithm::Rsa,
         }),
         data: &bytes[778..],
     };

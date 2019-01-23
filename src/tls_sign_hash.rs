@@ -1,10 +1,11 @@
 use nom::{be_u8,be_u16,IResult};
 
 /// Hash algorithms, as defined in [RFC5246]
-enum_from_primitive! {
-#[derive(Debug,PartialEq)]
-#[repr(u8)]
-pub enum HashAlgorithm {
+#[derive(Debug, PartialEq, Eq)]
+pub struct HashAlgorithm(u8);
+
+newtype_enum! {
+impl display HashAlgorithm {
     None = 0,
     Md5 = 1,
     Sha1 = 2,
@@ -16,10 +17,11 @@ pub enum HashAlgorithm {
 }
 
 /// Signature algorithms, as defined in [RFC5246]
-enum_from_primitive! {
-#[derive(Debug,PartialEq)]
-#[repr(u8)]
-pub enum SignAlgorithm {
+#[derive(Debug, PartialEq, Eq)]
+pub struct SignAlgorithm(u8);
+
+newtype_enum! {
+impl display SignAlgorithm {
     Anonymous = 0,
     Rsa = 1,
     Dsa = 2,
@@ -29,8 +31,8 @@ pub enum SignAlgorithm {
 
 #[derive(PartialEq)]
 pub struct SignatureAndHashAlgorithm {
-    pub hash: u8,
-    pub sign: u8,
+    pub hash: HashAlgorithm,
+    pub sign: SignAlgorithm,
 }
 
 /// Signature algorithms, as defined in [RFC8446] 4.2.3
@@ -115,7 +117,7 @@ named!(pub parse_digitally_signed<DigitallySigned>,
         s: be_u8 >>
         d: length_bytes!(be_u16) >>
         ( DigitallySigned{
-            alg: Some( SignatureAndHashAlgorithm{ hash:h, sign:s } ),
+            alg: Some( SignatureAndHashAlgorithm{ hash:HashAlgorithm(h), sign:SignAlgorithm(s) } ),
             data: d,
         })
     )

@@ -1,8 +1,6 @@
 use std::fmt;
 use std::str::from_utf8;
 
-use enum_primitive::FromPrimitive;
-
 use rusticata_macros::debug::{HexU16,HexSlice};
 
 use tls::*;
@@ -210,8 +208,8 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
 impl fmt::Debug for SignatureAndHashAlgorithm {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("SignatureAndHashAlgorithm")
-            .field("hash", &HashAlgorithm::from_u8(self.hash))
-            .field("sign", &SignAlgorithm::from_u8(self.sign))
+            .field("hash", &self.hash)
+            .field("sign", &self.sign)
             .finish()
     }
 }
