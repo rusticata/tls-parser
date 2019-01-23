@@ -168,6 +168,9 @@ for i in ciphersuites.findAll ("record"):
   if rfc == "rfc8446":
     kxau = ["TLS13"]
     encmac = desc[4:] # skip "TLS_"
+  elif rfc == "draft-camwinget-tls-ts13-macciphersuites":
+    kxau = ["TLS13"]
+    encmac = "NULL_" + desc.split("_")[1] # forge string like NULL_SHA256
   else:
     (_kxau, encmac) = desc.split("_WITH_")
     kxau = _kxau.split ("_")[1:]
