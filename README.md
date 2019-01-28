@@ -17,10 +17,17 @@ The parser is published on `crates.io`.
 To use it, add the following to your `Cargo.toml` file:
 ```
 [dependencies]
-tls-parser = "0.6.0"
+tls-parser = "0.7.0"
 ```
 
 ## Changes
+
+### 0.7.0
+
+- Convert most enums to newtypes
+  - warning: this is a breaking change
+- Update dependencies and remove unused crates
+- Update ciphersuites to 2019-01-23
 
 ### 0.6.0
 
