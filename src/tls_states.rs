@@ -1,4 +1,5 @@
 use tls::*;
+use tls_alert::TlsAlertSeverity;
 
 /// Error types for the state machine
 pub enum StateChangeError {
@@ -74,6 +75,8 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake) ->
         (TlsState::PskHelloDone,     &TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::PskCKE),
         // Resuming session
         (TlsState::AskResumeSession, &TlsMessageHandshake::ServerHello(_))       => Ok(TlsState::ResumeSession),
+        // Resume session failed
+        (TlsState::ResumeSession,    &TlsMessageHandshake::Certificate(_))       => Ok(TlsState::Certificate),
         // TLS 1.3 Draft 18 1-RTT
         // Re-use the ClientChangeCipherSpec state to indicate the next message will be encrypted
         (TlsState::ClientHello,      &TlsMessageHandshake::ServerHelloV13Draft18(_))    => Ok(TlsState::ClientChangeCipherSpec),
@@ -113,6 +116,10 @@ pub fn tls_state_transition(state: TlsState, msg: &TlsMessage) -> Result<TlsStat
         (TlsState::PskCKE,                &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
         // Resume session
         (TlsState::ResumeSession,         &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
+        // non-fatal alerts
+        (s,                               &TlsMessage::Alert(ref a)) => {
+            if a.severity == TlsAlertSeverity::Warning { Ok(s) } else { Err(StateChangeError::InvalidTransition) }
+        },
         (_,_) => Err(StateChangeError::InvalidTransition),
     }
 }
