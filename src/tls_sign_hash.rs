@@ -2,7 +2,7 @@ use nom::{be_u8,be_u16,IResult};
 
 /// Hash algorithms, as defined in [RFC5246]
 #[derive(Debug, PartialEq, Eq)]
-pub struct HashAlgorithm(u8);
+pub struct HashAlgorithm(pub u8);
 
 newtype_enum! {
 impl display HashAlgorithm {
@@ -19,7 +19,7 @@ impl display HashAlgorithm {
 
 /// Signature algorithms, as defined in [RFC5246]
 #[derive(Debug, PartialEq, Eq)]
-pub struct SignAlgorithm(u8);
+pub struct SignAlgorithm(pub u8);
 
 newtype_enum! {
 impl display SignAlgorithm {
