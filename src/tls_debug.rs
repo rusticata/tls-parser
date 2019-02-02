@@ -162,7 +162,12 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::EcPointFormats(v) => write!(fmt, "TlsExtension::EcPointFormats({:?})", v),
             TlsExtension::SignatureAlgorithms(ref v) => {
                 let v2 : Vec<_> = v.iter().map(|&alg| {
-                    format!("{}", alg)
+                    let s = format!("{}", SignatureScheme(alg));
+                    if s.starts_with("SignatureScheme") {
+                        format!("{}", SignatureAndHashAlgorithm{hash:HashAlgorithm((alg>>8) as u8), sign:SignAlgorithm((alg&0xff) as u8)})
+                    } else {
+                        s
+                    }
                 }).collect();
                 write!(fmt, "TlsExtension::SignatureAlgorithms({:?})", v2)
             },
@@ -205,12 +210,15 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
 }
 
 // ------------------------- tls_sign_hash.rs ------------------------------
+impl fmt::Display for SignatureAndHashAlgorithm {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "HashSign({},{})", self.hash, self.sign)
+    }
+}
+
 impl fmt::Debug for SignatureAndHashAlgorithm {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("SignatureAndHashAlgorithm")
-            .field("hash", &self.hash)
-            .field("sign", &self.sign)
-            .finish()
+        write!(fmt, "SignatureAndHashAlgorithm({},{})", self.hash, self.sign)
     }
 }
 
