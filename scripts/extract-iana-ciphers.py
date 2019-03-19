@@ -187,6 +187,9 @@ for i in ciphersuites.findAll ("record"):
     au = kx
     if len (kxau) > 2:
       au += "+" + "_".join (kxau[2:])
+  elif kxau[0] == "GOSTR341112":
+    # unsupported suites from https://datatracker.ietf.org/doc/draft-smyshlyaev-tls12-gost-suites/
+    continue
   else:
     kx, au = kxau
   if au == "anon":
