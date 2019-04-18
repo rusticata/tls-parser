@@ -34,31 +34,31 @@ fn main() {
         let l = line.unwrap();
         let mut v : Vec<&str> = l.split(':').collect();
 
-        if v[6].is_empty() {
-            v[6] = "NULL"
+        if v[5].is_empty() {
+            v[5] = "NULL"
         }
 
-        let au = match v[4] {
+        let au = match v[3] {
             "SRP+DSS" => String::from("Srp_Dss"),
             "SRP+RSA" => String::from("Srp_Rsa"),
-            _ => titlecase_word(v[4]).replace("+","_"),
+            _ => titlecase_word(v[3]).replace("+","_"),
         };
 
-        let enc = match v[5] {
+        let enc = match v[4] {
             "3DES" => String::from("TripleDes"),
             "CHACHA20_POLY1305" => String::from("Chacha20_Poly1305"),
-            _ => titlecase_word(v[5]),
+            _ => titlecase_word(v[4]),
         };
 
         let mac = String::from (
-            match v[8] {
+            match v[7] {
                 "NULL" => "Null",
                 "HMAC-MD5" => "HmacMd5",
                 "HMAC-SHA1" => "HmacSha1",
                 "HMAC-SHA256" => "HmacSha256",
                 "HMAC-SHA384" => "HmacSha384",
                 "AEAD" => "Aead",
-                _ => panic!("Unknown mac {}", v[8]),
+                _ => panic!("Unknown mac {}", v[7]),
             });
 
         let key = u16::from_str_radix(v[0], 16).unwrap();
@@ -66,13 +66,13 @@ fn main() {
             format!(
             "TlsCipherSuite{{ name:\"{}\", id:0x{}, kx:TlsCipherKx::{}, au:TlsCipherAu::{}, enc:TlsCipherEnc::{},  enc_mode:TlsCipherEncMode::{}, enc_size:{}, mac:TlsCipherMac::{}, mac_size:{},}}",
             v[1],v[0],
-            titlecase_word(v[3]), // kx
+            titlecase_word(v[2]), // kx
             au, // au
             enc, // enc
-            titlecase_word(v[6]), // enc_mode
-            v[7], // enc_size
+            titlecase_word(v[5]), // enc_mode
+            v[6], // enc_size
             mac, // mac
-            v[9], // mac_size
+            v[8], // mac_size
             ).clone();
 
         map.entry(key,val.as_str());
