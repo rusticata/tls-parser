@@ -22,6 +22,12 @@ tls-parser = "0.7.0"
 
 ## Changes
 
+### 0.7.1
+
+- Improve state machine, handle resumption failure, and non-fatal alerts
+- Improve handling of Signature/Hash algorithms, and display
+- Update ciphersuites to 2019-03-19
+
 ### 0.7.0
 
 - Convert most enums to newtypes
