@@ -222,22 +222,24 @@ named!(pub parse_tls_extension_sni<TlsExtension>,
 );
 
 /// Max fragment length [RFC6066]
-named!(pub parse_tls_extension_max_fragment_length_content<TlsExtension>,
+pub fn parse_tls_extension_max_fragment_length_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     map!(
+        i,
         be_u8,
         |l| { TlsExtension::MaxFragmentLength(l) }
     )
-);
+}
 
 /// Max fragment length [RFC6066]
-named!(pub parse_tls_extension_max_fragment_length<TlsExtension>,
+pub fn parse_tls_extension_max_fragment_length(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     do_parse!(
+        i,
         tag!([0x00,0x01]) >>
         ext_len:  be_u16 >>
         ext: flat_map!(take!(ext_len),parse_tls_extension_max_fragment_length_content) >>
         ( ext )
     )
-);
+}
 
 /// Status Request [RFC6066]
 fn parse_tls_extension_status_request_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
@@ -335,13 +337,14 @@ named!(parse_protocol_name<&[u8]>,
 );
 
 /// Defined in [RFC7301]
-named!(pub parse_tls_extension_alpn_content<TlsExtension>,
+pub fn parse_tls_extension_alpn_content(i:&[u8]) -> IResult<&[u8], TlsExtension> {
     do_parse!(
+        i,
         list_len: be_u16 >>
         v: flat_map!(take!(list_len),many0!(complete!(parse_protocol_name))) >>
         ( TlsExtension::ALPN(v) )
     )
-);
+}
 
 /// Defined in [RFC7685]
 fn parse_tls_extension_padding_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
@@ -352,12 +355,13 @@ fn parse_tls_extension_padding_content(i: &[u8], ext_len:u16) -> IResult<&[u8],T
 }
 
 /// Defined in [RFC6962]
-named!(pub parse_tls_extension_signed_certificate_timestamp_content<TlsExtension>,
+pub fn parse_tls_extension_signed_certificate_timestamp_content(i:&[u8]) -> IResult<&[u8], TlsExtension> {
     map!(
+        i,
         opt!(complete!(length_bytes!(be_u16))),
         |d| { TlsExtension::SignedCertificateTimestamp(d) }
     )
-);
+}
 
 /// Encrypt-then-MAC is defined in [RFC7366]
 fn parse_tls_extension_encrypt_then_mac_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
@@ -368,14 +372,15 @@ fn parse_tls_extension_encrypt_then_mac_content(i: &[u8], ext_len:u16) -> IResul
 }
 
 /// Encrypt-then-MAC is defined in [RFC7366]
-named!(pub parse_tls_extension_encrypt_then_mac<TlsExtension>,
+pub fn parse_tls_extension_encrypt_then_mac(i:&[u8]) -> IResult<&[u8], TlsExtension> {
     do_parse!(
+        i,
         tag!([0x00,0x16]) >>
         ext_len:  be_u16 >>
         ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_encrypt_then_mac_content,ext_len)) >>
         ( ext )
     )
-);
+}
 
 /// Extended Master Secret is defined in [RFC7627]
 fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
@@ -386,14 +391,15 @@ fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> 
 }
 
 /// Extended Master Secret is defined in [RFC7627]
-named!(pub parse_tls_extension_extended_master_secret<TlsExtension>,
+pub fn parse_tls_extension_extended_master_secret(i:&[u8]) ->IResult<&[u8], TlsExtension> {
     do_parse!(
+        i,
         tag!([0x00,0x17]) >>
         ext_len:  be_u16 >>
         ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_extended_master_secret_content,ext_len)) >>
         ( ext )
     )
-);
+}
 
 fn parse_tls_extension_session_ticket_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     map!(i,
@@ -471,7 +477,7 @@ named!(pub parse_tls_extension_early_data<TlsExtension>,
 //           select (Handshake.msg_type) {
 //               case client_hello:
 //                    ProtocolVersion versions<2..254>;
-// 
+//
 //               case server_hello: /* and HelloRetryRequest */
 //                    ProtocolVersion selected_version;
 //           };
@@ -542,13 +548,14 @@ fn parse_tls_extension_npn_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsEx
 }
 
 /// Renegotiation Info, defined in [RFC5746]
-named!(pub parse_tls_extension_renegotiation_info_content<TlsExtension>,
+pub fn parse_tls_extension_renegotiation_info_content(i:&[u8]) -> IResult<&[u8],TlsExtension> {
     do_parse!(
+        i,
         reneg_info_len: be_u8  >>
         reneg_info    : take!(reneg_info_len) >>
         ( TlsExtension::RenegotiationInfo(reneg_info) )
     )
-);
+}
 
 named!(parse_tls_oid_filter<OidFilter>,
     do_parse!(

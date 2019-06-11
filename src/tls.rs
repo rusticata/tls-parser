@@ -715,9 +715,9 @@ fn parse_tls_handshake_msg_finished( i:&[u8], len: usize ) -> IResult<&[u8], Tls
     )
 }
 
-/// Defined in [RFC6066]
-/// if status_type == 0, blob is a OCSPResponse, as defined in [RFC2560](https://tools.ietf.org/html/rfc2560)
-/// Note that the OCSPResponse object is DER-encoded.
+// Defined in [RFC6066]
+// if status_type == 0, blob is a OCSPResponse, as defined in [RFC2560](https://tools.ietf.org/html/rfc2560)
+// Note that the OCSPResponse object is DER-encoded.
 named!(parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
     do_parse!(
         status_type: be_u8 >>
