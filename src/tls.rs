@@ -1,5 +1,5 @@
 //! # TLS parser
-//! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.2
+//! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
 
 use nom::{be_u8,be_u16,be_u24,be_u32,rest,IResult,Err,ErrorKind};
 
