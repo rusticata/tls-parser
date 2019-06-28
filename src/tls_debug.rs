@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::from_utf8;
 
-use rusticata_macros::debug::{HexU16,HexSlice};
+use rusticata_macros::debug::HexSlice;
 
 use tls::*;
 use tls_alert::*;
@@ -91,7 +91,7 @@ impl fmt::Debug for TlsRecordHeader {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsRecordHeader")
             .field("type", &self.record_type)
-            .field("version", &HexU16{d:self.version})
+            .field("version", &self.version)
             .field("len", &self.len)
             .finish()
     }

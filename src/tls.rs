@@ -403,7 +403,7 @@ pub struct TlsMessageHeartbeat<'a>{
 #[derive(Clone,PartialEq)]
 pub struct TlsRecordHeader {
     pub record_type: TlsRecordType,
-    pub version: u16,
+    pub version: TlsVersion,
     pub len: u16,
 }
 
@@ -501,7 +501,7 @@ named!(parse_tls_record_header<TlsRecordHeader>,
         (
             TlsRecordHeader {
                 record_type: TlsRecordType(t),
-                version: v,
+                version: TlsVersion(v),
                 len: l,
             }
         )

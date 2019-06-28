@@ -270,7 +270,7 @@ pub fn gen_tls_plaintext<'a,'b>(x:(&'a mut [u8],usize),p:&'b TlsPlaintext) -> Re
     do_gen!(
         x,
                  gen_be_u8!(u8::from(p.hdr.record_type)) >>
-                 gen_be_u16!(p.hdr.version) >>
+                 gen_be_u16!(p.hdr.version.0) >>
         ofs_len: gen_be_u16!(p.hdr.len) >>
         // gen_skip!(2) >>
         start:   gen_many_ref!(&p.msg,gen_tls_message) >>
@@ -311,7 +311,7 @@ mod tests {
         let expected = TlsPlaintext {
             hdr: TlsRecordHeader {
                 record_type: TlsRecordType::Handshake,
-                version: 0x0301,
+                version: TlsVersion::Tls10,
                 len: 213,
             },
             msg: vec![TlsMessage::Handshake(
