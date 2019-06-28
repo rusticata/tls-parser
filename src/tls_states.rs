@@ -39,6 +39,8 @@ pub enum TlsState {
 
     Alert,
 
+    Finished,
+
     Invalid,
 }
 
@@ -103,6 +105,7 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake) ->
 pub fn tls_state_transition(state: TlsState, msg: &TlsMessage) -> Result<TlsState,StateChangeError> {
     match (state,msg) {
         (TlsState::Invalid,_) => Ok(TlsState::Invalid),
+        (TlsState::Finished,_) => Ok(TlsState::Invalid),
         (_,&TlsMessage::Handshake(ref m)) => tls_state_transition_handshake(state,m),
         // Server certificate
         (TlsState::ClientKeyExchange,     &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
@@ -118,7 +121,7 @@ pub fn tls_state_transition(state: TlsState, msg: &TlsMessage) -> Result<TlsStat
         (TlsState::ResumeSession,         &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
         // non-fatal alerts
         (s,                               &TlsMessage::Alert(ref a)) => {
-            if a.severity == TlsAlertSeverity::Warning { Ok(s) } else { Err(StateChangeError::InvalidTransition) }
+            if a.severity == TlsAlertSeverity::Warning { Ok(s) } else { Ok(TlsState::Finished) }
         },
         (_,_) => Err(StateChangeError::InvalidTransition),
     }
