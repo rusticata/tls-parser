@@ -172,6 +172,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
                 write!(fmt, "TlsExtension::SignatureAlgorithms({:?})", v2)
             },
             TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
+            TlsExtension::RecordSizeLimit(data) => write!(fmt, "TlsExtension::RecordSizeLimit(data={})", data),
             TlsExtension::KeyShareOld(data) => write!(fmt, "TlsExtension::KeyShareOld(data={:?})", HexSlice{d:data}),
             TlsExtension::KeyShare(data) => write!(fmt, "TlsExtension::KeyShare(data={:?})", HexSlice{d:data}),
             TlsExtension::PreSharedKey(data) => write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice{d:data}),

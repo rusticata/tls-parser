@@ -206,4 +206,15 @@ fn test_tls_extension_esni() {
     }
 }
 
+#[test]
+fn test_tls_extension_record_size_limit() {
+    let empty = &b""[..];
+    let bytes = &[
+        0x00, 0x1c, 0x00, 0x02, 0x40, 0x01
+    ];
+    let expected = TlsExtension::RecordSizeLimit(16385);
+    let res = parse_tls_extension(bytes);
+    assert_eq!(res,Ok((empty,expected)));
+}
+
 } // mod tls_extensions

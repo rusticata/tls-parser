@@ -48,6 +48,8 @@ impl display TlsExtensionType {
     TokenBinding                        = 0x0018,
     CachedInfo                          = 0x0019,
 
+    RecordSizeLimit                     = 0x001c, // [RFC8449]
+
     SessionTicketTLS                    = 0x0023,
 
     KeyShareOld                         = 0x0028, // move to 51 in TLS 1.3 draft 23
@@ -90,6 +92,7 @@ pub enum TlsExtension<'a>{
     EllipticCurves(Vec<NamedGroup>),
     EcPointFormats(&'a[u8]),
     SignatureAlgorithms(Vec<u16>),
+    RecordSizeLimit(u16),
     SessionTicket(&'a[u8]),
     KeyShareOld(&'a[u8]),
     KeyShare(&'a[u8]),
@@ -130,6 +133,7 @@ impl<'a> From<&'a TlsExtension<'a>> for TlsExtensionType {
             &TlsExtension::EcPointFormats(_)             => TlsExtensionType::EcPointFormats,
             &TlsExtension::SignatureAlgorithms(_)        => TlsExtensionType::SignatureAlgorithms,
             &TlsExtension::SessionTicket(_)              => TlsExtensionType::SessionTicketTLS,
+            &TlsExtension::RecordSizeLimit(_)            => TlsExtensionType::RecordSizeLimit,
             &TlsExtension::KeyShareOld(_)                => TlsExtensionType::KeyShareOld,
             &TlsExtension::KeyShare(_)                   => TlsExtensionType::KeyShare,
             &TlsExtension::PreSharedKey(_)               => TlsExtensionType::PreSharedKey,
@@ -394,6 +398,15 @@ fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> 
 }
 
 /// Extended Master Secret is defined in [RFC7627]
+fn parse_tls_extension_record_size_limit(i: &[u8]) -> IResult<&[u8],TlsExtension> {
+    do_parse! {
+        i,
+        limit: be_u16 >>
+        ( TlsExtension::RecordSizeLimit(limit) )
+    }
+}
+
+/// Extended Master Secret is defined in [RFC7627]
 pub fn parse_tls_extension_extended_master_secret(i:&[u8]) ->IResult<&[u8], TlsExtension> {
     do_parse!(
         i,
@@ -634,6 +647,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x0015 => parse_tls_extension_padding_content(i,ext_len),
         0x0016 => parse_tls_extension_encrypt_then_mac_content(i,ext_len),
         0x0017 => parse_tls_extension_extended_master_secret_content(i,ext_len),
+        0x001c => parse_tls_extension_record_size_limit(i),
         0x0023 => parse_tls_extension_session_ticket_content(i,ext_len),
         0x0028 => parse_tls_extension_key_share_old_content(i,ext_len),
         0x0029 => parse_tls_extension_pre_shared_key_content(i,ext_len),
