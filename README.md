@@ -120,7 +120,7 @@ struct ParseContext {
     state: TlsState,
 }
 
-match tls_state_transition(ctx.state, msg) {
+match tls_state_transition(ctx.state, msg, to_server) {
     Ok(s)  => { ctx.state = s; Ok(()) }
     Err(_) => {
         ctx.state = TlsState::Invalid;

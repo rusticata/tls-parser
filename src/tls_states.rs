@@ -44,47 +44,47 @@ pub enum TlsState {
     Invalid,
 }
 
-fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake) -> Result<TlsState,StateChangeError> {
-    match (state,msg) {
-        (TlsState::None,             &TlsMessageHandshake::ClientHello(ref msg)) => {
+fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to_server:bool) -> Result<TlsState,StateChangeError> {
+    match (state,msg,to_server) {
+        (TlsState::None,             &TlsMessageHandshake::ClientHello(ref msg), true) => {
             match msg.session_id {
                 Some(_) => Ok(TlsState::AskResumeSession),
                 _       => Ok(TlsState::ClientHello)
             }
         },
         // Server certificate
-        (TlsState::ClientHello,      &TlsMessageHandshake::ServerHello(_))       => Ok(TlsState::ServerHello),
-        (TlsState::ServerHello,      &TlsMessageHandshake::Certificate(_))       => Ok(TlsState::Certificate),
+        (TlsState::ClientHello,      &TlsMessageHandshake::ServerHello(_), false)       => Ok(TlsState::ServerHello),
+        (TlsState::ServerHello,      &TlsMessageHandshake::Certificate(_), false)       => Ok(TlsState::Certificate),
         // Server certificate, no client certificate requested
-        (TlsState::Certificate,      &TlsMessageHandshake::ServerKeyExchange(_)) => Ok(TlsState::ServerKeyExchange),
-        (TlsState::Certificate,      &TlsMessageHandshake::CertificateStatus(_)) => Ok(TlsState::CertificateSt),
-        (TlsState::CertificateSt,    &TlsMessageHandshake::ServerKeyExchange(_)) => Ok(TlsState::ServerKeyExchange),
-        (TlsState::ServerKeyExchange,&TlsMessageHandshake::ServerDone(_))        => Ok(TlsState::ServerHelloDone),
-        (TlsState::ServerHelloDone  ,&TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::ClientKeyExchange),
+        (TlsState::Certificate,      &TlsMessageHandshake::ServerKeyExchange(_), false) => Ok(TlsState::ServerKeyExchange),
+        (TlsState::Certificate,      &TlsMessageHandshake::CertificateStatus(_), false) => Ok(TlsState::CertificateSt),
+        (TlsState::CertificateSt,    &TlsMessageHandshake::ServerKeyExchange(_), false) => Ok(TlsState::ServerKeyExchange),
+        (TlsState::ServerKeyExchange,&TlsMessageHandshake::ServerDone(_), false)        => Ok(TlsState::ServerHelloDone),
+        (TlsState::ServerHelloDone  ,&TlsMessageHandshake::ClientKeyExchange(_), true)  => Ok(TlsState::ClientKeyExchange),
         // Server certificate, client certificate requested
-        (TlsState::Certificate,      &TlsMessageHandshake::CertificateRequest(_))=> Ok(TlsState::CRCertRequest),
-        (TlsState::ServerKeyExchange,&TlsMessageHandshake::CertificateRequest(_))=> Ok(TlsState::CRCertRequest),
-        (TlsState::CRCertRequest,    &TlsMessageHandshake::ServerDone(_))        => Ok(TlsState::CRHelloDone),
-        (TlsState::CRHelloDone,      &TlsMessageHandshake::Certificate(_))       => Ok(TlsState::CRCert),
-        (TlsState::CRCert,           &TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::CRClientKeyExchange),
-        (TlsState::CRClientKeyExchange, &TlsMessageHandshake::CertificateVerify(_)) => Ok(TlsState::CRCertVerify),
+        (TlsState::Certificate,      &TlsMessageHandshake::CertificateRequest(_), false)=> Ok(TlsState::CRCertRequest),
+        (TlsState::ServerKeyExchange,&TlsMessageHandshake::CertificateRequest(_), false)=> Ok(TlsState::CRCertRequest),
+        (TlsState::CRCertRequest,    &TlsMessageHandshake::ServerDone(_), false)        => Ok(TlsState::CRHelloDone),
+        (TlsState::CRHelloDone,      &TlsMessageHandshake::Certificate(_), false)       => Ok(TlsState::CRCert),
+        (TlsState::CRCert,           &TlsMessageHandshake::ClientKeyExchange(_), true)  => Ok(TlsState::CRClientKeyExchange),
+        (TlsState::CRClientKeyExchange, &TlsMessageHandshake::CertificateVerify(_), _)  => Ok(TlsState::CRCertVerify),
         // Server has no certificate (but accepts anonymous)
-        (TlsState::ServerHello,      &TlsMessageHandshake::ServerKeyExchange(_)) => Ok(TlsState::NoCertSKE),
-        (TlsState::NoCertSKE,        &TlsMessageHandshake::ServerDone(_))        => Ok(TlsState::NoCertHelloDone),
-        (TlsState::NoCertHelloDone,  &TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::NoCertCKE),
+        (TlsState::ServerHello,      &TlsMessageHandshake::ServerKeyExchange(_), false) => Ok(TlsState::NoCertSKE),
+        (TlsState::NoCertSKE,        &TlsMessageHandshake::ServerDone(_), false)        => Ok(TlsState::NoCertHelloDone),
+        (TlsState::NoCertHelloDone,  &TlsMessageHandshake::ClientKeyExchange(_), true)  => Ok(TlsState::NoCertCKE),
         // PSK
-        (TlsState::Certificate,      &TlsMessageHandshake::ServerDone(_))        => Ok(TlsState::PskHelloDone),
-        (TlsState::PskHelloDone,     &TlsMessageHandshake::ClientKeyExchange(_)) => Ok(TlsState::PskCKE),
+        (TlsState::Certificate,      &TlsMessageHandshake::ServerDone(_), false)        => Ok(TlsState::PskHelloDone),
+        (TlsState::PskHelloDone,     &TlsMessageHandshake::ClientKeyExchange(_), true)  => Ok(TlsState::PskCKE),
         // Resuming session
-        (TlsState::AskResumeSession, &TlsMessageHandshake::ServerHello(_))       => Ok(TlsState::ResumeSession),
+        (TlsState::AskResumeSession, &TlsMessageHandshake::ServerHello(_), false)       => Ok(TlsState::ResumeSession),
         // Resume session failed
-        (TlsState::ResumeSession,    &TlsMessageHandshake::Certificate(_))       => Ok(TlsState::Certificate),
+        (TlsState::ResumeSession,    &TlsMessageHandshake::Certificate(_), false)       => Ok(TlsState::Certificate),
         // TLS 1.3 Draft 18 1-RTT
         // Re-use the ClientChangeCipherSpec state to indicate the next message will be encrypted
-        (TlsState::ClientHello,      &TlsMessageHandshake::ServerHelloV13Draft18(_))    => Ok(TlsState::ClientChangeCipherSpec),
+        (TlsState::ClientHello,      &TlsMessageHandshake::ServerHelloV13Draft18(_), false)    => Ok(TlsState::ClientChangeCipherSpec),
         // Hello requests must be accepted at any time (except start), but ignored [RFC5246] 7.4.1.1
-        (TlsState::None,             &TlsMessageHandshake::HelloRequest)         => Err(StateChangeError::InvalidTransition),
-        (s,                          &TlsMessageHandshake::HelloRequest)         => Ok(s),
+        (TlsState::None,             &TlsMessageHandshake::HelloRequest, _)         => Err(StateChangeError::InvalidTransition),
+        (s,                          &TlsMessageHandshake::HelloRequest, _)         => Ok(s),
         // All other transitions are considered invalid
         _ => Err(StateChangeError::InvalidTransition),
     }
@@ -102,27 +102,29 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake) ->
 /// If the previous state is `Invalid`, the state machine will not return an error, but keep the
 /// same `Invalid` state. This is used to raise error only once if the state machine keeps being
 /// updated by new messages.
-pub fn tls_state_transition(state: TlsState, msg: &TlsMessage) -> Result<TlsState,StateChangeError> {
-    match (state,msg) {
-        (TlsState::Invalid,_) => Ok(TlsState::Invalid),
-        (TlsState::Finished,_) => Ok(TlsState::Invalid),
-        (_,&TlsMessage::Handshake(ref m)) => tls_state_transition_handshake(state,m),
+pub fn tls_state_transition(state: TlsState, msg: &TlsMessage, to_server:bool) -> Result<TlsState,StateChangeError> {
+    match (state,msg,to_server) {
+        (TlsState::Invalid,_,_) => Ok(TlsState::Invalid),
+        (TlsState::Finished,_,_) => Ok(TlsState::Invalid),
+        (_,&TlsMessage::Handshake(ref m),_) => tls_state_transition_handshake(state,m,to_server),
         // Server certificate
-        (TlsState::ClientKeyExchange,     &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
-        (TlsState::ClientChangeCipherSpec,&TlsMessage::ChangeCipherSpec) => Ok(TlsState::SessionEncrypted),
+        (TlsState::ClientKeyExchange,     &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
+        (TlsState::ClientChangeCipherSpec,&TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::SessionEncrypted),
         // Server certificate, client certificate requested
-        (TlsState::CRClientKeyExchange,   &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
-        (TlsState::CRCertVerify,          &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
+        (TlsState::CRClientKeyExchange,   &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
+        (TlsState::CRCertVerify,          &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
         // No server certificate
-        (TlsState::NoCertCKE,             &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
+        (TlsState::NoCertCKE,             &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
         // PSK
-        (TlsState::PskCKE,                &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
+        (TlsState::PskCKE,                &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
         // Resume session
-        (TlsState::ResumeSession,         &TlsMessage::ChangeCipherSpec) => Ok(TlsState::ClientChangeCipherSpec),
+        (TlsState::ResumeSession,         &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
+        // 0-rtt
+        (TlsState::AskResumeSession,      &TlsMessage::ChangeCipherSpec, true) => Ok(TlsState::AskResumeSession),
         // non-fatal alerts
-        (s,                               &TlsMessage::Alert(ref a)) => {
+        (s,                               &TlsMessage::Alert(ref a), _) => {
             if a.severity == TlsAlertSeverity::Warning { Ok(s) } else { Ok(TlsState::Finished) }
         },
-        (_,_) => Err(StateChangeError::InvalidTransition),
+        (_,_,_) => Err(StateChangeError::InvalidTransition),
     }
 }

@@ -110,8 +110,8 @@
 //!     state: TlsState,
 //! }
 //!
-//! # fn update_state_machine(msg: &TlsMessage, ctx: &mut ParseContext) -> Result<(),&'static str> {
-//! match tls_state_transition(ctx.state, msg) {
+//! # fn update_state_machine(msg: &TlsMessage, ctx: &mut ParseContext, to_server:bool) -> Result<(),&'static str> {
+//! match tls_state_transition(ctx.state, msg, to_server) {
 //!     Ok(s)  => { ctx.state = s; Ok(()) }
 //!     Err(_) => {
 //!         ctx.state = TlsState::Invalid;
