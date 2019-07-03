@@ -140,6 +140,15 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.8.0
+
+- Add support for record size limit extension
+- Add support for encrypted server name (eSNI) extension
+- State machine: use direction and support TLS 1.3 0-RTT
+- State machine: add new state to indicate connection is closed (after fatal alert)
+- Use TlsVersion type for SSL record version
+- Update doc, and use cargo sync-readme
+
 ### 0.7.1
 
 - Improve state machine, handle resumption failure, and non-fatal alerts

@@ -6,9 +6,10 @@ homepage = "https://github.com/rusticata/tls-parser"
 repository = "https://github.com/rusticata/tls-parser.git"
 documentation = "https://docs.rs/tls-parser"
 name = "tls-parser"
-version = "0.7.1"
+version = "0.8.0"
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
-categories = ["parsing"]
+categories = ["network-programming", "parser-implementations"]
+
 readme = "README.md"
 build = "build.rs"
 
