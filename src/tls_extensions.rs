@@ -9,7 +9,7 @@
 use nom::{be_u8,be_u16,be_u32,IResult,ErrorKind};
 use std::convert::From;
 
-use tls::{parse_tls_versions,TlsVersion};
+use tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
 use tls_ec::{parse_named_groups,NamedGroup};
 
 /// TLS extension types,
@@ -68,6 +68,7 @@ impl display TlsExtensionType {
     Grease                              = 0xfafa,
 
     RenegotiationInfo                   = 0xff01,
+    EncryptedServerName                 = 0xffce, // draft-ietf-tls-esni
 }
 }
 
@@ -111,6 +112,7 @@ pub enum TlsExtension<'a>{
     NextProtocolNegotiation,
 
     RenegotiationInfo(&'a[u8]),
+    EncryptedServerName{ ciphersuite: TlsCipherSuiteID, group: NamedGroup, key_share: &'a[u8], record_digest: &'a[u8], encrypted_sni: &'a[u8] },
 
     Grease(u16,&'a[u8]),
 
@@ -145,6 +147,7 @@ impl<'a> From<&'a TlsExtension<'a>> for TlsExtensionType {
             &TlsExtension::PostHandshakeAuth             => TlsExtensionType::PostHandshakeAuth,
             &TlsExtension::NextProtocolNegotiation       => TlsExtensionType::NextProtocolNegotiation,
             &TlsExtension::RenegotiationInfo(_)          => TlsExtensionType::RenegotiationInfo,
+            &TlsExtension::EncryptedServerName{..}       => TlsExtensionType::EncryptedServerName,
             &TlsExtension::Grease(_,_)                   => TlsExtensionType::Grease,
             &TlsExtension::Unknown(x,_)                  => x
         }
@@ -557,6 +560,24 @@ pub fn parse_tls_extension_renegotiation_info_content(i:&[u8]) -> IResult<&[u8],
     )
 }
 
+/// Encrypted Server Name, defined in [draft-ietf-tls-esni]
+pub fn parse_tls_extension_encrypted_server_name(i:&[u8]) -> IResult<&[u8],TlsExtension> {
+    do_parse! {
+        i,
+        ciphersuite: be_u16  >>
+        group: be_u16 >>
+        key_share: length_bytes!(be_u16) >>
+        record_digest: length_bytes!(be_u16) >>
+        encrypted_sni: length_bytes!(be_u16) >>
+        ( TlsExtension::EncryptedServerName{
+            ciphersuite:TlsCipherSuiteID(ciphersuite),
+            group: NamedGroup(group),
+            key_share,
+            record_digest,
+            encrypted_sni} )
+    }
+}
+
 named!(parse_tls_oid_filter<OidFilter>,
     do_parse!(
         oid: length_bytes!(be_u8)  >>
@@ -625,6 +646,7 @@ fn parse_tls_extension_with_type(i: &[u8], ext_type:u16, ext_len:u16) -> IResult
         0x0033 => parse_tls_extension_key_share_content(i,ext_len),
         0x3374 => parse_tls_extension_npn_content(i,ext_len),
         0xff01 => parse_tls_extension_renegotiation_info_content(i),
+        0xffce => parse_tls_extension_encrypted_server_name(i),
         _      => { map!(i, take!(ext_len), |ext_data| { TlsExtension::Unknown(TlsExtensionType(ext_type),ext_data) }) },
     }
 }

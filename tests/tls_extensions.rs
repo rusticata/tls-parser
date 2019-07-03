@@ -192,4 +192,18 @@ fn test_tls_extension_grease() {
     assert_eq!(res,Ok((empty,expected)));
 }
 
+const ESNI : &[u8] = include_bytes!("../assets/esni.bin");
+
+#[test]
+fn test_tls_extension_esni() {
+    let res = parse_tls_extension(ESNI).expect("Parsing eSNI failed");
+    match res.1 {
+        TlsExtension::EncryptedServerName{ciphersuite, group, ..} => {
+            assert_eq!(ciphersuite.0, 0x1301);
+            assert_eq!(group.0, 0x1d);
+        },
+        _ => panic!("Wrong extension type (expected eSNI"),
+    }
+}
+
 } // mod tls_extensions

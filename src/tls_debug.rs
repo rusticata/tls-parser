@@ -203,6 +203,9 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::PostHandshakeAuth => write!(fmt, "TlsExtension::PostHandshakeAuth"),
             TlsExtension::NextProtocolNegotiation => write!(fmt, "TlsExtension::NextProtocolNegotiation"),
             TlsExtension::RenegotiationInfo(data) => write!(fmt, "TlsExtension::RenegotiationInfo(data={:?})", data),
+            TlsExtension::EncryptedServerName{ciphersuite, group, ..} => {
+                write!(fmt, "TlsExtension::EncryptedServerName{{cipher: {:?}, group: {:?} ..}}", ciphersuite, group)
+            },
             TlsExtension::Grease(t,data) => write!(fmt, "TlsExtension::Grease(0x{:x},data={:?})", t, HexSlice{d:data}),
             TlsExtension::Unknown(t,data) => write!(fmt, "TlsExtension::Unknown(type=0x{:x},data={:?})", t.0, data),
         }
