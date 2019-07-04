@@ -11,6 +11,9 @@ use std::ops::Deref;
 use std::convert::AsRef;
 use std::fmt;
 
+/// Max record size (RFC8446 5.1)
+pub const MAX_RECORD_LEN : u16 = 1 << 14;
+
 /// Handshake type
 ///
 /// Handshake types are defined in [RFC5246](https://tools.ietf.org/html/rfc5246) and
@@ -857,6 +860,7 @@ pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&
 pub fn parse_tls_plaintext(i:&[u8]) -> IResult<&[u8],TlsPlaintext> {
     do_parse!(i,
         hdr: parse_tls_record_header >>
+             error_if!(hdr.len > MAX_RECORD_LEN, ErrorKind::TooLarge) >>
         msg: flat_map!(take!(hdr.len),
             apply!(parse_tls_record_with_header,hdr.clone())
             ) >>
@@ -868,6 +872,7 @@ pub fn parse_tls_plaintext(i:&[u8]) -> IResult<&[u8],TlsPlaintext> {
 pub fn parse_tls_encrypted(i:&[u8]) -> IResult<&[u8],TlsEncrypted> {
     do_parse!(i,
         hdr: parse_tls_record_header >>
+             error_if!(hdr.len > MAX_RECORD_LEN, ErrorKind::TooLarge) >>
         blob: take!(hdr.len) >>
         ( TlsEncrypted {hdr:hdr, msg:TlsEncryptedContent{ blob: blob}} )
     )
@@ -881,6 +886,7 @@ pub fn parse_tls_encrypted(i:&[u8]) -> IResult<&[u8],TlsEncrypted> {
 pub fn parse_tls_raw_record(i:&[u8]) -> IResult<&[u8],TlsRawRecord> {
     do_parse!(i,
         hdr: parse_tls_record_header >>
+             error_if!(hdr.len > MAX_RECORD_LEN, ErrorKind::TooLarge) >>
         data: take!(hdr.len) >>
         ( TlsRawRecord {hdr:hdr, data: data} )
     )
