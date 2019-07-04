@@ -820,19 +820,20 @@ fn parse_tls_message_applicationdata( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
     })
 }
 
-fn parse_tls_message_heartbeat( i:&[u8] ) -> IResult<&[u8], TlsMessage> {
+fn parse_tls_message_heartbeat(i:&[u8], tls_plaintext_len:u16) -> IResult<&[u8], Vec<TlsMessage>> {
     do_parse!(i,
         hb_type: be_u8 >>
         hb_len: be_u16 >>
-        b: take!(i.len()-3) >> // payload (hb_len) + padding
+           error_if!(tls_plaintext_len < 3, ErrorKind::Verify) >>
+        b: take!(tls_plaintext_len - 3) >> // payload (hb_len) + padding
         (
-            TlsMessage::Heartbeat(
+            vec![TlsMessage::Heartbeat(
                 TlsMessageHeartbeat {
                     heartbeat_type: TlsHeartbeatMessageType(hb_type),
                     payload_len: hb_len,
                     payload: b,
                 }
-            )
+            )]
         )
     )
 }
@@ -849,7 +850,7 @@ pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&
         TlsRecordType::Alert            => many1!(i, complete!(parse_tls_message_alert)),
         TlsRecordType::Handshake        => many1!(i, complete!(parse_tls_message_handshake)),
         TlsRecordType::ApplicationData  => many1!(i, complete!(parse_tls_message_applicationdata)),
-        TlsRecordType::Heartbeat        => many1!(i, complete!(parse_tls_message_heartbeat)),
+        TlsRecordType::Heartbeat        => parse_tls_message_heartbeat(i, hdr.len),
         _                               => Err(Err::Error(error_position!(i, ErrorKind::Switch)))
     }
 }
