@@ -9,6 +9,7 @@ name = "tls-parser"
 version = "0.8.0"
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 categories = ["network-programming", "parser-implementations"]
+edition = "2018"
 
 readme = "README.md"
 build = "build.rs"

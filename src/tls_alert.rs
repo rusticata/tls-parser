@@ -67,7 +67,7 @@ pub struct TlsMessageAlert {
 
 #[cfg(test)]
 mod tests {
-    use tls_alert::*;
+    use crate::tls_alert::*;
 
 #[test]
 fn test_tlsalert_cast_severity() {

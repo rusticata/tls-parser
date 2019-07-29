@@ -123,7 +123,7 @@ impl TlsCipherSuite {
 
 #[cfg(test)]
 mod tests {
-    use tls_ciphers::{CIPHERS,TlsCipherSuite,TlsCipherKx};
+    use crate::tls_ciphers::{CIPHERS,TlsCipherSuite,TlsCipherKx};
 
 #[test]
 fn test_cipher_count() {

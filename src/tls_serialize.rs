@@ -1,9 +1,9 @@
 #[cfg(feature = "serialize")]
 pub mod serialize {
 
-use tls::*;
-use tls_ec::{ECPoint,NamedGroup};
-use tls_extensions::{SNIType,TlsExtension,TlsExtensionType};
+use crate::tls::*;
+use crate::tls_ec::{ECPoint,NamedGroup};
+use crate::tls_extensions::{SNIType,TlsExtension,TlsExtensionType};
 use cookie_factory::*;
 
 #[macro_export]

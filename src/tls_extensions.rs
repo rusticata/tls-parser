@@ -9,8 +9,8 @@
 use nom::{be_u8,be_u16,be_u32,IResult,ErrorKind};
 use std::convert::From;
 
-use tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
-use tls_ec::{parse_named_groups,NamedGroup};
+use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
+use crate::tls_ec::{parse_named_groups,NamedGroup};
 
 /// TLS extension types,
 /// defined in the [IANA Transport Layer Security (TLS)

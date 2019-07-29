@@ -1,5 +1,5 @@
-use tls::*;
-use tls_alert::TlsAlertSeverity;
+use crate::tls::*;
+use crate::tls_alert::TlsAlertSeverity;
 
 /// Error types for the state machine
 pub enum StateChangeError {
