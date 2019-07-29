@@ -140,6 +140,12 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.8.1
+
+- Set edition to 2018
+- Check heartbeat message length (subtraction could underflow)
+- Add more checks for record length (RFC compliance, not for parser safety)
+
 ### 0.8.0
 
 - Add support for record size limit extension
