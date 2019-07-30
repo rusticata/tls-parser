@@ -18,11 +18,11 @@ impl<'a> fmt::Debug for TlsClientHelloContents<'a> {
         fmt.debug_struct("TlsClientHelloContents")
             .field("version", &self.version)
             .field("rand_time", &self.rand_time)
-            .field("rand_data", &HexSlice{d:self.rand_data})
-            .field("session_id", &self.session_id.map(|o|{HexSlice{d:o}}))
+            .field("rand_data", &HexSlice(self.rand_data))
+            .field("session_id", &self.session_id.map(HexSlice))
             .field("ciphers", &self.ciphers)
             .field("comp", &self.comp)
-            .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
+            .field("ext", &self.ext.map(HexSlice))
             .finish()
     }
 }
@@ -32,11 +32,11 @@ impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
         fmt.debug_struct("TlsServerHelloContents")
             .field("version", &self.version)
             .field("rand_time", &self.rand_time)
-            .field("rand_data", &HexSlice{d:self.rand_data})
-            .field("session_id", &self.session_id.map(|o|{HexSlice{d:o}}))
+            .field("rand_data", &HexSlice(self.rand_data))
+            .field("session_id", &self.session_id.map(HexSlice))
             .field("cipher", &self.cipher)
             .field("compression", &self.compression)
-            .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
+            .field("ext", &self.ext.map(HexSlice))
             .finish()
     }
 }
@@ -45,9 +45,9 @@ impl<'a> fmt::Debug for TlsServerHelloV13Draft18Contents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsServerHelloV13Draft18Contents")
             .field("version", &self.version)
-            .field("random", &HexSlice{d:self.random})
+            .field("random", &HexSlice(self.random))
             .field("cipher", &self.cipher)
-            .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
+            .field("ext", &self.ext.map(HexSlice))
             .finish()
     }
 }
@@ -56,7 +56,7 @@ impl<'a> fmt::Debug for TlsHelloRetryRequestContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsHelloRetryRequestContents")
             .field("version", &self.version)
-            .field("ext", &self.ext.map(|o|{HexSlice{d:o}}))
+            .field("ext", &self.ext.map(HexSlice))
             .finish()
     }
 }
@@ -64,7 +64,7 @@ impl<'a> fmt::Debug for TlsHelloRetryRequestContents<'a> {
 impl<'a> fmt::Debug for RawCertificate<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("RawCertificate")
-            .field("data", &HexSlice{d:self.data})
+            .field("data", &HexSlice(self.data))
             .finish()
     }
 }
@@ -72,7 +72,7 @@ impl<'a> fmt::Debug for RawCertificate<'a> {
 impl<'a> fmt::Debug for TlsServerKeyExchangeContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsServerKeyExchangeContents")
-            .field("parameters", &HexSlice{d:self.parameters})
+            .field("parameters", &HexSlice(self.parameters))
             .finish()
     }
 }
@@ -80,9 +80,9 @@ impl<'a> fmt::Debug for TlsServerKeyExchangeContents<'a> {
 impl<'a> fmt::Debug for TlsClientKeyExchangeContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &TlsClientKeyExchangeContents::Dh(ref p)      => fmt.write_fmt(format_args!("{:?}",HexSlice{d:p})),
+            &TlsClientKeyExchangeContents::Dh(ref p)      => fmt.write_fmt(format_args!("{:?}",HexSlice(p))),
             &TlsClientKeyExchangeContents::Ecdh(ref p)    => fmt.write_fmt(format_args!("{:?}",p)),
-            &TlsClientKeyExchangeContents::Unknown(ref p) => fmt.write_fmt(format_args!("{:?}",HexSlice{d:p})),
+            &TlsClientKeyExchangeContents::Unknown(ref p) => fmt.write_fmt(format_args!("{:?}",HexSlice(p))),
         }
     }
 }
@@ -113,9 +113,9 @@ impl<'a> fmt::Debug for ServerDHParams<'a> {
         let gs = self.dh_g.len() * 8;
         fmt.debug_struct("ServerDHParams")
             .field("group size", &gs)
-            .field("dh_p", &HexSlice{d:self.dh_p})
-            .field("dh_g", &HexSlice{d:self.dh_g})
-            .field("dh_ys", &HexSlice{d:self.dh_ys})
+            .field("dh_p", &HexSlice(self.dh_p))
+            .field("dh_g", &HexSlice(self.dh_g))
+            .field("dh_ys", &HexSlice(self.dh_ys))
             .finish()
     }
 }
@@ -125,7 +125,7 @@ impl<'a> fmt::Debug for ECParametersContent<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &ECParametersContent::ExplicitPrime(ref p) => fmt.write_fmt(format_args!("ExplicitPrime({:?})",p)),
-            &ECParametersContent::ExplicitChar2(ref p) => fmt.write_fmt(format_args!("ExplicitChar2({:?})",HexSlice{d:p})),
+            &ECParametersContent::ExplicitChar2(ref p) => fmt.write_fmt(format_args!("ExplicitChar2({:?})",HexSlice(p))),
             &ECParametersContent::NamedGroup(p)    => write!(fmt, "{}", p),
         }
     }
@@ -173,9 +173,9 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             },
             TlsExtension::SessionTicket(data) => write!(fmt, "TlsExtension::SessionTicket(data={:?})", data),
             TlsExtension::RecordSizeLimit(data) => write!(fmt, "TlsExtension::RecordSizeLimit(data={})", data),
-            TlsExtension::KeyShareOld(data) => write!(fmt, "TlsExtension::KeyShareOld(data={:?})", HexSlice{d:data}),
-            TlsExtension::KeyShare(data) => write!(fmt, "TlsExtension::KeyShare(data={:?})", HexSlice{d:data}),
-            TlsExtension::PreSharedKey(data) => write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice{d:data}),
+            TlsExtension::KeyShareOld(data) => write!(fmt, "TlsExtension::KeyShareOld(data={:?})", HexSlice(data)),
+            TlsExtension::KeyShare(data) => write!(fmt, "TlsExtension::KeyShare(data={:?})", HexSlice(data)),
+            TlsExtension::PreSharedKey(data) => write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice(data)),
             TlsExtension::EarlyData(o) => write!(fmt, "TlsExtension::EarlyData({:?})",o),
             TlsExtension::SupportedVersions(ref v) => {
                 let v2 : Vec<_> = v.iter().map(|c| { format!("{}",c) }).collect();
@@ -207,7 +207,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::EncryptedServerName{ciphersuite, group, ..} => {
                 write!(fmt, "TlsExtension::EncryptedServerName{{cipher: {:?}, group: {:?} ..}}", ciphersuite, group)
             },
-            TlsExtension::Grease(t,data) => write!(fmt, "TlsExtension::Grease(0x{:x},data={:?})", t, HexSlice{d:data}),
+            TlsExtension::Grease(t,data) => write!(fmt, "TlsExtension::Grease(0x{:x},data={:?})", t, HexSlice(data)),
             TlsExtension::Unknown(t,data) => write!(fmt, "TlsExtension::Unknown(type=0x{:x},data={:?})", t.0, data),
         }
     }
@@ -230,7 +230,7 @@ impl<'a> fmt::Debug for DigitallySigned<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("DigitallySigned")
             .field("alg", &self.alg)
-            .field("data", &HexSlice{d:self.data})
+            .field("data", &HexSlice(self.data))
             .finish()
     }
 }
