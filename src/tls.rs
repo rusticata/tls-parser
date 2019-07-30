@@ -1,7 +1,10 @@
 //! # TLS parser
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
 
-use nom::{be_u8,be_u16,be_u24,be_u32,rest,IResult,Err,ErrorKind};
+use nom::{Err, IResult};
+use nom::combinator::rest;
+use nom::error::ErrorKind;
+use nom::number::streaming::{be_u8, be_u16, be_u24, be_u32};
 
 use crate::tls_alert::*;
 use crate::tls_ciphers::*;
@@ -403,7 +406,7 @@ pub struct TlsMessageHeartbeat<'a>{
 }
 
 /// TLS record header
-#[derive(Clone,PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct TlsRecordHeader {
     pub record_type: TlsRecordType,
     pub version: TlsVersion,
@@ -489,7 +492,7 @@ named!(parse_certs<Vec<RawCertificate> >,
     many0!(
         complete!(
             map!(
-                length_bytes!(be_u24),
+                length_data!(be_u24),
                 |s| RawCertificate{ data: s }
                 )
         )
@@ -521,13 +524,13 @@ named!(parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
         rand_time: be_u32 >>
         rand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
         sidlen:    be_u8 >> // check <= 32, can be 0
-                   error_if!(sidlen > 32, ErrorKind::Custom(128)) >>
+                   error_if!(sidlen > 32, ErrorKind::Verify) >>
         sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
         ciphers_len: be_u16 >>
         ciphers:   call!(parse_cipher_suites, ciphers_len as usize) >>
         comp_len:  be_u8 >>
         comp:      call!(parse_compressions_algs, comp_len as usize) >>
-        ext:       opt!(complete!(length_bytes!(be_u16))) >>
+        ext:       opt!(complete!(length_data!(be_u16))) >>
         (
             TlsMessageHandshake::ClientHello(
                 TlsClientHelloContents::new(v,rand_time,rand_data,sid,ciphers,comp.to_vec(),ext)
@@ -542,11 +545,11 @@ named!(parse_tls_handshake_msg_server_hello_tlsv12<TlsMessageHandshake>,
         rand_time: be_u32 >>
         rand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
         sidlen:    be_u8 >> // check <= 32, can be 0
-                   error_if!(sidlen > 32, ErrorKind::Custom(128)) >>
+                   error_if!(sidlen > 32, ErrorKind::Verify) >>
         sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
         cipher:    be_u16 >>
         comp:      be_u8 >>
-        ext:       opt!(complete!(length_bytes!(be_u16))) >>
+        ext:       opt!(complete!(length_data!(be_u16))) >>
         (
             TlsMessageHandshake::ServerHello(
                 TlsServerHelloContents::new(v,rand_time,rand_data,sid,cipher,comp,ext)
@@ -560,7 +563,7 @@ named!(parse_tls_handshake_msg_server_hello_tlsv13draft18<TlsMessageHandshake>,
         hv:     be_u16 >>
         random: take!(32) >>
         cipher: be_u16 >>
-        ext:    opt!(complete!(length_bytes!(be_u16))) >>
+        ext:    opt!(complete!(length_data!(be_u16))) >>
         (
             TlsMessageHandshake::ServerHelloV13Draft18(
                 TlsServerHelloV13Draft18Contents {
@@ -574,15 +577,17 @@ named!(parse_tls_handshake_msg_server_hello_tlsv13draft18<TlsMessageHandshake>,
     )
 );
 
-named!(parse_tls_handshake_msg_server_hello<TlsMessageHandshake>,
-    switch!(peek!(be_u16),
-        0x7f12 => call!(parse_tls_handshake_msg_server_hello_tlsv13draft18) |
-        0x0303 => call!(parse_tls_handshake_msg_server_hello_tlsv12) |
-        0x0302 => call!(parse_tls_handshake_msg_server_hello_tlsv12) |
-        0x0301 => call!(parse_tls_handshake_msg_server_hello_tlsv12)
-    )
-        // 0x0300 => call!(parse_tls_handshake_msg_server_hello_sslv3)
-);
+fn parse_tls_handshake_msg_server_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    let (_,version) = peek!(i, call!(be_u16))?;
+    match version {
+        0x7f12 => parse_tls_handshake_msg_server_hello_tlsv13draft18(i),
+        0x0303 => parse_tls_handshake_msg_server_hello_tlsv12(i),
+        0x0302 => parse_tls_handshake_msg_server_hello_tlsv12(i),
+        0x0301 => parse_tls_handshake_msg_server_hello_tlsv12(i),
+        // 0x0300 => call!(parse_tls_handshake_msg_server_hello_sslv3(i),
+        _ => Err(Err::Error(error_position!(i, ErrorKind::Tag)))
+    }
+}
 
 // RFC 5077   Stateless TLS Session Resumption
 fn parse_tls_handshake_msg_newsessionticket( i:&[u8], len: usize ) -> IResult<&[u8], TlsMessageHandshake> {
@@ -604,7 +609,7 @@ named!(parse_tls_handshake_msg_hello_retry_request<TlsMessageHandshake>,
     do_parse!(
         hv:  be_u16 >>
         c:   be_u16 >>
-        ext: opt!(complete!(length_bytes!(be_u16))) >>
+        ext: opt!(complete!(length_data!(be_u16))) >>
         (
             TlsMessageHandshake::HelloRetryRequest(
                 TlsHelloRetryRequestContents {
@@ -673,7 +678,7 @@ fn parse_certrequest_nosigalg( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> 
     do_parse!(i,
         cert_types:        length_count!(be_u8,be_u8) >>
         ca_len:            be_u16 >>
-        ca:                flat_map!(take!(ca_len),many0!(complete!(length_bytes!(be_u16)))) >>
+        ca:                flat_map!(take!(ca_len),many0!(complete!(length_data!(be_u16)))) >>
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
@@ -693,7 +698,7 @@ fn parse_certrequest_full( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
         sig_hash_algs_len: be_u16 >>
         sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(complete!(be_u16))) >>
         ca_len:            be_u16 >>
-        ca:                flat_map!(take!(ca_len),many0!(complete!(length_bytes!(be_u16)))) >>
+        ca:                flat_map!(take!(ca_len),many0!(complete!(length_data!(be_u16)))) >>
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
@@ -708,7 +713,7 @@ fn parse_certrequest_full( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
 
 #[inline]
 fn parse_tls_handshake_msg_certificaterequest( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
-    alt_complete!(i, parse_certrequest_full | parse_certrequest_nosigalg)
+    alt!(i, complete!(parse_certrequest_full) | complete!(parse_certrequest_nosigalg))
 }
 
 fn parse_tls_handshake_msg_finished( i:&[u8], len: usize ) -> IResult<&[u8], TlsMessageHandshake> {
@@ -724,7 +729,7 @@ fn parse_tls_handshake_msg_finished( i:&[u8], len: usize ) -> IResult<&[u8], Tls
 named!(parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
     do_parse!(
         status_type: be_u8 >>
-        blob:        length_bytes!(be_u24) >>
+        blob:        length_data!(be_u24) >>
         ( TlsMessageHandshake::CertificateStatus(
                 TlsCertificateStatusContents{
                     status_type:status_type,
@@ -739,8 +744,8 @@ named!(parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
 /// Deprecated in favour of ALPN.
 fn parse_tls_handshake_msg_next_protocol( i:&[u8] ) -> IResult<&[u8], TlsMessageHandshake> {
     do_parse!(i,
-        selected_protocol: length_bytes!(be_u8) >>
-        padding:           length_bytes!(be_u8) >>
+        selected_protocol: length_data!(be_u8) >>
+        padding:           length_data!(be_u8) >>
         (
             TlsMessageHandshake::NextProtocol(
                 TlsNextProtocolContent {
@@ -844,7 +849,7 @@ fn parse_tls_message_heartbeat(i:&[u8], tls_plaintext_len:u16) -> IResult<&[u8],
 ///
 /// Note that message length is checked (not required for parser safety, but for
 /// strict protocol conformance).
-pub fn parse_tls_record_with_header( i:&[u8], hdr:TlsRecordHeader ) -> IResult<&[u8], Vec<TlsMessage>> {
+pub fn parse_tls_record_with_header<'i, 'hdr>(i:&'i [u8], hdr:&'hdr TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
     match hdr.record_type {
         TlsRecordType::ChangeCipherSpec => many1!(i, complete!(parse_tls_message_changecipherspec)),
         TlsRecordType::Alert            => many1!(i, complete!(parse_tls_message_alert)),
@@ -863,7 +868,7 @@ pub fn parse_tls_plaintext(i:&[u8]) -> IResult<&[u8],TlsPlaintext> {
         hdr: parse_tls_record_header >>
              error_if!(hdr.len > MAX_RECORD_LEN, ErrorKind::TooLarge) >>
         msg: flat_map!(take!(hdr.len),
-            apply!(parse_tls_record_with_header,hdr.clone())
+            call!(parse_tls_record_with_header, &hdr)
             ) >>
         ( TlsPlaintext {hdr:hdr, msg:msg} )
     )

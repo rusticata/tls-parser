@@ -35,7 +35,7 @@ default = []
 serialize = []
 
 [dependencies]
-nom = {version = "4.0", features=["verbose-errors"] }
+nom = "5.0"
 phf = "0.7.16"
 enum_primitive = "^0.1"
 rusticata-macros = "1.1"

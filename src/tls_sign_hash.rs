@@ -1,4 +1,5 @@
-use nom::{be_u8,be_u16,IResult};
+use nom::IResult;
+use nom::number::streaming::{be_u8, be_u16};
 
 /// Hash algorithms, as defined in [RFC5246]
 #[derive(Debug, PartialEq, Eq)]
@@ -109,7 +110,7 @@ pub struct DigitallySigned<'a> {
 
 named!(pub parse_digitally_signed_old<DigitallySigned>,
     map!(
-        length_bytes!(be_u16),
+        length_data!(be_u16),
         |d| { DigitallySigned{ alg:None, data:d } }
     )
 );
@@ -118,7 +119,7 @@ named!(pub parse_digitally_signed<DigitallySigned>,
     do_parse!(
         h: be_u8 >>
         s: be_u8 >>
-        d: length_bytes!(be_u16) >>
+        d: length_data!(be_u16) >>
         ( DigitallySigned{
             alg: Some( SignatureAndHashAlgorithm{ hash:HashAlgorithm(h), sign:SignAlgorithm(s) } ),
             data: d,

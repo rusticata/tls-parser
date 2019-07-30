@@ -817,7 +817,7 @@ fn test_tls_message_status_response() {
         version: TlsVersion(0),
         len: 0x0,
     };
-    let res = parse_tls_record_with_header(&bytes,hdr.clone());
+    let res = parse_tls_record_with_header(&bytes, &hdr);
     assert_eq!(res, Ok((empty, expected)));
 }
 

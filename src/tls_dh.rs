@@ -1,4 +1,4 @@
-use nom::be_u16;
+use nom::number::streaming::be_u16;
 
 /// Diffie-Hellman parameters, defined in [RFC5246] section 7.4.3
 #[derive(PartialEq)]
@@ -13,9 +13,9 @@ pub struct ServerDHParams<'a> {
 
 named!(pub parse_dh_params<ServerDHParams>,
     do_parse!(
-        p:  length_bytes!(be_u16) >>
-        g:  length_bytes!(be_u16) >>
-        ys: length_bytes!(be_u16) >>
+        p:  length_data!(be_u16) >>
+        g:  length_data!(be_u16) >>
+        ys: length_data!(be_u16) >>
         ( ServerDHParams{
             dh_p:  p,
             dh_g:  g,

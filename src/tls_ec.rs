@@ -1,4 +1,6 @@
-use nom::{be_u8,be_u16,Err,ErrorKind,IResult};
+use nom::{Err, IResult};
+use nom::number::streaming::{be_u8, be_u16};
+use nom::error::ErrorKind;
 
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
 /// [IANA Supported Groups
@@ -163,24 +165,24 @@ pub fn parse_named_groups(i: &[u8]) -> IResult<&[u8],Vec<NamedGroup>> {
 }
 
 named!(parse_ec_point<ECPoint>,
-       map!(length_bytes!(be_u8),|d| { ECPoint{ point:d } })
+       map!(length_data!(be_u8),|d| { ECPoint{ point:d } })
 );
 
 named!(parse_ec_curve<ECCurve>,
     do_parse!(
-        a: length_bytes!(be_u8) >>
-        b: length_bytes!(be_u8) >>
+        a: length_data!(be_u8) >>
+        b: length_data!(be_u8) >>
         ( ECCurve{a:a,b:b} )
     )
 );
 
 named!(parse_ec_explicit_prime_content<ECParametersContent>,
     do_parse!(
-        p:        length_bytes!(be_u8) >>
+        p:        length_data!(be_u8) >>
         curve:    parse_ec_curve >>
         base:     parse_ec_point >>
-        order:    length_bytes!(be_u8) >>
-        cofactor: length_bytes!(be_u8) >>
+        order:    length_data!(be_u8) >>
+        cofactor: length_data!(be_u8) >>
         (
             ECParametersContent::ExplicitPrime(
                 ExplicitPrimeContent{

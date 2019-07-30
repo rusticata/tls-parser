@@ -6,7 +6,9 @@
 //! - [RFC7366](https://tools.ietf.org/html/rfc7366)
 //! - [RFC7627](https://tools.ietf.org/html/rfc7627)
 
-use nom::{be_u8,be_u16,be_u32,IResult,ErrorKind};
+use nom::IResult;
+use nom::number::streaming::{be_u8, be_u16, be_u32};
+use nom::error::ErrorKind;
 use std::convert::From;
 
 use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
@@ -204,7 +206,7 @@ pub struct OidFilter<'a> {
 named!(pub parse_tls_extension_sni_hostname<(SNIType,&[u8])>,
     do_parse!(
         t: be_u8 >>
-        v: length_bytes!(be_u16) >>
+        v: length_data!(be_u16) >>
         ( SNIType(t), v )
     )
 );
@@ -266,14 +268,14 @@ named!(pub parse_tls_extension_status_request<TlsExtension>,
     do_parse!(
         tag!([0x00,0x05]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_status_request_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_status_request_content,ext_len)) >>
         ( ext )
     )
 );
 
 named!(pub parse_tls_extension_elliptic_curves_content<TlsExtension>,
     flat_map!(
-        length_bytes!(be_u16),
+        length_data!(be_u16),
         map!(parse_named_groups, |x| TlsExtension::EllipticCurves(x))
     )
 );
@@ -289,7 +291,7 @@ named!(pub parse_tls_extension_elliptic_curves<TlsExtension>,
 
 named!(pub parse_tls_extension_ec_point_formats_content<TlsExtension>,
     map!(
-        length_bytes!(be_u8),
+        length_data!(be_u8),
         |v| { TlsExtension::EcPointFormats(v) }
     )
 );
@@ -333,14 +335,14 @@ named!(pub parse_tls_extension_heartbeat<TlsExtension>,
     do_parse!(
         tag!([0x00,0x0f]) >>
         ext_len:  be_u16 >>
-        error_if!(ext_len != 1, ErrorKind::Custom(128)) >>
+        error_if!(ext_len != 1, ErrorKind::Verify) >>
         ext: flat_map!(take!(ext_len),parse_tls_extension_heartbeat_content) >>
         ( ext )
     )
 );
 
 named!(parse_protocol_name<&[u8]>,
-    length_bytes!(be_u8)
+    length_data!(be_u8)
 );
 
 /// Defined in [RFC7301]
@@ -365,7 +367,7 @@ fn parse_tls_extension_padding_content(i: &[u8], ext_len:u16) -> IResult<&[u8],T
 pub fn parse_tls_extension_signed_certificate_timestamp_content(i:&[u8]) -> IResult<&[u8], TlsExtension> {
     map!(
         i,
-        opt!(complete!(length_bytes!(be_u16))),
+        opt!(complete!(length_data!(be_u16))),
         |d| { TlsExtension::SignedCertificateTimestamp(d) }
     )
 }
@@ -373,7 +375,7 @@ pub fn parse_tls_extension_signed_certificate_timestamp_content(i:&[u8]) -> IRes
 /// Encrypt-then-MAC is defined in [RFC7366]
 fn parse_tls_extension_encrypt_then_mac_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, ErrorKind::Custom(128)) >>
+        error_if!(ext_len != 0, ErrorKind::Verify) >>
         ( TlsExtension::EncryptThenMac )
     )
 }
@@ -384,7 +386,7 @@ pub fn parse_tls_extension_encrypt_then_mac(i:&[u8]) -> IResult<&[u8], TlsExtens
         i,
         tag!([0x00,0x16]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_encrypt_then_mac_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_encrypt_then_mac_content,ext_len)) >>
         ( ext )
     )
 }
@@ -392,7 +394,7 @@ pub fn parse_tls_extension_encrypt_then_mac(i:&[u8]) -> IResult<&[u8], TlsExtens
 /// Extended Master Secret is defined in [RFC7627]
 fn parse_tls_extension_extended_master_secret_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, ErrorKind::Custom(128)) >>
+        error_if!(ext_len != 0, ErrorKind::Verify) >>
         ( TlsExtension::ExtendedMasterSecret )
     )
 }
@@ -412,7 +414,7 @@ pub fn parse_tls_extension_extended_master_secret(i:&[u8]) ->IResult<&[u8], TlsE
         i,
         tag!([0x00,0x17]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_extended_master_secret_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_extended_master_secret_content,ext_len)) >>
         ( ext )
     )
 }
@@ -428,7 +430,7 @@ named!(pub parse_tls_extension_session_ticket<TlsExtension>,
     do_parse!(
         tag!([0x00,0x23]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_session_ticket_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_session_ticket_content,ext_len)) >>
         ( ext )
     )
 );
@@ -451,7 +453,7 @@ named!(pub parse_tls_extension_key_share<TlsExtension>,
     do_parse!(
         tag!([0x00,0x33]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_key_share_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_key_share_content,ext_len)) >>
         ( ext )
     )
 );
@@ -467,7 +469,7 @@ named!(pub parse_tls_extension_pre_shared_key<TlsExtension>,
     do_parse!(
         tag!([0x00,0x28]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_pre_shared_key_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_pre_shared_key_content,ext_len)) >>
         ( ext )
     )
 );
@@ -483,7 +485,7 @@ named!(pub parse_tls_extension_early_data<TlsExtension>,
     do_parse!(
         tag!([0x00,0x2a]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_early_data_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_early_data_content,ext_len)) >>
         ( ext )
     )
 );
@@ -517,7 +519,7 @@ named!(pub parse_tls_extension_supported_versions<TlsExtension>,
     do_parse!(
         tag!([0x00,0x2b]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_supported_versions_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_supported_versions_content,ext_len)) >>
         ( ext )
     )
 );
@@ -533,7 +535,7 @@ named!(pub parse_tls_extension_cookie<TlsExtension>,
     do_parse!(
         tag!([0x00,0x2c]) >>
         ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),apply!(parse_tls_extension_cookie_content,ext_len)) >>
+        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_cookie_content,ext_len)) >>
         ( ext )
     )
 );
@@ -558,7 +560,7 @@ named!(pub parse_tls_extension_psk_key_exchange_modes<TlsExtension>,
 /// Defined in RFC-draft-agl-tls-nextprotoneg-03. Deprecated in favour of ALPN.
 fn parse_tls_extension_npn_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, ErrorKind::Custom(128)) >>
+        error_if!(ext_len != 0, ErrorKind::Verify) >>
         ( TlsExtension::NextProtocolNegotiation )
     )
 }
@@ -579,9 +581,9 @@ pub fn parse_tls_extension_encrypted_server_name(i:&[u8]) -> IResult<&[u8],TlsEx
         i,
         ciphersuite: be_u16  >>
         group: be_u16 >>
-        key_share: length_bytes!(be_u16) >>
-        record_digest: length_bytes!(be_u16) >>
-        encrypted_sni: length_bytes!(be_u16) >>
+        key_share: length_data!(be_u16) >>
+        record_digest: length_data!(be_u16) >>
+        encrypted_sni: length_data!(be_u16) >>
         ( TlsExtension::EncryptedServerName{
             ciphersuite:TlsCipherSuiteID(ciphersuite),
             group: NamedGroup(group),
@@ -593,8 +595,8 @@ pub fn parse_tls_extension_encrypted_server_name(i:&[u8]) -> IResult<&[u8],TlsEx
 
 named!(parse_tls_oid_filter<OidFilter>,
     do_parse!(
-        oid: length_bytes!(be_u8)  >>
-        val: length_bytes!(be_u16)  >>
+        oid: length_data!(be_u8)  >>
+        val: length_data!(be_u16)  >>
         ( OidFilter{cert_ext_oid:oid, cert_ext_val:val} )
     )
 );
@@ -611,7 +613,7 @@ fn parse_tls_extension_oid_filters(i: &[u8]) -> IResult<&[u8],TlsExtension> {
 /// Defined in TLS 1.3 draft 20
 fn parse_tls_extension_post_handshake_auth_content(i: &[u8], ext_len:u16) -> IResult<&[u8],TlsExtension> {
     do_parse!(i,
-        error_if!(ext_len != 0, ErrorKind::Custom(128)) >>
+        error_if!(ext_len != 0, ErrorKind::Verify) >>
         ( TlsExtension::PostHandshakeAuth )
     )
 }
