@@ -140,6 +140,10 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.9.0
+
+- Upgrade to nom 5
+
 ### 0.8.1
 
 - Set edition to 2018
