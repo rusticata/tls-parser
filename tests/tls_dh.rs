@@ -3,8 +3,9 @@ extern crate nom;
 extern crate tls_parser;
 
 mod tls_dh {
-use tls_parser::*;
+    use tls_parser::*;
 
+    #[rustfmt::skip]
 static ECDHE_PARAMS: &'static [u8] = &[
     0x03, 0x00, 0x19, 0x85, 0x04, 0x01, 0xd1, 0x50, 0x12, 0xf4, 0xc4, 0xcf, 0xd4, 0xc2, 0x1f, 0xe8,
     0xf6, 0x85, 0xdc, 0xde, 0x0b, 0xeb, 0x3c, 0x0d, 0x0f, 0x97, 0x29, 0x36, 0x63, 0xc6, 0xc1, 0x3b,
@@ -33,31 +34,30 @@ static ECDHE_PARAMS: &'static [u8] = &[
     0xf4, 0x8c, 0xfa, 0x70, 0xd8, 0x60, 0x46, 0xd2, 0xa3, 0xba, 0x75, 0xa4, 0x8f
 ];
 
-#[test]
-fn test_tls_ecdhe_params() {
-    let empty = &b""[..];
-    let bytes = ECDHE_PARAMS;
-    let point_data = &bytes[4..137];
-    let expected1 = ServerECDHParams {
-        curve_params: ECParameters {
-            curve_type: ECCurveType::NamedGroup,
-            params_content: ECParametersContent::NamedGroup(NamedGroup::Secp521r1),
-        },
-        public: ECPoint{
-            point: point_data,
-        },
-    };
-    let expected2 = DigitallySigned {
-        alg: Some(SignatureAndHashAlgorithm{
-            hash: HashAlgorithm::Sha1,
-            sign: SignAlgorithm::Rsa,
-        }),
-        data: &bytes[141..],
-    };
-    let res = pair!(bytes,parse_ecdh_params,parse_digitally_signed);
-    assert_eq!(res, Ok((empty, (expected1,expected2))));
-}
+    #[test]
+    fn test_tls_ecdhe_params() {
+        let empty = &b""[..];
+        let bytes = ECDHE_PARAMS;
+        let point_data = &bytes[4..137];
+        let expected1 = ServerECDHParams {
+            curve_params: ECParameters {
+                curve_type: ECCurveType::NamedGroup,
+                params_content: ECParametersContent::NamedGroup(NamedGroup::Secp521r1),
+            },
+            public: ECPoint { point: point_data },
+        };
+        let expected2 = DigitallySigned {
+            alg: Some(SignatureAndHashAlgorithm {
+                hash: HashAlgorithm::Sha1,
+                sign: SignAlgorithm::Rsa,
+            }),
+            data: &bytes[141..],
+        };
+        let res = pair!(bytes, parse_ecdh_params, parse_digitally_signed);
+        assert_eq!(res, Ok((empty, (expected1, expected2))));
+    }
 
+    #[rustfmt::skip]
 static DHE_PARAMS: &'static [u8] = &[
     0x01, 0x00, 0xad, 0x10, 0x7e, 0x1e, 0x91, 0x23, 0xa9, 0xd0, 0xd6, 0x60, 0xfa, 0xa7, 0x95, 0x59,
     0xc5, 0x1f, 0xa2, 0x0d, 0x64, 0xe5, 0x68, 0x3b, 0x9f, 0xd1, 0xb5, 0x4b, 0x15, 0x97, 0xb6, 0x1d,
@@ -126,24 +126,24 @@ static DHE_PARAMS: &'static [u8] = &[
     0x7a, 0x52, 0xf7, 0x02, 0xa2, 0xb1, 0xbe, 0x76, 0xd7, 0x26
 ];
 
-#[test]
-fn test_tls_dhe_params() {
-    let empty = &b""[..];
-    let bytes = DHE_PARAMS;
-    let expected1 = ServerDHParams {
-        dh_p:  &bytes[2..258],
-        dh_g:  &bytes[260..516],
-        dh_ys: &bytes[518..774],
-    };
-    let expected2 = DigitallySigned {
-        alg: Some(SignatureAndHashAlgorithm{
-            hash: HashAlgorithm::Sha512,
-            sign: SignAlgorithm::Rsa,
-        }),
-        data: &bytes[778..],
-    };
-    let res = pair!(bytes,parse_dh_params,parse_digitally_signed);
-    assert_eq!(res, Ok((empty, (expected1,expected2))));
-}
+    #[test]
+    fn test_tls_dhe_params() {
+        let empty = &b""[..];
+        let bytes = DHE_PARAMS;
+        let expected1 = ServerDHParams {
+            dh_p: &bytes[2..258],
+            dh_g: &bytes[260..516],
+            dh_ys: &bytes[518..774],
+        };
+        let expected2 = DigitallySigned {
+            alg: Some(SignatureAndHashAlgorithm {
+                hash: HashAlgorithm::Sha512,
+                sign: SignAlgorithm::Rsa,
+            }),
+            data: &bytes[778..],
+        };
+        let res = pair!(bytes, parse_dh_params, parse_digitally_signed);
+        assert_eq!(res, Ok((empty, (expected1, expected2))));
+    }
 
 } // mod tls_dh

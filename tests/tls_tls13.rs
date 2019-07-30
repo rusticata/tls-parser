@@ -2,10 +2,10 @@ extern crate nom;
 extern crate tls_parser;
 
 mod tls_13 {
-use tls_parser::*;
+    use tls_parser::*;
 
-// Test vectors from https://tools.ietf.org/html/draft-thomson-tls-tls13-vectors-01
-
+    // Test vectors from https://tools.ietf.org/html/draft-thomson-tls-tls13-vectors-01
+    #[rustfmt::skip]
 static TV_CLIENT_HELLO_1: &'static [u8] = &[
     0x16, 0x03, 0x01, 0x02, 0x00, 0x01, 0x00, 0x01, 0xfc, 0x03, 0x03, 0xce, 0x05, 0xcf, 0xa3, 0xd9,
     0x21, 0x70, 0xcb, 0xc2, 0x46, 0x5c, 0xdc, 0x3e, 0x3a, 0x2f, 0x57, 0x7f, 0x6e, 0xac, 0x80, 0x93,
@@ -42,6 +42,7 @@ static TV_CLIENT_HELLO_1: &'static [u8] = &[
     0x2d, 0x00, 0x02, 0x01, 0x01,
 ];
 
+    #[rustfmt::skip]
 static TV_SERVER_HELLO_1: &'static [u8] = &[
     0x16, 0x03, 0x01, 0x00, 0x52, 0x02, 0x00, 0x00, 0x4e, 0x7f, 0x12, 0x20, 0xb9, 0xc9, 0x20, 0x1c,
     0xd1, 0x71, 0xa1, 0x5a, 0xbb, 0xa4, 0xe7, 0xed, 0xdc, 0xf3, 0xe8, 0x48, 0x8e, 0x71, 0x92, 0xff,
@@ -51,76 +52,73 @@ static TV_SERVER_HELLO_1: &'static [u8] = &[
     0x25, 0x32, 0x3b, 0x79, 0xce, 0x20, 0x1c,
 ];
 
-#[test]
-fn test_tls13_ch() {
-    let empty = &b""[..];
-    let bytes = TV_CLIENT_HELLO_1;
-    let ciphers = vec![
-        0x1301, 0x1303, 0x1302,
-        0xc02b, 0xc02f, 0xcca9, 0xcca8, 0xc00a,
-        0xc009, 0xc013, 0xc023, 0xc027, 0xc014,
-        0x009e, 0xccaa, 0x0033, 0x0032, 0x0067,
-        0x0039, 0x0038, 0x006b, 0x0016, 0x0013,
-        0x009c, 0x002f, 0x003c, 0x0035, 0x003d,
-        0x000a, 0x0005, 0x0004,
-    ];
-    let expected_ch = TlsPlaintext{
-        hdr: TlsRecordHeader{
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls10,
-            len: 512,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::ClientHello(
-                    TlsClientHelloContents {
-                        version: TlsVersion::Tls12,
-                        rand_time: 0xce05cfa3,
-                        rand_data: &bytes[15..15+28],
-                        session_id: None,
-                        ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
-                        comp: vec![TlsCompressionID(0)],
-                        ext: Some(&bytes[112..]),
-                    })
-        )]
-    };
-    let ires = parse_tls_plaintext(&bytes);
-    assert_eq!(ires, Ok((empty, expected_ch)));
-}
+    #[test]
+    fn test_tls13_ch() {
+        let empty = &b""[..];
+        let bytes = TV_CLIENT_HELLO_1;
+        let ciphers = vec![
+            0x1301, 0x1303, 0x1302, 0xc02b, 0xc02f, 0xcca9, 0xcca8, 0xc00a, 0xc009, 0xc013, 0xc023,
+            0xc027, 0xc014, 0x009e, 0xccaa, 0x0033, 0x0032, 0x0067, 0x0039, 0x0038, 0x006b, 0x0016,
+            0x0013, 0x009c, 0x002f, 0x003c, 0x0035, 0x003d, 0x000a, 0x0005, 0x0004,
+        ];
+        let expected_ch = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls10,
+                len: 512,
+            },
+            msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
+                TlsClientHelloContents {
+                    version: TlsVersion::Tls12,
+                    rand_time: 0xce05cfa3,
+                    rand_data: &bytes[15..15 + 28],
+                    session_id: None,
+                    ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
+                    comp: vec![TlsCompressionID(0)],
+                    ext: Some(&bytes[112..]),
+                },
+            ))],
+        };
+        let ires = parse_tls_plaintext(&bytes);
+        assert_eq!(ires, Ok((empty, expected_ch)));
+    }
 
-#[test]
-fn test_tls13_sh() {
-    let empty = &b""[..];
-    let bytes = TV_SERVER_HELLO_1;
-    let expected_sh = TlsPlaintext{
-        hdr: TlsRecordHeader{
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls10,
-            len: 82,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::ServerHelloV13Draft18(
-                    TlsServerHelloV13Draft18Contents {
-                        version: TlsVersion::Tls13Draft18,
-                        random: &bytes[11..11+32],
-                        cipher: TlsCipherSuiteID(0x1301),
-                        ext: Some(&bytes[47..]),
-                    })
-        )]
-    };
-    let expected_ext = vec![
-        TlsExtension::KeyShareOld(&bytes[51..]),
-    ];
-    let ires = parse_tls_plaintext(&bytes);
-    assert_eq!(ires, Ok((empty, expected_sh)));
-    let res = ires.unwrap();
+    #[test]
+    fn test_tls13_sh() {
+        let empty = &b""[..];
+        let bytes = TV_SERVER_HELLO_1;
+        let expected_sh = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls10,
+                len: 82,
+            },
+            msg: vec![TlsMessage::Handshake(
+                TlsMessageHandshake::ServerHelloV13Draft18(TlsServerHelloV13Draft18Contents {
+                    version: TlsVersion::Tls13Draft18,
+                    random: &bytes[11..11 + 32],
+                    cipher: TlsCipherSuiteID(0x1301),
+                    ext: Some(&bytes[47..]),
+                }),
+            )],
+        };
+        let expected_ext = vec![TlsExtension::KeyShareOld(&bytes[51..])];
+        let ires = parse_tls_plaintext(&bytes);
+        assert_eq!(ires, Ok((empty, expected_sh)));
+        let res = ires.unwrap();
 
-    let msg = &res.1.msg[0];
-    let ext_raw = match msg {
-        &TlsMessage::Handshake(TlsMessageHandshake::ServerHelloV13Draft18(ref sh)) => sh.ext.unwrap(),
-        _ => { assert!(false); empty },
-    };
-    let res_ext = parse_tls_extensions(ext_raw);
-    assert_eq!(res_ext, Ok((empty, expected_ext)));
-}
+        let msg = &res.1.msg[0];
+        let ext_raw = match msg {
+            &TlsMessage::Handshake(TlsMessageHandshake::ServerHelloV13Draft18(ref sh)) => {
+                sh.ext.unwrap()
+            }
+            _ => {
+                assert!(false);
+                empty
+            }
+        };
+        let res_ext = parse_tls_extensions(ext_raw);
+        assert_eq!(res_ext, Ok((empty, expected_ext)));
+    }
 
 } // mod tls_13

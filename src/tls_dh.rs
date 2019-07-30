@@ -4,14 +4,14 @@ use nom::number::streaming::be_u16;
 #[derive(PartialEq)]
 pub struct ServerDHParams<'a> {
     /// The prime modulus used for the Diffie-Hellman operation.
-    pub dh_p:  &'a[u8],
+    pub dh_p: &'a [u8],
     /// The generator used for the Diffie-Hellman operation.
-    pub dh_g:  &'a[u8],
+    pub dh_g: &'a [u8],
     /// The server's Diffie-Hellman public value (g^X mod p).
-    pub dh_ys: &'a[u8],
+    pub dh_ys: &'a [u8],
 }
 
-named!(pub parse_dh_params<ServerDHParams>,
+named! {pub parse_dh_params<ServerDHParams>,
     do_parse!(
         p:  length_data!(be_u16) >>
         g:  length_data!(be_u16) >>
@@ -22,4 +22,4 @@ named!(pub parse_dh_params<ServerDHParams>,
             dh_ys: ys,
         })
     )
-);
+}

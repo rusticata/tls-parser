@@ -2,7 +2,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TlsAlertSeverity(pub u8);
 
-newtype_enum!{
+newtype_enum! {
 impl display TlsAlertSeverity {
     Warning = 0x01,
     Fatal   = 0x02
@@ -16,7 +16,7 @@ impl display TlsAlertSeverity {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TlsAlertDescription(pub u8);
 
-newtype_enum!{
+newtype_enum! {
 impl display TlsAlertDescription {
     CloseNotify            = 0x00,
     EndOfEarlyData         = 0x01,
@@ -57,7 +57,7 @@ impl display TlsAlertDescription {
 }
 
 /// TLS alert message
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct TlsMessageAlert {
     /// Should match a [TlsAlertSeverity](enum.TlsAlertSeverity.html) value
     pub severity: TlsAlertSeverity,
@@ -69,32 +69,32 @@ pub struct TlsMessageAlert {
 mod tests {
     use crate::tls_alert::*;
 
-#[test]
-fn test_tlsalert_cast_severity() {
-    let a = TlsAlertSeverity::Warning;
+    #[test]
+    fn test_tlsalert_cast_severity() {
+        let a = TlsAlertSeverity::Warning;
 
-    let a_u8 = a.0;
-    assert_eq!(a_u8, 0x01);
+        let a_u8 = a.0;
+        assert_eq!(a_u8, 0x01);
 
-    let b = TlsAlertSeverity(a_u8);
-    assert_eq!(b, TlsAlertSeverity::Warning);
+        let b = TlsAlertSeverity(a_u8);
+        assert_eq!(b, TlsAlertSeverity::Warning);
 
-    let s = format!("{}", b);
-    assert_eq!(s, "Warning");
+        let s = format!("{}", b);
+        assert_eq!(s, "Warning");
 
-    let s = format!("{}", TlsAlertSeverity(129));
-    assert_eq!(s, "TlsAlertSeverity(129 / 0x81)");
-}
+        let s = format!("{}", TlsAlertSeverity(129));
+        assert_eq!(s, "TlsAlertSeverity(129 / 0x81)");
+    }
 
-#[test]
-fn test_tlsalert_cast_description() {
-    let a = TlsAlertDescription::HandshakeFailure;
+    #[test]
+    fn test_tlsalert_cast_description() {
+        let a = TlsAlertDescription::HandshakeFailure;
 
-    let a_u8 = a.0;
-    assert_eq!(a_u8, 0x28);
+        let a_u8 = a.0;
+        assert_eq!(a_u8, 0x28);
 
-    let b = TlsAlertDescription(a_u8);
-    assert_eq!(b, TlsAlertDescription::HandshakeFailure);
-}
+        let b = TlsAlertDescription(a_u8);
+        assert_eq!(b, TlsAlertDescription::HandshakeFailure);
+    }
 
 } // mod tests

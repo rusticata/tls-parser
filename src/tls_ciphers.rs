@@ -119,42 +119,43 @@ impl TlsCipherSuite {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
-    use crate::tls_ciphers::{CIPHERS,TlsCipherSuite,TlsCipherKx};
+    use crate::tls_ciphers::{TlsCipherKx, TlsCipherSuite, CIPHERS};
 
-#[test]
-fn test_cipher_count() {
-    println!("loaded: {} cipher suites", CIPHERS.len());
-    assert!(CIPHERS.len() > 0);
-}
-
-#[test]
-fn test_cipher_from_id() {
-    match TlsCipherSuite::from_id(0xc025) {
-        Some(ref cipher) => {
-            println!("Found cipher: {:?}", cipher);
-        },
-        None => assert!(false),
+    #[test]
+    fn test_cipher_count() {
+        println!("loaded: {} cipher suites", CIPHERS.len());
+        assert!(CIPHERS.len() > 0);
     }
-}
 
-#[test]
-fn test_cipher_from_name() {
-    match TlsCipherSuite::from_name("TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384") {
-        Some(ref cipher) => {
-            println!("Found cipher: {:?}", cipher);
-        },
-        None => assert!(false),
+    #[test]
+    fn test_cipher_from_id() {
+        match TlsCipherSuite::from_id(0xc025) {
+            Some(ref cipher) => {
+                println!("Found cipher: {:?}", cipher);
+            }
+            None => assert!(false),
+        }
     }
-}
 
-#[test]
-fn test_cipher_filter() {
-    let ecdhe_ciphers : Vec<&TlsCipherSuite> = CIPHERS.values().filter(|c| { c.kx == TlsCipherKx::Ecdhe }).collect();
-    assert!(ecdhe_ciphers.len() > 20);
-}
+    #[test]
+    fn test_cipher_from_name() {
+        match TlsCipherSuite::from_name("TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384") {
+            Some(ref cipher) => {
+                println!("Found cipher: {:?}", cipher);
+            }
+            None => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_cipher_filter() {
+        let ecdhe_ciphers: Vec<&TlsCipherSuite> = CIPHERS
+            .values()
+            .filter(|c| c.kx == TlsCipherKx::Ecdhe)
+            .collect();
+        assert!(ecdhe_ciphers.len() > 20);
+    }
 
 }

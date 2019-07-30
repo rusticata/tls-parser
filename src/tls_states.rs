@@ -8,7 +8,7 @@ pub enum StateChangeError {
 }
 
 /// TLS machine possible states
-#[derive(Copy,Clone,Debug,PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TlsState {
     None,
     ClientHello,
@@ -44,6 +44,7 @@ pub enum TlsState {
     Invalid,
 }
 
+#[rustfmt::skip]
 fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to_server:bool) -> Result<TlsState,StateChangeError> {
     match (state,msg,to_server) {
         (TlsState::None,             &TlsMessageHandshake::ClientHello(ref msg), true) => {
@@ -83,8 +84,8 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to
         // Re-use the ClientChangeCipherSpec state to indicate the next message will be encrypted
         (TlsState::ClientHello,      &TlsMessageHandshake::ServerHelloV13Draft18(_), false)    => Ok(TlsState::ClientChangeCipherSpec),
         // Hello requests must be accepted at any time (except start), but ignored [RFC5246] 7.4.1.1
-        (TlsState::None,             &TlsMessageHandshake::HelloRequest, _)         => Err(StateChangeError::InvalidTransition),
-        (s,                          &TlsMessageHandshake::HelloRequest, _)         => Ok(s),
+        (TlsState::None,             &TlsMessageHandshake::HelloRequest, _)             => Err(StateChangeError::InvalidTransition),
+        (s,                          &TlsMessageHandshake::HelloRequest, _)             => Ok(s),
         // All other transitions are considered invalid
         _ => Err(StateChangeError::InvalidTransition),
     }
@@ -102,6 +103,7 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to
 /// If the previous state is `Invalid`, the state machine will not return an error, but keep the
 /// same `Invalid` state. This is used to raise error only once if the state machine keeps being
 /// updated by new messages.
+#[rustfmt::skip]
 pub fn tls_state_transition(state: TlsState, msg: &TlsMessage, to_server:bool) -> Result<TlsState,StateChangeError> {
     match (state,msg,to_server) {
         (TlsState::Invalid,_,_) => Ok(TlsState::Invalid),

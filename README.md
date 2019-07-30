@@ -143,6 +143,7 @@ values than to get a generic parse error).
 ### 0.9.0
 
 - Upgrade to nom 5
+- Rustfmt
 
 ### 0.8.1
 

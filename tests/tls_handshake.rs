@@ -1,94 +1,89 @@
-#[macro_use] extern crate pretty_assertions;
+#[macro_use]
+extern crate pretty_assertions;
 
 extern crate nom;
 extern crate tls_parser;
 
 mod tls_handshake {
-use tls_parser::*;
-use nom::{Err,Needed};
+    use nom::{Err, Needed};
+    use tls_parser::*;
 
+    #[rustfmt::skip]
+static CH : &'static [u8] = &[
+    0x16, 0x03, 0x01, 0x01, 0x2c, 0x01, 0x00, 0x01, 0x28, 0x03, 0x03, 0xb2,
+    0x9d, 0xd7, 0x87, 0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a,
+    0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9,
+    0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4, 0x00, 0x00, 0xaa, 0xc0, 0x30,
+    0xc0, 0x2c, 0xc0, 0x28, 0xc0, 0x24, 0xc0, 0x14, 0xc0, 0x0a, 0x00, 0xa5,
+    0x00, 0xa3, 0x00, 0xa1, 0x00, 0x9f, 0x00, 0x6b, 0x00, 0x6a, 0x00, 0x69,
+    0x00, 0x68, 0x00, 0x39, 0x00, 0x38, 0x00, 0x37, 0x00, 0x36, 0x00, 0x88,
+    0x00, 0x87, 0x00, 0x86, 0x00, 0x85, 0xc0, 0x32, 0xc0, 0x2e, 0xc0, 0x2a,
+    0xc0, 0x26, 0xc0, 0x0f, 0xc0, 0x05, 0x00, 0x9d, 0x00, 0x3d, 0x00, 0x35,
+    0x00, 0x84, 0xc0, 0x2f, 0xc0, 0x2b, 0xc0, 0x27, 0xc0, 0x23, 0xc0, 0x13,
+    0xc0, 0x09, 0x00, 0xa4, 0x00, 0xa2, 0x00, 0xa0, 0x00, 0x9e, 0x00, 0x67,
+    0x00, 0x40, 0x00, 0x3f, 0x00, 0x3e, 0x00, 0x33, 0x00, 0x32, 0x00, 0x31,
+    0x00, 0x30, 0x00, 0x9a, 0x00, 0x99, 0x00, 0x98, 0x00, 0x97, 0x00, 0x45,
+    0x00, 0x44, 0x00, 0x43, 0x00, 0x42, 0xc0, 0x31, 0xc0, 0x2d, 0xc0, 0x29,
+    0xc0, 0x25, 0xc0, 0x0e, 0xc0, 0x04, 0x00, 0x9c, 0x00, 0x3c, 0x00, 0x2f,
+    0x00, 0x96, 0x00, 0x41, 0xc0, 0x11, 0xc0, 0x07, 0xc0, 0x0c, 0xc0, 0x02,
+    0x00, 0x05, 0x00, 0x04, 0xc0, 0x12, 0xc0, 0x08, 0x00, 0x16, 0x00, 0x13,
+    0x00, 0x10, 0x00, 0x0d, 0xc0, 0x0d, 0xc0, 0x03, 0x00, 0x0a, 0x00, 0xff,
+    0x01, 0x00, 0x00, 0x55, 0x00, 0x0b, 0x00, 0x04, 0x03, 0x00, 0x01, 0x02,
+    0x00, 0x0a, 0x00, 0x1c, 0x00, 0x1a, 0x00, 0x17, 0x00, 0x19, 0x00, 0x1c,
+    0x00, 0x1b, 0x00, 0x18, 0x00, 0x1a, 0x00, 0x16, 0x00, 0x0e, 0x00, 0x0d,
+    0x00, 0x0b, 0x00, 0x0c, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x23, 0x00, 0x00,
+    0x00, 0x0d, 0x00, 0x20, 0x00, 0x1e, 0x06, 0x01, 0x06, 0x02, 0x06, 0x03,
+    0x05, 0x01, 0x05, 0x02, 0x05, 0x03, 0x04, 0x01, 0x04, 0x02, 0x04, 0x03,
+    0x03, 0x01, 0x03, 0x02, 0x03, 0x03, 0x02, 0x01, 0x02, 0x02, 0x02, 0x03,
+    0x00, 0x0f, 0x00, 0x01, 0x01
+];
 
-#[test]
-fn test_tls_record_clienthello() {
-    let empty = &b""[..];
-    let bytes = [
-        0x16, 0x03, 0x01, 0x01, 0x2c, 0x01, 0x00, 0x01, 0x28, 0x03, 0x03, 0xb2,
-        0x9d, 0xd7, 0x87, 0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a,
-        0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9,
-        0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4, 0x00, 0x00, 0xaa, 0xc0, 0x30,
-        0xc0, 0x2c, 0xc0, 0x28, 0xc0, 0x24, 0xc0, 0x14, 0xc0, 0x0a, 0x00, 0xa5,
-        0x00, 0xa3, 0x00, 0xa1, 0x00, 0x9f, 0x00, 0x6b, 0x00, 0x6a, 0x00, 0x69,
-        0x00, 0x68, 0x00, 0x39, 0x00, 0x38, 0x00, 0x37, 0x00, 0x36, 0x00, 0x88,
-        0x00, 0x87, 0x00, 0x86, 0x00, 0x85, 0xc0, 0x32, 0xc0, 0x2e, 0xc0, 0x2a,
-        0xc0, 0x26, 0xc0, 0x0f, 0xc0, 0x05, 0x00, 0x9d, 0x00, 0x3d, 0x00, 0x35,
-        0x00, 0x84, 0xc0, 0x2f, 0xc0, 0x2b, 0xc0, 0x27, 0xc0, 0x23, 0xc0, 0x13,
-        0xc0, 0x09, 0x00, 0xa4, 0x00, 0xa2, 0x00, 0xa0, 0x00, 0x9e, 0x00, 0x67,
-        0x00, 0x40, 0x00, 0x3f, 0x00, 0x3e, 0x00, 0x33, 0x00, 0x32, 0x00, 0x31,
-        0x00, 0x30, 0x00, 0x9a, 0x00, 0x99, 0x00, 0x98, 0x00, 0x97, 0x00, 0x45,
-        0x00, 0x44, 0x00, 0x43, 0x00, 0x42, 0xc0, 0x31, 0xc0, 0x2d, 0xc0, 0x29,
-        0xc0, 0x25, 0xc0, 0x0e, 0xc0, 0x04, 0x00, 0x9c, 0x00, 0x3c, 0x00, 0x2f,
-        0x00, 0x96, 0x00, 0x41, 0xc0, 0x11, 0xc0, 0x07, 0xc0, 0x0c, 0xc0, 0x02,
-        0x00, 0x05, 0x00, 0x04, 0xc0, 0x12, 0xc0, 0x08, 0x00, 0x16, 0x00, 0x13,
-        0x00, 0x10, 0x00, 0x0d, 0xc0, 0x0d, 0xc0, 0x03, 0x00, 0x0a, 0x00, 0xff,
-        0x01, 0x00, 0x00, 0x55, 0x00, 0x0b, 0x00, 0x04, 0x03, 0x00, 0x01, 0x02,
-        0x00, 0x0a, 0x00, 0x1c, 0x00, 0x1a, 0x00, 0x17, 0x00, 0x19, 0x00, 0x1c,
-        0x00, 0x1b, 0x00, 0x18, 0x00, 0x1a, 0x00, 0x16, 0x00, 0x0e, 0x00, 0x0d,
-        0x00, 0x0b, 0x00, 0x0c, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x23, 0x00, 0x00,
-        0x00, 0x0d, 0x00, 0x20, 0x00, 0x1e, 0x06, 0x01, 0x06, 0x02, 0x06, 0x03,
-        0x05, 0x01, 0x05, 0x02, 0x05, 0x03, 0x04, 0x01, 0x04, 0x02, 0x04, 0x03,
-        0x03, 0x01, 0x03, 0x02, 0x03, 0x03, 0x02, 0x01, 0x02, 0x02, 0x02, 0x03,
-        0x00, 0x0f, 0x00, 0x01, 0x01
-    ];
-    let rand_data = [0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a,
-        0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9,
-        0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4];
-    let ciphers = vec![
-        0xc030,
-        0xc02c, 0xc028, 0xc024, 0xc014, 0xc00a, 0x00a5,
-        0x00a3, 0x00a1, 0x009f, 0x006b, 0x006a, 0x0069,
-        0x0068, 0x0039, 0x0038, 0x0037, 0x0036, 0x0088,
-        0x0087, 0x0086, 0x0085, 0xc032, 0xc02e, 0xc02a,
-        0xc026, 0xc00f, 0xc005, 0x009d, 0x003d, 0x0035,
-        0x0084, 0xc02f, 0xc02b, 0xc027, 0xc023, 0xc013,
-        0xc009, 0x00a4, 0x00a2, 0x00a0, 0x009e, 0x0067,
-        0x0040, 0x003f, 0x003e, 0x0033, 0x0032, 0x0031,
-        0x0030, 0x009a, 0x0099, 0x0098, 0x0097, 0x0045,
-        0x0044, 0x0043, 0x0042, 0xc031, 0xc02d, 0xc029,
-        0xc025, 0xc00e, 0xc004, 0x009c, 0x003c, 0x002f,
-        0x0096, 0x0041, 0xc011, 0xc007, 0xc00c, 0xc002,
-        0x0005, 0x0004, 0xc012, 0xc008, 0x0016, 0x0013,
-        0x0010, 0x000d, 0xc00d, 0xc003, 0x000a, 0x00ff
-    ];
-    let comp = vec![TlsCompressionID(0x00)];
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls10,
-            len: 300,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::ClientHello(
-                    TlsClientHelloContents {
-                        version: TlsVersion::Tls12,
-                        rand_time: 0xb29dd787,
-                        rand_data: &rand_data,
-                        session_id: None,
-                        ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
-                        comp: comp,
-                        ext: Some(&bytes[220..]),
-                    })
-        )]
-    };
-    let res = parse_tls_plaintext(&bytes);
-    assert_eq!(res, Ok((empty, expected)));
-}
+    #[test]
+    fn test_tls_record_clienthello() {
+        let empty = &b""[..];
+        let rand_data = [
+            0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a, 0xcf, 0xb7, 0xa3, 0x82, 0x1f,
+            0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9, 0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4,
+        ];
+        let ciphers = vec![
+            0xc030, 0xc02c, 0xc028, 0xc024, 0xc014, 0xc00a, 0x00a5, 0x00a3, 0x00a1, 0x009f, 0x006b,
+            0x006a, 0x0069, 0x0068, 0x0039, 0x0038, 0x0037, 0x0036, 0x0088, 0x0087, 0x0086, 0x0085,
+            0xc032, 0xc02e, 0xc02a, 0xc026, 0xc00f, 0xc005, 0x009d, 0x003d, 0x0035, 0x0084, 0xc02f,
+            0xc02b, 0xc027, 0xc023, 0xc013, 0xc009, 0x00a4, 0x00a2, 0x00a0, 0x009e, 0x0067, 0x0040,
+            0x003f, 0x003e, 0x0033, 0x0032, 0x0031, 0x0030, 0x009a, 0x0099, 0x0098, 0x0097, 0x0045,
+            0x0044, 0x0043, 0x0042, 0xc031, 0xc02d, 0xc029, 0xc025, 0xc00e, 0xc004, 0x009c, 0x003c,
+            0x002f, 0x0096, 0x0041, 0xc011, 0xc007, 0xc00c, 0xc002, 0x0005, 0x0004, 0xc012, 0xc008,
+            0x0016, 0x0013, 0x0010, 0x000d, 0xc00d, 0xc003, 0x000a, 0x00ff,
+        ];
+        let comp = vec![TlsCompressionID(0x00)];
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls10,
+                len: 300,
+            },
+            msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
+                TlsClientHelloContents {
+                    version: TlsVersion::Tls12,
+                    rand_time: 0xb29dd787,
+                    rand_data: &rand_data,
+                    session_id: None,
+                    ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
+                    comp: comp,
+                    ext: Some(&CH[220..]),
+                },
+            ))],
+        };
+        let res = parse_tls_plaintext(CH);
+        assert_eq!(res, Ok((empty, expected)));
+    }
 
-
-// tls response, composed of 4 records:
-// - Server Hello
-// - Server Certificate
-// - Server Key Exchange
-// - Server Hello Done
+    // tls response, composed of 4 records:
+    // - Server Hello
+    // - Server Certificate
+    // - Server Key Exchange
+    // - Server Hello Done
+    #[rustfmt::skip]
 static SERVER_REPLY1: &'static [u8] = &[
     0x16, 0x03, 0x03, 0x00, 0x3b, 0x02, 0x00, 0x00, 0x37, 0x03, 0x03, 0x57,
     0xc4, 0x57, 0xda, 0x9c, 0xd3, 0x24, 0x6d, 0x9d, 0x02, 0x26, 0xa2, 0xe5,
@@ -384,101 +379,103 @@ static SERVER_REPLY1: &'static [u8] = &[
     0x04, 0x0e, 0x00, 0x00, 0x00
 ];
 
-#[test]
-fn test_tls_record_serverhello() {
-    let empty = &b""[..];
-    let bytes = &SERVER_REPLY1[0..64];
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls12,
-            len: 59,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::ServerHello(
-                    TlsServerHelloContents {
-                        version: TlsVersion::Tls12,
-                        rand_time: 0x57c457da,
-                        rand_data: &bytes[15..43],
-                        session_id: None,
-                        cipher: TlsCipherSuiteID(0xc02f),
-                        compression: TlsCompressionID(0),
-                        ext: Some(&bytes[49..]),
-                    })
-        )]
-    };
-    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
-}
-
-#[test]
-fn test_tls_record_certificate() {
-    let empty = &b""[..];
-    let bytes = &SERVER_REPLY1[64..3150];
-    let chain = vec![
-        RawCertificate{ data: &bytes[15..1171] },
-        RawCertificate{ data: &bytes[1174..2186] },
-        RawCertificate{ data: &bytes[2189..3086] },
-    ];
-    for cert in &chain {
-        println!("cert len: {}", cert.data.len());
+    #[test]
+    fn test_tls_record_serverhello() {
+        let empty = &b""[..];
+        let bytes = &SERVER_REPLY1[0..64];
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: 59,
+            },
+            msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ServerHello(
+                TlsServerHelloContents {
+                    version: TlsVersion::Tls12,
+                    rand_time: 0x57c457da,
+                    rand_data: &bytes[15..43],
+                    session_id: None,
+                    cipher: TlsCipherSuiteID(0xc02f),
+                    compression: TlsCompressionID(0),
+                    ext: Some(&bytes[49..]),
+                },
+            ))],
+        };
+        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
     }
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls12,
-            len: 3081,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::Certificate(
-                    TlsCertificateContents {
-                        cert_chain: chain,
-                })
-            )]
-    };
-    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
-}
 
-#[test]
-fn test_tls_record_serverkeyexchange() {
-    let empty = &b""[..];
-    let bytes = &SERVER_REPLY1[3150..3488];
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls12,
-            len: 333,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::ServerKeyExchange(
-                TlsServerKeyExchangeContents {
+    #[test]
+    fn test_tls_record_certificate() {
+        let empty = &b""[..];
+        let bytes = &SERVER_REPLY1[64..3150];
+        let chain = vec![
+            RawCertificate {
+                data: &bytes[15..1171],
+            },
+            RawCertificate {
+                data: &bytes[1174..2186],
+            },
+            RawCertificate {
+                data: &bytes[2189..3086],
+            },
+        ];
+        for cert in &chain {
+            println!("cert len: {}", cert.data.len());
+        }
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: 3081,
+            },
+            msg: vec![TlsMessage::Handshake(TlsMessageHandshake::Certificate(
+                TlsCertificateContents { cert_chain: chain },
+            ))],
+        };
+        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+    }
+
+    #[test]
+    fn test_tls_record_serverkeyexchange() {
+        let empty = &b""[..];
+        let bytes = &SERVER_REPLY1[3150..3488];
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: 333,
+            },
+            msg: vec![TlsMessage::Handshake(
+                TlsMessageHandshake::ServerKeyExchange(TlsServerKeyExchangeContents {
                     parameters: &bytes[9..],
-                })
-        )]
-    };
-    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
-}
+                }),
+            )],
+        };
+        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+    }
 
-#[test]
-fn test_tls_record_serverdone() {
-    let empty = &b""[..];
-    let bytes = &SERVER_REPLY1[3488..];
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls12,
-            len: 4,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::ServerDone(empty),
-        )]
-    };
-    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
-}
+    #[test]
+    fn test_tls_record_serverdone() {
+        let empty = &b""[..];
+        let bytes = &SERVER_REPLY1[3488..];
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: 4,
+            },
+            msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ServerDone(
+                empty,
+            ))],
+        };
+        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+    }
 
-// client response, composed of 3 records:
-// - Client Key Exchange
-// - Change Cipher Spec
-// - an encrypted handshake message
+    // client response, composed of 3 records:
+    // - Client Key Exchange
+    // - Change Cipher Spec
+    // - an encrypted handshake message
+    #[rustfmt::skip]
 static CLIENT_REPLY1: &'static [u8] = &[
     0x16, 0x03, 0x03, 0x00, 0x46, 0x10, 0x00, 0x00, 0x42, 0x41, 0x04, 0x22,
     0xd3, 0xf9, 0xbf, 0xbb, 0x7e, 0x34, 0xf9, 0x95, 0x68, 0x2e, 0xe2, 0xf8,
@@ -493,57 +490,56 @@ static CLIENT_REPLY1: &'static [u8] = &[
     0x38, 0x7a, 0xa5, 0xd8, 0xf3, 0x72
 ];
 
-#[test]
-fn test_tls_record_clientkeyexchange() {
-    let empty = &b""[..];
-    let bytes = &CLIENT_REPLY1[0..75];
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls12,
-            len: 70,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::ClientKeyExchange(
-                TlsClientKeyExchangeContents::Unknown(&bytes[9..])
-                )
-        )]
-    };
-    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
-}
+    #[test]
+    fn test_tls_record_clientkeyexchange() {
+        let empty = &b""[..];
+        let bytes = &CLIENT_REPLY1[0..75];
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: 70,
+            },
+            msg: vec![TlsMessage::Handshake(
+                TlsMessageHandshake::ClientKeyExchange(TlsClientKeyExchangeContents::Unknown(
+                    &bytes[9..],
+                )),
+            )],
+        };
+        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+    }
 
-#[test]
-fn test_tls_record_changecipherspec() {
-    let empty = &b""[..];
-    let bytes = &CLIENT_REPLY1[75..81];
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::ChangeCipherSpec,
-            version: TlsVersion::Tls12,
-            len: 1,
-        },
-        msg: vec![TlsMessage::ChangeCipherSpec],
-    };
-    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
-}
+    #[test]
+    fn test_tls_record_changecipherspec() {
+        let empty = &b""[..];
+        let bytes = &CLIENT_REPLY1[75..81];
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::ChangeCipherSpec,
+                version: TlsVersion::Tls12,
+                len: 1,
+            },
+            msg: vec![TlsMessage::ChangeCipherSpec],
+        };
+        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+    }
 
-#[test]
-fn test_tls_record_encryptedhandshake() {
-    let empty = &b""[..];
-    let bytes = &CLIENT_REPLY1[81..];
-    let expected = TlsEncrypted {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls12,
-            len: bytes.len() as u16 - 5,
-        },
-        msg: TlsEncryptedContent {
-                blob: &bytes[5..],
-            }
-    };
-    assert_eq!(parse_tls_encrypted(&bytes), Ok((empty, expected)));
-}
+    #[test]
+    fn test_tls_record_encryptedhandshake() {
+        let empty = &b""[..];
+        let bytes = &CLIENT_REPLY1[81..];
+        let expected = TlsEncrypted {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: bytes.len() as u16 - 5,
+            },
+            msg: TlsEncryptedContent { blob: &bytes[5..] },
+        };
+        assert_eq!(parse_tls_encrypted(&bytes), Ok((empty, expected)));
+    }
 
+    #[rustfmt::skip]
 static SERVER_HELLO1: &'static [u8] = &[
     0x16, 0x03, 0x03, 0x00, 0x3b, 0x02, 0x00, 0x00, 0x37, 0x03, 0x03, 0x57,
     0xc4, 0x57, 0xda, 0x9c, 0xd3, 0x24, 0x6d, 0x9d, 0x02, 0x26, 0xa2, 0xe5,
@@ -553,43 +549,44 @@ static SERVER_HELLO1: &'static [u8] = &[
     0x00, 0x02, 0x01, 0x00
 ];
 
-#[test]
-fn test_tls_record_invalid_recordlength() {
-    let mut v = SERVER_HELLO1.to_vec();
-    let bytes = v.as_mut_slice();
-    bytes[4] = 0xff; // make record incomplete (longer than data)
-    let expected = Err(Err::Incomplete(Needed::Size(255)));
-    let res = parse_tls_plaintext(&bytes);
-    assert_eq!(res, expected);
-}
+    #[test]
+    fn test_tls_record_invalid_recordlength() {
+        let mut v = SERVER_HELLO1.to_vec();
+        let bytes = v.as_mut_slice();
+        bytes[4] = 0xff; // make record incomplete (longer than data)
+        let expected = Err(Err::Incomplete(Needed::Size(255)));
+        let res = parse_tls_plaintext(&bytes);
+        assert_eq!(res, expected);
+    }
 
-#[test]
-fn test_tls_record_invalid_recordlength2() {
-    let mut v = SERVER_HELLO1.to_vec();
-    let bytes = v.as_mut_slice();
-    bytes[4] = 0x00; // make record incomplete (shorter than data)
-    let res = parse_tls_plaintext(&bytes);
-    assert!(res.is_err());
-}
+    #[test]
+    fn test_tls_record_invalid_recordlength2() {
+        let mut v = SERVER_HELLO1.to_vec();
+        let bytes = v.as_mut_slice();
+        bytes[4] = 0x00; // make record incomplete (shorter than data)
+        let res = parse_tls_plaintext(&bytes);
+        assert!(res.is_err());
+    }
 
-#[test]
-fn test_tls_record_invalid_messagelength() {
-    let mut v = SERVER_HELLO1.to_vec();
-    let bytes = v.as_mut_slice();
-    bytes[8] = 0xff; // create message larger than record
-    let res = parse_tls_plaintext(&bytes);
-    assert!(res.is_err());
-}
+    #[test]
+    fn test_tls_record_invalid_messagelength() {
+        let mut v = SERVER_HELLO1.to_vec();
+        let bytes = v.as_mut_slice();
+        bytes[8] = 0xff; // create message larger than record
+        let res = parse_tls_plaintext(&bytes);
+        assert!(res.is_err());
+    }
 
-#[test]
-fn test_tls_record_invalid_messagelength2() {
-    let mut v = SERVER_HELLO1.to_vec();
-    let bytes = v.as_mut_slice();
-    bytes[8] = 0x01; // create message shorter than record
-    let res = parse_tls_plaintext(&bytes);
-    assert!(res.is_err());
-}
+    #[test]
+    fn test_tls_record_invalid_messagelength2() {
+        let mut v = SERVER_HELLO1.to_vec();
+        let bytes = v.as_mut_slice();
+        bytes[8] = 0x01; // create message shorter than record
+        let res = parse_tls_plaintext(&bytes);
+        assert!(res.is_err());
+    }
 
+    #[rustfmt::skip]
 static SERVER_CERTIFICATE_REQUEST_NOCA: &'static [u8] = &[
     0x16, 0x03, 0x03, 0x00, 0x2a, 0x0d, 0x00, 0x00, 0x26, 0x03, 0x01, 0x02,
     0x40, 0x00, 0x1e, 0x06, 0x01, 0x06, 0x02, 0x06, 0x03, 0x05, 0x01, 0x05,
@@ -597,31 +594,31 @@ static SERVER_CERTIFICATE_REQUEST_NOCA: &'static [u8] = &[
     0x02, 0x03, 0x03, 0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x00, 0x00
 ];
 
-#[test]
-fn test_tls_record_cert_request_noca() {
-    let empty = &b""[..];
-    let bytes = SERVER_CERTIFICATE_REQUEST_NOCA;
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls12,
-            len: bytes.len() as u16 - 5,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::CertificateRequest(
-                TlsCertificateRequestContents {
+    #[test]
+    fn test_tls_record_cert_request_noca() {
+        let empty = &b""[..];
+        let bytes = SERVER_CERTIFICATE_REQUEST_NOCA;
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: bytes.len() as u16 - 5,
+            },
+            msg: vec![TlsMessage::Handshake(
+                TlsMessageHandshake::CertificateRequest(TlsCertificateRequestContents {
                     cert_types: vec![0x01, 0x02, 0x40],
-                    sig_hash_algs: Some(
-                        vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
-                             0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203]
-                    ),
+                    sig_hash_algs: Some(vec![
+                        0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
+                        0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203,
+                    ]),
                     unparsed_ca: vec![],
-                })
-        )]
-    };
-    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
-}
+                }),
+            )],
+        };
+        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+    }
 
+    #[rustfmt::skip]
 static SERVER_CERTIFICATE_REQUEST_CA: &'static [u8] = &[
     0x16, 0x03, 0x03, 0x00, 0x73, 0x0d, 0x00, 0x00, 0x6f, 0x03, 0x01, 0x02,
     0x40, 0x00, 0x1e, 0x06, 0x01, 0x06, 0x02, 0x06, 0x03, 0x05, 0x01, 0x05,
@@ -635,32 +632,32 @@ static SERVER_CERTIFICATE_REQUEST_CA: &'static [u8] = &[
     0x67, 0x69, 0x74, 0x73, 0x20, 0x50, 0x74, 0x79, 0x20, 0x4c, 0x74, 0x64
 ];
 
-#[test]
-fn test_tls_record_cert_request_ca() {
-    let empty = &b""[..];
-    let bytes = SERVER_CERTIFICATE_REQUEST_CA;
-    let ca1 = &bytes[49..];
-    let expected = TlsPlaintext {
-        hdr: TlsRecordHeader {
-            record_type: TlsRecordType::Handshake,
-            version: TlsVersion::Tls12,
-            len: bytes.len() as u16 - 5,
-        },
-        msg: vec![TlsMessage::Handshake(
-            TlsMessageHandshake::CertificateRequest(
-                TlsCertificateRequestContents {
+    #[test]
+    fn test_tls_record_cert_request_ca() {
+        let empty = &b""[..];
+        let bytes = SERVER_CERTIFICATE_REQUEST_CA;
+        let ca1 = &bytes[49..];
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: bytes.len() as u16 - 5,
+            },
+            msg: vec![TlsMessage::Handshake(
+                TlsMessageHandshake::CertificateRequest(TlsCertificateRequestContents {
                     cert_types: vec![0x01, 0x02, 0x40],
-                    sig_hash_algs: Some(
-                        vec![0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
-                             0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203]
-                    ),
+                    sig_hash_algs: Some(vec![
+                        0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
+                        0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203,
+                    ]),
                     unparsed_ca: vec![ca1],
-                })
-        )]
-    };
-    assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
-}
+                }),
+            )],
+        };
+        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+    }
 
+    #[rustfmt::skip]
 static SERVER_STATUS_RESPONSE: &'static [u8] = &[
     0x16, 0x00, 0x06, 0x3f, 0x01, 0x00, 0x06, 0x3b, 0x30, 0x82, 0x06, 0x37,
     0x0a, 0x01, 0x00, 0xa0, 0x82, 0x06, 0x30, 0x30, 0x82, 0x06, 0x2c, 0x06,
@@ -798,27 +795,24 @@ static SERVER_STATUS_RESPONSE: &'static [u8] = &[
     0x25, 0x44, 0x93, 0xc9, 0x56, 0x22, 0xea
 ];
 
-#[test]
-fn test_tls_message_status_response() {
-    let empty = &b""[..];
-    let bytes = SERVER_STATUS_RESPONSE;
-    let blob = &bytes[8..];
-    let expected = vec![
-        TlsMessage::Handshake(
-            TlsMessageHandshake::CertificateStatus(
-                TlsCertificateStatusContents {
-                    status_type: 1,
-                    blob: blob,
-                })
-            )
-    ];
-    let hdr = TlsRecordHeader {
-        record_type: TlsRecordType::Handshake,
-        version: TlsVersion(0),
-        len: 0x0,
-    };
-    let res = parse_tls_record_with_header(&bytes, &hdr);
-    assert_eq!(res, Ok((empty, expected)));
-}
+    #[test]
+    fn test_tls_message_status_response() {
+        let empty = &b""[..];
+        let bytes = SERVER_STATUS_RESPONSE;
+        let blob = &bytes[8..];
+        let expected = vec![TlsMessage::Handshake(
+            TlsMessageHandshake::CertificateStatus(TlsCertificateStatusContents {
+                status_type: 1,
+                blob: blob,
+            }),
+        )];
+        let hdr = TlsRecordHeader {
+            record_type: TlsRecordType::Handshake,
+            version: TlsVersion(0),
+            len: 0x0,
+        };
+        let res = parse_tls_record_with_header(&bytes, &hdr);
+        assert_eq!(res, Ok((empty, expected)));
+    }
 
 } // mod tls_handshake
