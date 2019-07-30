@@ -6,6 +6,11 @@ matrix:
       env:
        - NAME="stable"
        - FEATURES=''
+    - rust: stable
+      env:
+       - NAME="stable,fmt"
+       - FEATURES=''
+       - RUSTFMT=yes
     - rust: nightly
       env:
        - NAME="nightly"
@@ -20,8 +25,11 @@ matrix:
        - NAME="nightly,serialize"
        - FEATURES='serialize'
        - BENCH=1
+before_script:
+    - ([ "$RUSTFMT" != yes ] || rustup component add rustfmt)
 script:
-  - |
-      cargo build --verbose --features "$FEATURES" &&
-      cargo test --verbose --features "$FEATURES" &&
-      ([ "$BENCH" != 1 ] || cargo bench --verbose --features "$FEATURES")
+    - ([ "$RUSTFMT" != yes ] || cargo fmt --all -- --check)
+    - |
+        cargo build --verbose --features "$FEATURES" &&
+        cargo test --verbose --features "$FEATURES" &&
+        ([ "$BENCH" != 1 ] || cargo bench --verbose --features "$FEATURES")
