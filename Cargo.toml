@@ -32,14 +32,14 @@ name = "tls_parser"
 
 [features]
 default = []
-serialize = []
+serialize = ["cookie-factory"]
 
 [dependencies]
 nom = "5.0"
 phf = "0.7.16"
 enum_primitive = "^0.1"
 rusticata-macros = "2.0"
-cookie-factory = "0.2"
+cookie-factory = { version="0.2", optional=true }
 
 [dev-dependencies]
 pretty_assertions = "0.6"
