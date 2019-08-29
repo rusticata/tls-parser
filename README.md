@@ -140,6 +140,10 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.9.1
+
+- Mark cookie-factory as optional (only used for serialization)
+
 ### 0.9.0
 
 - Upgrade to nom 5
