@@ -157,5 +157,4 @@ mod tests {
             .collect();
         assert!(ecdhe_ciphers.len() > 20);
     }
-
 }

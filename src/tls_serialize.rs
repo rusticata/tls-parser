@@ -523,7 +523,5 @@ pub mod serialize {
                 Err(e) => println!("Error: {:?}", e),
             };
         }
-
     }
-
 }

@@ -120,5 +120,4 @@ static TV_SERVER_HELLO_1: &'static [u8] = &[
         let res_ext = parse_tls_extensions(ext_raw);
         assert_eq!(res_ext, Ok((empty, expected_ext)));
     }
-
 } // mod tls_13

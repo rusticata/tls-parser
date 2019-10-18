@@ -46,5 +46,4 @@ mod tls_dh {
             let _ = pair!(bytes, parse_ecdh_params, parse_digitally_signed);
         })
     }
-
 } // mod tls_dh

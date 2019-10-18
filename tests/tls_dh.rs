@@ -145,5 +145,4 @@ static DHE_PARAMS: &'static [u8] = &[
         let res = pair!(bytes, parse_dh_params, parse_digitally_signed);
         assert_eq!(res, Ok((empty, (expected1, expected2))));
     }
-
 } // mod tls_dh

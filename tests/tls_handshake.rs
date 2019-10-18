@@ -814,5 +814,4 @@ static SERVER_STATUS_RESPONSE: &'static [u8] = &[
         let res = parse_tls_record_with_header(&bytes, &hdr);
         assert_eq!(res, Ok((empty, expected)));
     }
-
 } // mod tls_handshake

@@ -378,5 +378,4 @@ mod tls_handshake {
             let _ = parse_tls_plaintext(&bytes);
         })
     }
-
 } // mod tls_handshake

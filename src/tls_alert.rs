@@ -96,5 +96,4 @@ mod tests {
         let b = TlsAlertDescription(a_u8);
         assert_eq!(b, TlsAlertDescription::HandshakeFailure);
     }
-
 } // mod tests

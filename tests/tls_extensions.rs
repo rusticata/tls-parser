@@ -206,5 +206,4 @@ static CLIENT_EXTENSIONS1: &'static [u8] = &[
         let res = parse_tls_extension(bytes);
         assert_eq!(res, Ok((empty, expected)));
     }
-
 } // mod tls_extensions
