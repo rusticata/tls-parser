@@ -35,11 +35,6 @@ fn main() {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join("codegen.rs");
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
-    write!(
-        &mut file,
-        "pub static CIPHERS: phf::Map<u16, TlsCipherSuite> = "
-    )
-    .unwrap();
     let mut map = phf_codegen::Map::new();
     for line in f.lines() {
         let l = line.unwrap();
@@ -88,6 +83,10 @@ fn main() {
         map.entry(key, val.as_str());
     }
 
-    map.build(&mut file).unwrap();
-    write!(&mut file, ";\n").unwrap();
+    writeln!(
+        &mut file,
+        "pub static CIPHERS: phf::Map<u16, TlsCipherSuite> = {};",
+        map.build()
+    )
+    .unwrap();
 }
