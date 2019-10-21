@@ -39,7 +39,7 @@ nom = "5.0"
 phf = "0.8"
 enum_primitive = "^0.1"
 rusticata-macros = "2.0"
-cookie-factory = { version="0.2", optional=true }
+cookie-factory = { version="0.3", optional=true }
 
 [dev-dependencies]
 pretty_assertions = "0.6"

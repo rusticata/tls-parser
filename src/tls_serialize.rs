@@ -4,6 +4,7 @@ pub mod serialize {
     use crate::tls::*;
     use crate::tls_ec::{ECPoint, NamedGroup};
     use crate::tls_extensions::{SNIType, TlsExtension, TlsExtensionType};
+    use cookie_factory::gen::{set_be_u16, set_be_u8};
     use cookie_factory::*;
 
     #[macro_export]
@@ -13,7 +14,7 @@ pub mod serialize {
                    gen_be_u16!($tag) >>
             ofs:   gen_skip!(2) >>
             start: $submac!( $($args)* ) >>
-            end:   gen_at_offset!(ofs,gen_be_u16!(end-start))
+            end:   gen_at_offset!(ofs,gen_be_u16!((end-start) as u16))
         )
     );
     (($i:expr, $idx:expr), $tag:expr, $f:ident( $($args:tt)* )) => (
@@ -31,7 +32,7 @@ pub mod serialize {
         do_gen!(($i,$idx),
             ofs:   gen_skip!(2) >>
             start: $submac!( $($args)* ) >>
-            end:   gen_at_offset!(ofs,gen_be_u16!(end-start))
+            end:   gen_at_offset!(ofs,gen_be_u16!((end-start) as u16))
         )
     );
     (($i:expr, $idx:expr), $f:ident( $($args:tt)* )) => (
@@ -181,7 +182,7 @@ pub mod serialize {
                      gen_be_u8!(m.comp.len() as u8) >>
                      gen_many_deref!(&m.comp,set_be_u8) >>
                      gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
-            end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+            end:     gen_at_offset!(ofs_len,gen_be_u24!((end-start) as u32))
         }
     }
 
@@ -200,7 +201,7 @@ pub mod serialize {
                      gen_be_u16!(*m.cipher) >>
                      gen_be_u8!(*m.compression) >>
                      gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
-            end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+            end:     gen_at_offset!(ofs_len,gen_be_u24!((end-start) as u32))
         }
     }
 
@@ -215,7 +216,7 @@ pub mod serialize {
             start:   gen_copy!(m.random,32) >>
                      gen_be_u16!(*m.cipher) >>
                      gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
-            end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+            end:     gen_at_offset!(ofs_len,gen_be_u24!((end-start) as u32))
         }
     }
 
@@ -228,7 +229,7 @@ pub mod serialize {
                      gen_be_u8!(u8::from(TlsHandshakeType::ServerHello)) >>
             ofs_len: gen_skip!(3) >>
             start:   gen_slice!(m) >>
-            end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+            end:     gen_at_offset!(ofs_len,gen_be_u24!((end-start) as u32))
         }
     }
 
@@ -239,7 +240,7 @@ pub mod serialize {
         do_gen! {
             x,
             gen_be_u8!(u8::from(TlsHandshakeType::ClientKeyExchange)) >>
-            gen_be_u24!(m.len()) >>
+            gen_be_u24!(m.len() as u32) >>
             gen_slice!(m)
         }
     }
@@ -253,9 +254,9 @@ pub mod serialize {
             x,
                      gen_be_u8!(u8::from(TlsHandshakeType::ClientKeyExchange)) >>
             ofs_len: gen_skip!(3) >>
-            start:   gen_be_u16!(m.len()) >>
+            start:   gen_be_u16!(m.len() as u16) >>
                      gen_slice!(m) >>
-            end:     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+            end:     gen_at_offset!(ofs_len,gen_be_u24!((end-start) as u32))
         }
     }
 
@@ -271,7 +272,7 @@ pub mod serialize {
             start:   gen_skip!(1) >>
             s2:      gen_slice!(m.point) >>
             end:     gen_at_offset!(start,gen_be_u8!((end-s2) as u8)) >>
-                     gen_at_offset!(ofs_len,gen_be_u24!(end-start))
+                     gen_at_offset!(ofs_len,gen_be_u24!((end-start) as u32))
         }
     }
 
@@ -339,7 +340,7 @@ pub mod serialize {
             // gen_skip!(2) >>
             start:   gen_many_ref!(&p.msg,gen_tls_message) >>
             end:     gen_cond!(p.hdr.len == 0,
-                               gen_at_offset!(ofs_len,gen_be_u16!(end-start)))
+                               gen_at_offset!(ofs_len,gen_be_u16!((end-start) as u16)))
         }
     }
 
