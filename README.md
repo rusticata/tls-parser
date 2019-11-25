@@ -140,6 +140,11 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.9.2
+
+- Upgrade to phf 0.8
+- Upgrade cookie-factory to 0.3.0
+
 ### 0.9.1
 
 - Mark cookie-factory as optional (only used for serialization)
