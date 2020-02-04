@@ -110,7 +110,7 @@ pub enum TlsExtension<'a> {
     Heartbeat(u8),
     ALPN(Vec<&'a [u8]>),
 
-    SignedCertificateTimestamp(Option<(&'a [u8])>),
+    SignedCertificateTimestamp(Option<&'a [u8]>),
     Padding(&'a [u8]),
     EncryptThenMac,
     ExtendedMasterSecret,
