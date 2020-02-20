@@ -53,8 +53,8 @@ impl debug NamedGroup {
 
 impl NamedGroup {
     /// Return key size of curve in bits, or None if unknown
-    pub fn key_bits(self: &NamedGroup) -> Option<u16> {
-        match *self {
+    pub fn key_bits(self: NamedGroup) -> Option<u16> {
+        match self {
             NamedGroup::Sect163k1 => Some(163),
             NamedGroup::Sect163r1 => Some(163),
             NamedGroup::Sect163r2 => Some(163),
