@@ -40,6 +40,7 @@ impl debug NamedGroup {
     BrainpoolP512r1 = 28,
     EcdhX25519 = 29,
     EcdhX448 = 30,
+    Sm2 = 41,
     Ffdhe2048 = 0x100,
     Ffdhe3072 = 0x101,
     Ffdhe4096 = 0x102,

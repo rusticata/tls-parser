@@ -55,6 +55,9 @@ impl display SignatureScheme {
     ecdsa_secp384r1_sha384 = 0x0503,
     ecdsa_secp521r1_sha512 = 0x0603,
 
+    /* ShangMi (SM) Cipher Suites */
+    sm2sig_sm3 = 0x0708,
+
     /* RSASSA-PSS algorithms with public key OID rsaEncryption */
     rsa_pss_rsae_sha256 = 0x0804,
     rsa_pss_rsae_sha384 = 0x0805,

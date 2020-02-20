@@ -64,6 +64,7 @@ pub enum TlsCipherEnc {
     Aes,
     Camellia,
     Chacha20_Poly1305,
+    Sm4,
 }
 }
 
