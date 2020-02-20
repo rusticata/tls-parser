@@ -11,7 +11,7 @@ use phf;
 
 enum_from_primitive! {
 /// Key exchange methods
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherKx {
     Null = 0,
@@ -23,6 +23,7 @@ pub enum TlsCipherKx {
     Dhe,
     Ecdh,
     Ecdhe,
+    Aecdh,
     Eccpwd,
     Tls13,
 }
@@ -30,7 +31,7 @@ pub enum TlsCipherKx {
 
 enum_from_primitive! {
 /// Authentication methods
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherAu {
     Null = 0,
@@ -50,7 +51,7 @@ pub enum TlsCipherAu {
 
 enum_from_primitive! {
 /// Encryption methods
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherEnc {
     Null,
@@ -70,7 +71,7 @@ pub enum TlsCipherEnc {
 
 enum_from_primitive! {
 /// Encryption modes
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherEncMode {
     Null,
@@ -82,7 +83,7 @@ pub enum TlsCipherEncMode {
 
 enum_from_primitive! {
 /// Message Authentication Code (MAC) methods
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum TlsCipherMac {
     Null,
