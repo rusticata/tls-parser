@@ -160,7 +160,7 @@ impl AsRef<u8> for TlsCompressionID {
 pub struct TlsCipherSuiteID(pub u16);
 
 impl TlsCipherSuiteID {
-    pub fn get_ciphersuite(&self) -> Option<&'static TlsCipherSuite> {
+    pub fn get_ciphersuite(self) -> Option<&'static TlsCipherSuite> {
         TlsCipherSuite::from_id(self.0)
     }
 }
@@ -890,6 +890,7 @@ fn parse_tls_message_heartbeat(
 /// Note that message length is checked (not required for parser safety, but for
 /// strict protocol conformance).
 #[rustfmt::skip]
+#[allow(clippy::trivially_copy_pass_by_ref)] // TlsRecordHeader is only 6 bytes, but we prefer not breaking current API
 pub fn parse_tls_record_with_header<'i, 'hdr>(i:&'i [u8], hdr:&'hdr TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
     match hdr.record_type {
         TlsRecordType::ChangeCipherSpec => many1!(i, complete!(parse_tls_message_changecipherspec)),

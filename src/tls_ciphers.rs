@@ -6,6 +6,7 @@
 //! to automatically extract parameters and add all known ciphersuites.
 
 #![allow(non_camel_case_types)]
+#![allow(clippy::unreadable_literal)]
 
 use phf;
 

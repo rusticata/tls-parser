@@ -31,7 +31,6 @@
 //! use nom::{Err, IResult};
 //! use tls_parser::parse_tls_plaintext;
 //!
-//! # fn main() {
 //! let bytes : &[u8]= include_bytes!("../assets/client_hello_dhe.bin");
 //! // [ 0x16, 0x03, 0x01 ... ];
 //! let res = parse_tls_plaintext(&bytes);
@@ -45,7 +44,6 @@
 //!     },
 //!     Err(e) => { eprintln!("parse_tls_record_with_header failed: {:?}",e); }
 //! }
-//! # }
 //! ```
 //!
 //! Note that knowing if a record is plaintext or not is the responsibility of the caller.
@@ -62,7 +60,6 @@
 //! # use nom::{Err, IResult};
 //! # use tls_parser::{parse_tls_raw_record, parse_tls_record_with_header};
 //!
-//! # fn main() {
 //! # let bytes : &[u8]= include_bytes!("../assets/client_hello_dhe.bin");
 //! // [ 0x16, 0x03, 0x01 ... ];
 //! match parse_tls_raw_record(bytes) {
@@ -80,7 +77,6 @@
 //!     Err(Err::Incomplete(needed)) => { eprintln!("incomplete record header") }
 //!     Err(_) => { eprintln!("error while parsing record header") }
 //! }
-//! # }
 //! ```
 //!
 //! Some additional work is required if reading packets from the network, to support

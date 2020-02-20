@@ -460,7 +460,7 @@ pub mod serialize {
                 rand_data: &rand_data,
                 session_id: None,
                 ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
-                comp: comp,
+                comp,
                 ext: None,
             });
 
