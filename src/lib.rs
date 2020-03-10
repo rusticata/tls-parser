@@ -124,9 +124,10 @@
 //! it allows to read invalid values and continue parsing (for an IDS, it's better to read
 //! values than to get a generic parse error).
 
-#![deny(/*missing_docs,*/unsafe_code,
+#![deny(/*missing_docs,*/
         unstable_features,
         /*unused_import_braces,*/ unused_qualifications)]
+#![forbid(unsafe_code)]
 
 #[macro_use]
 extern crate enum_primitive;
