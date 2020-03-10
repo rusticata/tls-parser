@@ -72,6 +72,11 @@ impl display SignatureScheme {
     rsa_pss_pss_sha384 = 0x080a,
     rsa_pss_pss_sha512 = 0x080b,
 
+    /* Brainpool SignatureScheme Types for TLS 1.3 (RFC8734) */
+    ecdsa_brainpoolP256r1tls13_sha256 = 0x081a,
+    ecdsa_brainpoolP384r1tls13_sha384 = 0x081b,
+    ecdsa_brainpoolP512r1tls13_sha512 = 0x081c,
+
     /* Legacy algorithms */
     rsa_pkcs1_sha1 = 0x0201,
     ecdsa_sha1 = 0x0203,
