@@ -809,33 +809,32 @@ fn parse_tls_handshake_msg_key_update(i: &[u8]) -> IResult<&[u8], TlsMessageHand
     })
 }
 
-named! {parse_tls_message_handshake<TlsMessage>,
-    do_parse!(
-        ht: be_u8 >>
-        hl: be_u24 >>
-        m: flat_map!(take!(hl),
-            switch!(value!(ht),
-                /*TlsHandshakeType::HelloRequest*/      0x00 => call!(parse_tls_handshake_msg_hello_request) |
-                /*TlsHandshakeType::ClientHello*/       0x01 => call!(parse_tls_handshake_msg_client_hello) |
-                /*TlsHandshakeType::ServerHello*/       0x02 => call!(parse_tls_handshake_msg_server_hello) |
-                /*TlsHandshakeType::NewSessionTicket*/  0x04 => call!(parse_tls_handshake_msg_newsessionticket,hl as usize) |
-                /*TlsHandshakeType::EndOfEarlyData*/    0x05 => value!(TlsMessageHandshake::EndOfEarlyData) |
-                /*TlsHandshakeType::HelloRetryRequest*/ 0x06 => call!(parse_tls_handshake_msg_hello_retry_request) |
-                /*TlsHandshakeType::Certificate*/       0x0b => call!(parse_tls_handshake_msg_certificate) |
-                /*TlsHandshakeType::ServerKeyExchange*/ 0x0c => call!(parse_tls_handshake_msg_serverkeyexchange,hl as usize) |
-                /*TlsHandshakeType::CertificateRequest*/ 0x0d => call!(parse_tls_handshake_msg_certificaterequest) |
-                /*TlsHandshakeType::ServerDone*/        0x0e => call!(parse_tls_handshake_msg_serverdone,hl as usize) |
-                /*TlsHandshakeType::CertificateVerify*/ 0x0f => call!(parse_tls_handshake_msg_certificateverify,hl as usize) |
-                /*TlsHandshakeType::ClientKeyExchange*/ 0x10 => call!(parse_tls_handshake_msg_clientkeyexchange,hl as usize) |
-                /*TlsHandshakeType::Finished*/          0x14 => call!(parse_tls_handshake_msg_finished,hl as usize) |
-                /*TlsHandshakeType::CertificateURL*/    /*0x15 => call!(parse_tls_handshake_msg_certificateurl) |*/
-                /*TlsHandshakeType::CertificateStatus*/ 0x16 => call!(parse_tls_handshake_msg_certificatestatus) |
-                /*TlsHandshakeType::KeyUpdate*/         0x18 => call!(parse_tls_handshake_msg_key_update) |
-                /*TlsHandshakeType::NextProtocol*/      0x43 => call!(parse_tls_handshake_msg_next_protocol)
-             )
-        ) >>
-        ( TlsMessage::Handshake(m) )
-    )
+/// Parse a TLS handshake message
+pub fn parse_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage> {
+    let (i, ht) = be_u8(i)?;
+    let (i, hl) = be_u24(i)?;
+    let (i, raw_msg) = take!(i, hl)?;
+    let (_, msg) = match TlsHandshakeType(ht) {
+        TlsHandshakeType::HelloRequest => parse_tls_handshake_msg_hello_request(raw_msg),
+        TlsHandshakeType::ClientHello => parse_tls_handshake_msg_client_hello(raw_msg),
+        TlsHandshakeType::ServerHello => parse_tls_handshake_msg_server_hello(raw_msg),
+        TlsHandshakeType::NewSessionTicket => parse_tls_handshake_msg_newsessionticket(raw_msg, hl as usize),
+        TlsHandshakeType::EndOfEarlyData => Ok((raw_msg, TlsMessageHandshake::EndOfEarlyData)),
+        TlsHandshakeType::HelloRetryRequest => parse_tls_handshake_msg_hello_retry_request(raw_msg),
+        TlsHandshakeType::Certificate => parse_tls_handshake_msg_certificate(raw_msg),
+        TlsHandshakeType::ServerKeyExchange => parse_tls_handshake_msg_serverkeyexchange(raw_msg, hl as usize),
+        TlsHandshakeType::CertificateRequest => parse_tls_handshake_msg_certificaterequest(raw_msg),
+        TlsHandshakeType::ServerDone => parse_tls_handshake_msg_serverdone(raw_msg, hl as usize),
+        TlsHandshakeType::CertificateVerify => parse_tls_handshake_msg_certificateverify(raw_msg, hl as usize),
+        TlsHandshakeType::ClientKeyExchange => parse_tls_handshake_msg_clientkeyexchange(raw_msg, hl as usize),
+        TlsHandshakeType::Finished => parse_tls_handshake_msg_finished(raw_msg, hl as usize),
+        // TlsHandshakeType::CertificateURL => parse_tls_handshake_msg_certificateurl(raw_msg),
+        TlsHandshakeType::CertificateStatus => parse_tls_handshake_msg_certificatestatus(raw_msg),
+        TlsHandshakeType::KeyUpdate => parse_tls_handshake_msg_key_update(raw_msg),
+        TlsHandshakeType::NextProtocol => parse_tls_handshake_msg_next_protocol(raw_msg),
+        _ => Err(Err::Error(error_position!(i, ErrorKind::Switch))),
+    }?;
+    Ok((i, TlsMessage::Handshake(msg)))
 }
 
 // XXX add extra verification hdr.len == 1
