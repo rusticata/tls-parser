@@ -542,19 +542,21 @@ named! {parse_certs<Vec<RawCertificate>>,
     )
 }
 
-named! {parse_tls_record_header<TlsRecordHeader>,
-    do_parse!(
-        t: be_u8 >>
-        v: be_u16 >>
-        l: be_u16 >>
-        (
-            TlsRecordHeader {
-                record_type: TlsRecordType(t),
-                version: TlsVersion(v),
-                len: l,
-            }
-        )
-    )
+/// Read TLS record header
+///
+/// This function is used to get the record header.
+/// After calling this function, caller can read the expected number of bytes and use
+/// `parse_tls_record_with_header` to parse content.
+pub fn parse_tls_record_header(i: &[u8]) -> IResult<&[u8], TlsRecordHeader> {
+    let (i, t) = be_u8(i)?;
+    let (i, v) = be_u16(i)?;
+    let (i, len) = be_u16(i)?;
+    let hdr = TlsRecordHeader {
+        record_type: TlsRecordType(t),
+        version: TlsVersion(v),
+        len,
+    };
+    Ok((i, hdr))
 }
 
 named!(
