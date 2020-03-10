@@ -1,7 +1,6 @@
 //! # TLS parser
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
 
-use nom::combinator::rest;
 use nom::error::ErrorKind;
 use nom::number::streaming::{be_u16, be_u24, be_u32, be_u8};
 use nom::{Err, IResult};
@@ -818,15 +817,23 @@ pub fn parse_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage> {
         TlsHandshakeType::HelloRequest => parse_tls_handshake_msg_hello_request(raw_msg),
         TlsHandshakeType::ClientHello => parse_tls_handshake_msg_client_hello(raw_msg),
         TlsHandshakeType::ServerHello => parse_tls_handshake_msg_server_hello(raw_msg),
-        TlsHandshakeType::NewSessionTicket => parse_tls_handshake_msg_newsessionticket(raw_msg, hl as usize),
+        TlsHandshakeType::NewSessionTicket => {
+            parse_tls_handshake_msg_newsessionticket(raw_msg, hl as usize)
+        }
         TlsHandshakeType::EndOfEarlyData => Ok((raw_msg, TlsMessageHandshake::EndOfEarlyData)),
         TlsHandshakeType::HelloRetryRequest => parse_tls_handshake_msg_hello_retry_request(raw_msg),
         TlsHandshakeType::Certificate => parse_tls_handshake_msg_certificate(raw_msg),
-        TlsHandshakeType::ServerKeyExchange => parse_tls_handshake_msg_serverkeyexchange(raw_msg, hl as usize),
+        TlsHandshakeType::ServerKeyExchange => {
+            parse_tls_handshake_msg_serverkeyexchange(raw_msg, hl as usize)
+        }
         TlsHandshakeType::CertificateRequest => parse_tls_handshake_msg_certificaterequest(raw_msg),
         TlsHandshakeType::ServerDone => parse_tls_handshake_msg_serverdone(raw_msg, hl as usize),
-        TlsHandshakeType::CertificateVerify => parse_tls_handshake_msg_certificateverify(raw_msg, hl as usize),
-        TlsHandshakeType::ClientKeyExchange => parse_tls_handshake_msg_clientkeyexchange(raw_msg, hl as usize),
+        TlsHandshakeType::CertificateVerify => {
+            parse_tls_handshake_msg_certificateverify(raw_msg, hl as usize)
+        }
+        TlsHandshakeType::ClientKeyExchange => {
+            parse_tls_handshake_msg_clientkeyexchange(raw_msg, hl as usize)
+        }
         TlsHandshakeType::Finished => parse_tls_handshake_msg_finished(raw_msg, hl as usize),
         // TlsHandshakeType::CertificateURL => parse_tls_handshake_msg_certificateurl(raw_msg),
         TlsHandshakeType::CertificateStatus => parse_tls_handshake_msg_certificatestatus(raw_msg),
@@ -837,33 +844,35 @@ pub fn parse_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage> {
     Ok((i, TlsMessage::Handshake(msg)))
 }
 
+/// Parse a TLS changecipherspec message
 // XXX add extra verification hdr.len == 1
-named!(
-    parse_tls_message_changecipherspec<TlsMessage>,
-    map!(tag!([0x01]), |_| { TlsMessage::ChangeCipherSpec })
-);
+pub fn parse_tls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], TlsMessage> {
+    let (i, _) = verify!(i, be_u8, |&tag| tag == 0x01)?;
+    Ok((i, TlsMessage::ChangeCipherSpec))
+}
 
+/// Parse a TLS alert message
 // XXX add extra verification hdr.len == 2
-named! {parse_tls_message_alert<TlsMessage>,
-    do_parse!(
-        s: be_u8 >>
-        c: be_u8 >>
-        ( TlsMessage::Alert(
-                TlsMessageAlert {
-                    severity: TlsAlertSeverity(s),
-                    code: TlsAlertDescription(c),
-            }
-        ) )
-    )
+pub fn parse_tls_message_alert(i: &[u8]) -> IResult<&[u8], TlsMessage> {
+    let (i, s) = be_u8(i)?;
+    let (i, c) = be_u8(i)?;
+    let alert = TlsMessage::Alert(TlsMessageAlert {
+        severity: TlsAlertSeverity(s),
+        code: TlsAlertDescription(c),
+    });
+    Ok((i, alert))
 }
 
-fn parse_tls_message_applicationdata(i: &[u8]) -> IResult<&[u8], TlsMessage> {
-    map!(i, rest, |b| {
-        TlsMessage::ApplicationData(TlsMessageApplicationData { blob: b })
-    })
+/// Parse a TLS applicationdata message
+///
+/// Read the entire input as applicationdata
+pub fn parse_tls_message_applicationdata(i: &[u8]) -> IResult<&[u8], TlsMessage> {
+    let msg = TlsMessage::ApplicationData(TlsMessageApplicationData { blob: i });
+    Ok((&[], msg))
 }
 
-fn parse_tls_message_heartbeat(
+/// Parse a TLS heartbeat message
+pub fn parse_tls_message_heartbeat(
     i: &[u8],
     tls_plaintext_len: u16,
 ) -> IResult<&[u8], Vec<TlsMessage>> {
