@@ -72,7 +72,7 @@ where
     }
 }
 
-fn gen_tls_ext_sni<'a, W>(m: &'a Vec<(SNIType, &[u8])>) -> impl SerializeFn<W> + 'a
+fn gen_tls_ext_sni<'a, W>(m: &'a [(SNIType, &[u8])]) -> impl SerializeFn<W> + 'a
 where
     W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
 {
@@ -86,7 +86,7 @@ where
     tagged_extension(0x0001, be_u8(l))
 }
 
-fn gen_tls_named_group<W>(g: &NamedGroup) -> impl SerializeFn<W>
+fn gen_tls_named_group<W>(g: NamedGroup) -> impl SerializeFn<W>
 where
     W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
 {
@@ -99,7 +99,7 @@ where
 {
     tagged_extension(
         u16::from(TlsExtensionType::SupportedGroups),
-        length_be_u16(many_ref(v, gen_tls_named_group)),
+        length_be_u16(all(v.iter().map(|&g| gen_tls_named_group(g)))),
     )
 }
 
