@@ -76,14 +76,17 @@ fn gen_tls_ext_sni<'a, W>(m: &'a [(SNIType, &[u8])]) -> impl SerializeFn<W> + 'a
 where
     W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
 {
-    tagged_extension(0x0000, length_be_u16(many_ref(m, gen_tls_ext_sni_hostname)))
+    tagged_extension(
+        u16::from(TlsExtensionType::ServerName),
+        length_be_u16(many_ref(m, gen_tls_ext_sni_hostname)),
+    )
 }
 
 fn gen_tls_ext_max_fragment_length<W>(l: u8) -> impl SerializeFn<W>
 where
     W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
 {
-    tagged_extension(0x0001, be_u8(l))
+    tagged_extension(u16::from(TlsExtensionType::MaxFragmentLength), be_u8(l))
 }
 
 fn gen_tls_named_group<W>(g: NamedGroup) -> impl SerializeFn<W>
