@@ -143,34 +143,26 @@ extern crate rusticata_macros;
 #[cfg(feature = "serialize")]
 extern crate cookie_factory;
 
-pub use tls_alert::*;
-/// TLS alerts
-#[macro_use]
-pub mod tls_alert;
-pub use tls_ciphers::*;
-/// TLS ciphersuites definitions and parameters
-pub mod tls_ciphers;
-pub use tls_dh::*;
-/// Diffie-Hellman parameters
-pub mod tls_dh;
-pub use tls_ec::*;
-/// Elliptic curves
-pub mod tls_ec;
-pub use tls_extensions::*;
-/// TLS extensions
-#[macro_use]
-pub mod tls_extensions;
-pub use tls_sign_hash::*;
-/// TLS signature schemes
-pub mod tls_sign_hash;
-pub use tls_states::*;
-/// TLS state machine
-pub mod tls_states;
-pub use tls::*;
-/// TLS parser structures and functions
-pub mod tls;
-
+mod tls;
+mod tls_alert;
+mod tls_ciphers;
 mod tls_debug;
+mod tls_dh;
+mod tls_ec;
+mod tls_extensions;
+mod tls_sign_hash;
+mod tls_states;
 
-pub mod tls_serialize;
+pub use tls::*;
+pub use tls_alert::*;
+pub use tls_ciphers::*;
+pub use tls_dh::*;
+pub use tls_ec::*;
+pub use tls_extensions::*;
+pub use tls_sign_hash::*;
+pub use tls_states::*;
+
+#[cfg(feature = "serialize")]
+mod tls_serialize;
+#[cfg(feature = "serialize")]
 pub use tls_serialize::*;
