@@ -8,7 +8,8 @@
 
 use nom::error::ErrorKind;
 use nom::number::streaming::{be_u16, be_u32, be_u8};
-use nom::IResult;
+use nom::*;
+use rusticata_macros::{error_if, newtype_enum};
 use std::convert::From;
 
 use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};

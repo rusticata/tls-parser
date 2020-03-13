@@ -3,7 +3,8 @@
 
 use nom::error::ErrorKind;
 use nom::number::streaming::{be_u16, be_u24, be_u32, be_u8};
-use nom::{Err, IResult};
+use nom::*;
+use rusticata_macros::{error_if, newtype_enum};
 
 use crate::tls_alert::*;
 use crate::tls_ciphers::*;

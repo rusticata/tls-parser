@@ -1,6 +1,7 @@
 use nom::error::ErrorKind;
 use nom::number::streaming::{be_u16, be_u8};
-use nom::{Err, IResult};
+use nom::{call, do_parse, error_position, length_data, map, named, switch, value, Err, IResult};
+use rusticata_macros::newtype_enum;
 
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
 /// [IANA Supported Groups

@@ -8,6 +8,7 @@
 #![allow(non_camel_case_types)]
 #![allow(clippy::unreadable_literal)]
 
+use enum_primitive::{enum_from_primitive, enum_from_primitive_impl, enum_from_primitive_impl_ty};
 use phf;
 
 enum_from_primitive! {

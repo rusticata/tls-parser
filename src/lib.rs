@@ -129,20 +129,6 @@
         /*unused_import_braces,*/ unused_qualifications)]
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate enum_primitive;
-
-#[macro_use]
-extern crate nom;
-
-extern crate phf;
-
-#[macro_use]
-extern crate rusticata_macros;
-
-#[cfg(feature = "serialize")]
-extern crate cookie_factory;
-
 mod tls;
 mod tls_alert;
 mod tls_ciphers;

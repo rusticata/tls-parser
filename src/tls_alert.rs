@@ -1,3 +1,5 @@
+use rusticata_macros::newtype_enum;
+
 /// TLS alert severity
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TlsAlertSeverity(pub u8);
