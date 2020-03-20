@@ -16,65 +16,39 @@ fn gen_tls_ext_sni_hostname<'a, 'b: 'a, W: Write + 'a>(
 
 fn length_be_u16<W, F>(f: F) -> impl SerializeFn<W>
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
-    F: SerializeFn<W>,
+    W: Write,
+    F: SerializeFn<Vec<u8>>,
 {
     move |out| {
-        let mut buf = gen_simple(
-            tuple((
-                be_u16(0), // reserved for length
-                &f,
-            )),
-            W::default(),
-        )?;
-        gen_simple(be_u16((buf.as_ref().len() - 2) as u16), buf.as_mut())?;
-        slice(buf)(out)
+        // use a temporary buffer
+        let (buf, len) = gen(&f, Vec::new())?;
+        tuple((be_u16(len as u16), slice(buf)))(out)
     }
 }
 
 fn length_be_u24<W, F>(f: F) -> impl SerializeFn<W>
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
-    F: SerializeFn<W>,
+    W: Write,
+    F: SerializeFn<Vec<u8>>,
 {
     move |out| {
-        let mut buf = gen_simple(
-            tuple((
-                be_u24(0), // reserved for length
-                &f,
-            )),
-            W::default(),
-        )?;
-        gen_simple(be_u24((buf.as_ref().len() - 3) as u32), buf.as_mut())?;
-        slice(buf)(out)
+        // use a temporary buffer
+        let (buf, len) = gen(&f, Vec::new())?;
+        tuple((be_u24(len as u32), slice(buf)))(out)
     }
 }
 
 fn tagged_extension<W, F>(tag: u16, f: F) -> impl SerializeFn<W>
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
-    F: SerializeFn<W>,
+    W: Write,
+    F: SerializeFn<Vec<u8>>,
 {
-    move |out| {
-        let mut buf = gen_simple(
-            tuple((
-                be_u16(tag),
-                be_u16(0), // reserved for length
-                &f,
-            )),
-            W::default(),
-        )?;
-        gen_simple(
-            be_u16((buf.as_ref().len() - 4) as u16),
-            &mut buf.as_mut()[2..],
-        )?;
-        slice(buf)(out)
-    }
+    move |out| tuple((be_u16(tag), length_be_u16(&f)))(out)
 }
 
 fn gen_tls_ext_sni<'a, W>(m: &'a [(SNIType, &[u8])]) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tagged_extension(
         u16::from(TlsExtensionType::ServerName),
@@ -84,21 +58,21 @@ where
 
 fn gen_tls_ext_max_fragment_length<W>(l: u8) -> impl SerializeFn<W>
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
+    W: Write,
 {
     tagged_extension(u16::from(TlsExtensionType::MaxFragmentLength), be_u8(l))
 }
 
 fn gen_tls_named_group<W>(g: NamedGroup) -> impl SerializeFn<W>
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
+    W: Write,
 {
     be_u16(g.0)
 }
 
 fn gen_tls_ext_elliptic_curves<'a, W>(v: &'a [NamedGroup]) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tagged_extension(
         u16::from(TlsExtensionType::SupportedGroups),
@@ -126,7 +100,7 @@ where
 /// only a few extensions are supported** (*Work in progress*)
 pub fn gen_tls_extension<'a, W>(m: &'a TlsExtension) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     move |out| match m {
         TlsExtension::SNI(ref v) => gen_tls_ext_sni(v)(out),
@@ -140,14 +114,14 @@ where
 /// Serialize a list of TLS extensions
 pub fn gen_tls_extensions<'a, W>(m: &'a [TlsExtension]) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     length_be_u16(many_ref(m, gen_tls_extension))
 }
 
 fn gen_tls_sessionid<'a, W>(m: &'a Option<&[u8]>) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     move |out| match m {
         None => be_u8(0)(out),
@@ -157,7 +131,7 @@ where
 
 fn maybe_extensions<'a, W>(m: &'a Option<&[u8]>) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     move |out| match m {
         Some(o) => slice(o)(out),
@@ -168,7 +142,7 @@ where
 /// Serialize a ClientHello message
 pub fn gen_tls_clienthello<'a, W>(m: &'a TlsClientHelloContents) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tuple((
         be_u8(u8::from(TlsHandshakeType::ClientHello)),
@@ -189,7 +163,7 @@ where
 /// Serialize a ServerHello message
 pub fn gen_tls_serverhello<'a, W>(m: &'a TlsServerHelloContents) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tuple((
         be_u8(u8::from(TlsHandshakeType::ServerHello)),
@@ -210,7 +184,7 @@ pub fn gen_tls_serverhellodraft18<'a, W>(
     m: &'a TlsServerHelloV13Draft18Contents,
 ) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tuple((
         be_u8(u8::from(TlsHandshakeType::ServerHello)),
@@ -226,7 +200,7 @@ where
 /// Serialize a ClientKeyExchange message, from raw contents
 fn gen_tls_clientkeyexchange_unknown<'a, W>(m: &'a [u8]) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tuple((
         be_u8(u8::from(TlsHandshakeType::ClientKeyExchange)),
@@ -237,7 +211,7 @@ where
 /// Serialize a ClientKeyExchange message, for DH parameters
 fn gen_tls_clientkeyexchange_dh<'a, W>(m: &'a [u8]) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tuple((
         be_u8(u8::from(TlsHandshakeType::ClientKeyExchange)),
@@ -248,7 +222,7 @@ where
 /// Serialize a ClientKeyExchange message, for ECDH parameters
 fn gen_tls_clientkeyexchange_ecdh<'a, W>(m: &'a ECPoint) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tuple((
         be_u8(u8::from(TlsHandshakeType::ClientKeyExchange)),
@@ -265,7 +239,7 @@ pub fn gen_tls_clientkeyexchange<'a, W>(
     m: &'a TlsClientKeyExchangeContents,
 ) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     move |out| match m {
         TlsClientKeyExchangeContents::Unknown(ref b) => gen_tls_clientkeyexchange_unknown(b)(out),
@@ -277,7 +251,7 @@ where
 /// Serialize a HelloRequest message
 pub fn gen_tls_hellorequest<W>() -> impl SerializeFn<W>
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
+    W: Write,
 {
     tuple((be_u8(u8::from(TlsHandshakeType::HelloRequest)), be_u24(0)))
 }
@@ -285,7 +259,7 @@ where
 /// Serialize a Finished message
 pub fn gen_tls_finished<'a, W>(m: &'a [u8]) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tuple((
         be_u8(u8::from(TlsHandshakeType::Finished)),
@@ -296,7 +270,7 @@ where
 /// Serialize a TLS handshake message
 fn gen_tls_messagehandshake<'a, W>(m: &'a TlsMessageHandshake<'a>) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     move |out| match m {
         TlsMessageHandshake::HelloRequest => gen_tls_hellorequest()(out),
@@ -312,7 +286,7 @@ where
 /// Serialize a ChangeCipherSpec message
 pub fn gen_tls_changecipherspec<W>() -> impl SerializeFn<W>
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]>,
+    W: Write,
 {
     be_u8(u8::from(TlsRecordType::ChangeCipherSpec))
 }
@@ -332,7 +306,7 @@ where
 ///  ```
 pub fn gen_tls_message<'a, W>(m: &'a TlsMessage<'a>) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     move |out| match m {
         TlsMessage::Handshake(ref m) => gen_tls_messagehandshake(m)(out),
@@ -356,7 +330,7 @@ where
 ///  ```
 pub fn gen_tls_plaintext<'a, W>(p: &'a TlsPlaintext) -> impl SerializeFn<W> + 'a
 where
-    W: Write + Default + AsRef<[u8]> + AsMut<[u8]> + 'a,
+    W: Write + 'a,
 {
     tuple((
         be_u8(p.hdr.record_type.0),
