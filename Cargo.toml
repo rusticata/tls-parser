@@ -38,7 +38,7 @@ serialize = ["cookie-factory"]
 nom = "5.0"
 phf = "0.8"
 enum_primitive = "^0.1"
-rusticata-macros = "2.0"
+rusticata-macros = "2.1"
 cookie-factory = { version="0.3", optional=true }
 
 [dev-dependencies]

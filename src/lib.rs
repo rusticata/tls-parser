@@ -129,6 +129,8 @@
         /*unused_import_braces,*/ unused_qualifications)]
 #![forbid(unsafe_code)]
 
+pub extern crate rusticata_macros;
+
 mod tls;
 mod tls_alert;
 mod tls_ciphers;

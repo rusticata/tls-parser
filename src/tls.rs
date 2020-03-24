@@ -14,6 +14,8 @@ use std::convert::AsRef;
 use std::fmt;
 use std::ops::Deref;
 
+pub use nom::{Err, IResult};
+
 /// Max record size (RFC8446 5.1)
 pub const MAX_RECORD_LEN: u16 = 1 << 14;
 

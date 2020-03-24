@@ -8,6 +8,9 @@ use cookie_factory::sequence::tuple;
 use cookie_factory::*;
 use std::io::Write;
 
+pub use cookie_factory::GenError;
+pub use rusticata_macros::Serialize;
+
 fn gen_tls_ext_sni_hostname<'a, 'b: 'a, W: Write + 'a>(
     i: &(SNIType, &'b [u8]),
 ) -> impl SerializeFn<W> + 'a {
