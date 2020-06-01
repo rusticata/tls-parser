@@ -286,6 +286,13 @@ where
     }
 }
 
+impl<'a> Serialize<Vec<u8>> for TlsMessageHandshake<'a> {
+    type Error = GenError;
+    fn serialize(&self) -> Result<Vec<u8>, Self::Error> {
+        gen_simple(gen_tls_messagehandshake(self), Vec::new())
+    }
+}
+
 /// Serialize a ChangeCipherSpec message
 pub fn gen_tls_changecipherspec<W>() -> impl SerializeFn<W>
 where
@@ -318,6 +325,13 @@ where
     }
 }
 
+impl<'a> Serialize<Vec<u8>> for TlsMessage<'a> {
+    type Error = GenError;
+    fn serialize(&self) -> Result<Vec<u8>, Self::Error> {
+        gen_simple(gen_tls_message(self), Vec::new())
+    }
+}
+
 /// Serialize a TLS plaintext record
 ///
 /// # Example
@@ -340,6 +354,13 @@ where
         be_u16(p.hdr.version.0),
         length_be_u16(all(p.msg.iter().map(|m| gen_tls_message(m)))),
     ))
+}
+
+impl<'a> Serialize<Vec<u8>> for TlsPlaintext<'a> {
+    type Error = GenError;
+    fn serialize(&self) -> Result<Vec<u8>, Self::Error> {
+        gen_simple(gen_tls_plaintext(self), Vec::new())
+    }
 }
 
 #[cfg(test)]
@@ -433,7 +454,8 @@ mod tests {
             ))],
         };
 
-        let res = gen_simple(gen_tls_plaintext(&expected), Vec::new())
+        let res = expected
+            .serialize()
             .expect("Could not serialize plaintext message");
         let (_, res_reparse) =
             parse_tls_plaintext(&res).expect("Could not parse gen_tls_plaintext output");
@@ -444,8 +466,7 @@ mod tests {
     fn serialize_hellorequest() {
         let m = TlsMessageHandshake::HelloRequest;
 
-        let res = gen_simple(gen_tls_messagehandshake(&m), Vec::new())
-            .expect("Could not serialize messages");
+        let res = m.serialize().expect("Could not serialize messages");
         let v = [0, 0, 0, 0];
         assert_eq!(&v[..], &res[..]);
     }
@@ -487,8 +508,7 @@ mod tests {
             ext: None,
         });
 
-        let res = gen_simple(gen_tls_messagehandshake(&m), Vec::new())
-            .expect("Could not serialize messages");
+        let res = m.serialize().expect("Could not serialize messages");
         let v = [
             0x01, 0x00, 0x00, 0x2b, 0x03, 0x03, // type, length, version
             0xb2, 0x9d, 0xd7, 0x87, // random time
