@@ -6,7 +6,7 @@ mod tls_13 {
 
     // Test vectors from https://tools.ietf.org/html/draft-thomson-tls-tls13-vectors-01
     #[rustfmt::skip]
-static TV_CLIENT_HELLO_1: &'static [u8] = &[
+static TV_CLIENT_HELLO_1: &[u8] = &[
     0x16, 0x03, 0x01, 0x02, 0x00, 0x01, 0x00, 0x01, 0xfc, 0x03, 0x03, 0xce, 0x05, 0xcf, 0xa3, 0xd9,
     0x21, 0x70, 0xcb, 0xc2, 0x46, 0x5c, 0xdc, 0x3e, 0x3a, 0x2f, 0x57, 0x7f, 0x6e, 0xac, 0x80, 0x93,
     0x61, 0x70, 0x8a, 0xb2, 0x44, 0xb0, 0x7d, 0x8f, 0xad, 0x86, 0x16, 0x00, 0x00, 0x3e, 0x13, 0x01,
@@ -43,7 +43,7 @@ static TV_CLIENT_HELLO_1: &'static [u8] = &[
 ];
 
     #[rustfmt::skip]
-static TV_SERVER_HELLO_1: &'static [u8] = &[
+static TV_SERVER_HELLO_1: &[u8] = &[
     0x16, 0x03, 0x01, 0x00, 0x52, 0x02, 0x00, 0x00, 0x4e, 0x7f, 0x12, 0x20, 0xb9, 0xc9, 0x20, 0x1c,
     0xd1, 0x71, 0xa1, 0x5a, 0xbb, 0xa4, 0xe7, 0xed, 0xdc, 0xf3, 0xe8, 0x48, 0x8e, 0x71, 0x92, 0xff,
     0xe0, 0x1e, 0xa5, 0xc1, 0x9f, 0x3d, 0x4b, 0x52, 0xff, 0xee, 0xbe, 0x13, 0x01, 0x00, 0x28, 0x00,
@@ -70,7 +70,7 @@ static TV_SERVER_HELLO_1: &'static [u8] = &[
             msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
                 TlsClientHelloContents {
                     version: TlsVersion::Tls12,
-                    rand_time: 0xce05cfa3,
+                    rand_time: 0xce05_cfa3,
                     rand_data: &bytes[15..15 + 28],
                     session_id: None,
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
@@ -108,13 +108,12 @@ static TV_SERVER_HELLO_1: &'static [u8] = &[
         let res = ires.unwrap();
 
         let msg = &res.1.msg[0];
-        let ext_raw = match msg {
-            &TlsMessage::Handshake(TlsMessageHandshake::ServerHelloV13Draft18(ref sh)) => {
+        let ext_raw = match *msg {
+            TlsMessage::Handshake(TlsMessageHandshake::ServerHelloV13Draft18(ref sh)) => {
                 sh.ext.unwrap()
             }
             _ => {
-                assert!(false);
-                empty
+                panic!("Extensions parsing failed");
             }
         };
         let res_ext = parse_tls_extensions(ext_raw);

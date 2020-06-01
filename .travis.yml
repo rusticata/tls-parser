@@ -19,7 +19,7 @@ matrix:
     - rust: nightly
       env:
        - NAME="nightly"
-       - FEATURES=''
+       - FEATURES='unstable'
        - BENCH=1
     - rust: stable
       env:
@@ -28,15 +28,15 @@ matrix:
     - rust: nightly
       env:
        - NAME="nightly,serialize"
-       - FEATURES='serialize'
+       - FEATURES='serialize,unstable'
        - BENCH=1
 before_script:
-    - ([ "$CLIPPY" != yes ] || rustup component add clippy)
-    - ([ "$RUSTFMT" != yes ] || rustup component add rustfmt)
+  - ([ "$CLIPPY" != yes ] || rustup component add clippy)
+  - ([ "$RUSTFMT" != yes ] || rustup component add rustfmt)
 script:
-    - ([ "$CLIPPY" != yes ] || cargo clippy --all-features -- -D clippy::all)
-    - ([ "$RUSTFMT" != yes ] || cargo fmt --all -- --check)
-    - |
-        cargo build --verbose --features "$FEATURES" &&
-        cargo test --verbose --features "$FEATURES" &&
-        ([ "$BENCH" != 1 ] || cargo bench --verbose --features "$FEATURES")
+  - ([ "$CLIPPY" != yes ] || cargo clippy --features "$FEATURES" --all-targets -- -D clippy::all)
+  - ([ "$RUSTFMT" != yes ] || cargo fmt --all -- --check)
+  - |
+      cargo build --verbose --features "$FEATURES" &&
+      cargo test --verbose --features "$FEATURES" &&
+      ([ "$BENCH" != 1 ] || cargo bench --verbose --features "$FEATURES")

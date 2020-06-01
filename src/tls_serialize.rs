@@ -444,7 +444,7 @@ mod tests {
             msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
                 TlsClientHelloContents {
                     version: TlsVersion::Tls12,
-                    rand_time: 0xb29dd787,
+                    rand_time: 0xb29d_d787,
                     rand_data: &rand_data,
                     session_id: None,
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
@@ -500,7 +500,7 @@ mod tests {
 
         let m = TlsMessageHandshake::ClientHello(TlsClientHelloContents {
             version: TlsVersion::Tls12,
-            rand_time: 0xb29dd787,
+            rand_time: 0xb29d_d787,
             rand_data: &rand_data,
             session_id: None,
             ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
@@ -530,7 +530,7 @@ mod tests {
 
         let m = TlsMessageHandshake::ServerHello(TlsServerHelloContents {
             version: TlsVersion::Tls12,
-            rand_time: 0xb29dd787,
+            rand_time: 0xb29d_d787,
             rand_data: &rand_data,
             session_id: None,
             cipher: TlsCipherSuiteID(0xc030),

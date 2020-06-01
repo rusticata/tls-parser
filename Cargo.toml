@@ -33,6 +33,7 @@ name = "tls_parser"
 [features]
 default = []
 serialize = ["cookie-factory"]
+unstable = []
 
 [dependencies]
 nom = "5.0"

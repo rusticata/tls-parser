@@ -9,7 +9,6 @@
 #![allow(clippy::unreadable_literal)]
 
 use enum_primitive::{enum_from_primitive, enum_from_primitive_impl, enum_from_primitive_impl_ty};
-use phf;
 
 enum_from_primitive! {
 /// Key exchange methods
@@ -130,27 +129,20 @@ mod tests {
     #[test]
     fn test_cipher_count() {
         println!("loaded: {} cipher suites", CIPHERS.len());
-        assert!(CIPHERS.len() > 0);
+        assert!(!CIPHERS.is_empty());
     }
 
     #[test]
     fn test_cipher_from_id() {
-        match TlsCipherSuite::from_id(0xc025) {
-            Some(ref cipher) => {
-                println!("Found cipher: {:?}", cipher);
-            }
-            None => assert!(false),
-        }
+        let cipher = TlsCipherSuite::from_id(0xc025).expect("could not get cipher");
+        println!("Found cipher: {:?}", cipher);
     }
 
     #[test]
     fn test_cipher_from_name() {
-        match TlsCipherSuite::from_name("TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384") {
-            Some(ref cipher) => {
-                println!("Found cipher: {:?}", cipher);
-            }
-            None => assert!(false),
-        }
+        let cipher = TlsCipherSuite::from_name("TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384")
+            .expect("could not get cipher");
+        println!("Found cipher: {:?}", cipher);
     }
 
     #[test]
