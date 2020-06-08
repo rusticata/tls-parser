@@ -1,7 +1,6 @@
 extern crate phf_codegen;
 
 use std::env;
-use std::error::Error;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::{BufReader, BufWriter, Write};
@@ -27,7 +26,7 @@ fn main() {
     let file = match File::open(&path_txt) {
         // The `description` method of `io::Error` returns a string that
         // describes the error
-        Err(why) => panic!("couldn't open {}: {}", display, why.description()),
+        Err(why) => panic!("couldn't open {}: {}", display, why),
         Ok(file) => file,
     };
     let f = BufReader::new(file);
