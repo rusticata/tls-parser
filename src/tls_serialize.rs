@@ -165,6 +165,21 @@ pub mod serialize {
         }
     }
 
+    fn gen_maybe_extensions<'a, 'b>(
+        x: (&'a mut [u8], usize),
+        m: &'b Option<&[u8]>,
+    ) -> Result<(&'a mut [u8], usize), GenError> {
+        if let Some(ext) = m {
+            do_gen! {
+                x,
+                gen_be_u16!(ext.len() as u16) >>
+                gen_slice!(ext)
+            }
+        } else {
+            gen_be_u16!(x, 0)
+        }
+    }
+
     pub fn gen_tls_clienthello<'a, 'b>(
         x: (&'a mut [u8], usize),
         m: &'b TlsClientHelloContents,
@@ -181,7 +196,7 @@ pub mod serialize {
                      gen_many_deref!(&m.ciphers,set_be_u16) >>
                      gen_be_u8!(m.comp.len() as u8) >>
                      gen_many_deref!(&m.comp,set_be_u8) >>
-                     gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
+                     gen_maybe_extensions(&m.ext) >>
             end:     gen_at_offset!(ofs_len,gen_be_u24!((end-start) as u32))
         }
     }
@@ -200,7 +215,7 @@ pub mod serialize {
                      gen_tls_sessionid(&m.session_id) >>
                      gen_be_u16!(*m.cipher) >>
                      gen_be_u8!(*m.compression) >>
-                     gen_cond!(m.ext.is_some(),gen_slice!(m.ext.unwrap())) >>
+                     gen_maybe_extensions(&m.ext) >>
             end:     gen_at_offset!(ofs_len,gen_be_u24!((end-start) as u32))
         }
     }
@@ -471,13 +486,14 @@ pub mod serialize {
             match res {
                 Ok((b, idx)) => {
                     let v = [
-                        0x01, 0x00, 0x00, 0x2b, 0x03, 0x03, // type, length, version
+                        0x01, 0x00, 0x00, 0x2d, 0x03, 0x03, // type, length, version
                         0xb2, 0x9d, 0xd7, 0x87, // random time
                         0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, // random data
                         0x9a, 0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8,
                         0xa9, 0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4, 0x00, // session ID
                         0x00, 0x04, 0xc0, 0x30, 0xc0, 0x2c, // ciphers
                         0x01, 0x00, // compression
+                        0x00, 0x00, // extensions length
                     ];
                     assert_eq!(idx, v.len());
                     assert_eq!(&b[..v.len()], &v[..]);
@@ -510,13 +526,14 @@ pub mod serialize {
             match res {
                 Ok((b, idx)) => {
                     let v = [
-                        0x02, 0x00, 0x00, 0x26, 0x03, 0x03, // type, length, version
+                        0x02, 0x00, 0x00, 0x28, 0x03, 0x03, // type, length, version
                         0xb2, 0x9d, 0xd7, 0x87, // random time
                         0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, // random data
                         0x9a, 0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8,
                         0xa9, 0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4, 0x00, // session ID
                         0xc0, 0x30, // cipher
                         0x00, // compression
+                        0x00, 0x00, // extensions length
                     ];
                     assert_eq!(idx, v.len());
                     assert_eq!(&b[..v.len()], &v[..]);
