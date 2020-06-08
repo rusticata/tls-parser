@@ -137,8 +137,8 @@ where
     W: Write + 'a,
 {
     move |out| match m {
-        Some(o) => slice(o)(out),
-        None => Ok(out),
+        Some(o) => be_u16(o.len() as u16)(out).and_then(slice(o)),
+        None => be_u16(0)(out),
     }
 }
 
@@ -439,7 +439,7 @@ mod tests {
             hdr: TlsRecordHeader {
                 record_type: TlsRecordType::Handshake,
                 version: TlsVersion::Tls10,
-                len: 213,
+                len: 215,
             },
             msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
                 TlsClientHelloContents {
@@ -449,7 +449,7 @@ mod tests {
                     session_id: None,
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                     comp: comp,
-                    ext: None,
+                    ext: Some(&[]),
                 },
             ))],
         };
@@ -510,13 +510,14 @@ mod tests {
 
         let res = m.serialize().expect("Could not serialize messages");
         let v = [
-            0x01, 0x00, 0x00, 0x2b, 0x03, 0x03, // type, length, version
+            0x01, 0x00, 0x00, 0x2d, 0x03, 0x03, // type, length, version
             0xb2, 0x9d, 0xd7, 0x87, // random time
             0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, // random data
             0x9a, 0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9, 0x03,
             0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4, 0x00, // session ID
             0x00, 0x04, 0xc0, 0x30, 0xc0, 0x2c, // ciphers
             0x01, 0x00, // compression
+            0x00, 0x00, // extensions length
         ];
         assert_eq!(&v[..], &res[..]);
     }
@@ -541,13 +542,14 @@ mod tests {
         let res = gen_simple(gen_tls_messagehandshake(&m), Vec::new())
             .expect("Could not serialize message");
         let v = [
-            0x02, 0x00, 0x00, 0x26, 0x03, 0x03, // type, length, version
+            0x02, 0x00, 0x00, 0x28, 0x03, 0x03, // type, length, version
             0xb2, 0x9d, 0xd7, 0x87, // random time
             0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, // random data
             0x9a, 0xcf, 0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9, 0x03,
             0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4, 0x00, // session ID
             0xc0, 0x30, // cipher
             0x00, // compression
+            0x00, 0x00, // extensions length
         ];
         assert_eq!(&v[..], &res[..]);
     }
