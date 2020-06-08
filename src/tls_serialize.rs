@@ -369,6 +369,8 @@ mod tests {
     use crate::tls_extensions::parse_tls_extension;
     use hex_literal::hex;
 
+    const CH_DHE: &[u8] = include_bytes!("../assets/client_hello_dhe.bin");
+
     #[test]
     fn serialize_tagged_extension() {
         let expected = &hex!("12 34 00 02 00 01");
@@ -552,5 +554,14 @@ mod tests {
             0x00, 0x00, // extensions length
         ];
         assert_eq!(&v[..], &res[..]);
+    }
+
+    #[test]
+    fn read_serialize_clienthello_dhe() {
+        let (_, record) = parse_tls_plaintext(CH_DHE).expect("parsing failed");
+        let res = gen_simple(gen_tls_plaintext(&record), Vec::new())
+            .expect("Could not serialize message");
+        let (_, record2) = parse_tls_plaintext(&res).expect("re-parsing failed");
+        assert_eq!(record, record2);
     }
 }
