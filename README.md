@@ -140,6 +140,12 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.9.3
+
+- Fix error in state machine (wrong Client Certificate direction)
+- Serialize: fix TLS Extension length missing
+- `EndOfEarlyData` is a TLS HandshakeType, not a AlertDescription
+
 ### 0.9.2
 
 - Upgrade to phf 0.8
