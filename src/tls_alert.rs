@@ -21,7 +21,6 @@ pub struct TlsAlertDescription(pub u8);
 newtype_enum! {
 impl display TlsAlertDescription {
     CloseNotify            = 0x00,
-    EndOfEarlyData         = 0x01,
     UnexpectedMessage      = 0x0A,
     BadRecordMac           = 0x14,
     DecryptionFailed       = 0x15,
