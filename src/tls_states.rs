@@ -66,7 +66,7 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to
         (TlsState::Certificate,      &TlsMessageHandshake::CertificateRequest(_), false)=> Ok(TlsState::CRCertRequest),
         (TlsState::ServerKeyExchange,&TlsMessageHandshake::CertificateRequest(_), false)=> Ok(TlsState::CRCertRequest),
         (TlsState::CRCertRequest,    &TlsMessageHandshake::ServerDone(_), false)        => Ok(TlsState::CRHelloDone),
-        (TlsState::CRHelloDone,      &TlsMessageHandshake::Certificate(_), false)       => Ok(TlsState::CRCert),
+        (TlsState::CRHelloDone,      &TlsMessageHandshake::Certificate(_), true)        => Ok(TlsState::CRCert),
         (TlsState::CRCert,           &TlsMessageHandshake::ClientKeyExchange(_), true)  => Ok(TlsState::CRClientKeyExchange),
         (TlsState::CRClientKeyExchange, &TlsMessageHandshake::CertificateVerify(_), _)  => Ok(TlsState::CRCertVerify),
         // Server has no certificate (but accepts anonymous)
