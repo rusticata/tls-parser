@@ -554,7 +554,7 @@ static SERVER_HELLO1: &[u8] = &[
         let mut v = SERVER_HELLO1.to_vec();
         let bytes = v.as_mut_slice();
         bytes[4] = 0xff; // make record incomplete (longer than data)
-        let expected = Err(Err::Incomplete(Needed::Size(255)));
+        let expected = Err(Err::Incomplete(Needed::new(196)));
         let res = parse_tls_plaintext(&bytes);
         assert_eq!(res, expected);
     }
