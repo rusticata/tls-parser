@@ -69,7 +69,7 @@ static CH : &[u8] = &[
                     rand_data: &rand_data,
                     session_id: None,
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
-                    comp: comp,
+                    comp,
                     ext: Some(&CH[220..]),
                 },
             ))],
@@ -803,7 +803,7 @@ static SERVER_STATUS_RESPONSE: &[u8] = &[
         let expected = vec![TlsMessage::Handshake(
             TlsMessageHandshake::CertificateStatus(TlsCertificateStatusContents {
                 status_type: 1,
-                blob: blob,
+                blob,
             }),
         )];
         let hdr = TlsRecordHeader {

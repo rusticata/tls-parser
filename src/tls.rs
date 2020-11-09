@@ -616,9 +616,9 @@ named! {parse_tls_handshake_msg_server_hello_tlsv13draft18<TlsMessageHandshake>,
             TlsMessageHandshake::ServerHelloV13Draft18(
                 TlsServerHelloV13Draft18Contents {
                     version: TlsVersion(hv),
-                    random: random,
+                    random,
                     cipher: TlsCipherSuiteID(cipher),
-                    ext: ext,
+                    ext,
                 }
             )
         )
@@ -663,7 +663,7 @@ named! {parse_tls_handshake_msg_hello_retry_request<TlsMessageHandshake>,
                 TlsHelloRetryRequestContents {
                     version: TlsVersion(hv),
                     cipher: TlsCipherSuiteID(c),
-                    ext: ext,
+                    ext,
                     }
             )
         )
@@ -726,7 +726,7 @@ fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
-                    cert_types: cert_types,
+                    cert_types,
                     // sig_hash_algs: Some(sig_hash_algs),
                     sig_hash_algs: None,
                     unparsed_ca: ca,
@@ -747,7 +747,7 @@ fn parse_certrequest_full(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
         (
             TlsMessageHandshake::CertificateRequest(
                 TlsCertificateRequestContents {
-                    cert_types: cert_types,
+                    cert_types,
                     sig_hash_algs: Some(sig_hash_algs),
                     unparsed_ca: ca,
                 }
@@ -779,8 +779,8 @@ named! {parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
         blob:        length_data!(be_u24) >>
         ( TlsMessageHandshake::CertificateStatus(
                 TlsCertificateStatusContents{
-                    status_type:status_type,
-                    blob:blob,
+                    status_type,
+                    blob,
                 }
         ) )
     )
@@ -797,8 +797,8 @@ fn parse_tls_handshake_msg_next_protocol(i: &[u8]) -> IResult<&[u8], TlsMessageH
         (
             TlsMessageHandshake::NextProtocol(
                 TlsNextProtocolContent {
-                    selected_protocol: selected_protocol,
-                    padding: padding,
+                    selected_protocol,
+                    padding,
                 }
             )
         )
