@@ -129,9 +129,9 @@ impl<'a> fmt::Debug for ECParametersContent<'a> {
             ECParametersContent::ExplicitPrime(ref p) => {
                 fmt.write_fmt(format_args!("ExplicitPrime({:?})", p))
             }
-            ECParametersContent::ExplicitChar2(ref p) => {
-                fmt.write_fmt(format_args!("ExplicitChar2({:?})", HexSlice(p)))
-            }
+            // ECParametersContent::ExplicitChar2(ref p) => {
+            //     fmt.write_fmt(format_args!("ExplicitChar2({:?})", HexSlice(p)))
+            // }
             ECParametersContent::NamedGroup(p) => write!(fmt, "{}", p),
         }
     }

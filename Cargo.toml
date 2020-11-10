@@ -6,7 +6,7 @@ homepage = "https://github.com/rusticata/tls-parser"
 repository = "https://github.com/rusticata/tls-parser.git"
 documentation = "https://docs.rs/tls-parser"
 name = "tls-parser"
-version = "0.9.2"
+version = "0.10.0"
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 categories = ["network-programming", "parser-implementations"]
 edition = "2018"
@@ -39,6 +39,7 @@ unstable = []
 cookie-factory = { version="0.3", optional=true }
 enum_primitive = "^0.1"
 nom = "6.0"
+nom-derive = "0.7"
 phf = "0.8"
 rusticata-macros = "3.0"
 

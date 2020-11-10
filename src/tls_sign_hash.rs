@@ -1,9 +1,13 @@
-use nom::number::streaming::{be_u16, be_u8};
-use nom::*;
+use nom::combinator::map;
+use nom::multi::length_data;
+use nom::number::streaming::be_u16;
+use nom::sequence::pair;
+use nom::IResult;
+use nom_derive::Nom;
 use rusticata_macros::newtype_enum;
 
 /// Hash algorithms, as defined in [RFC5246]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Nom)]
 pub struct HashAlgorithm(pub u8);
 
 newtype_enum! {
@@ -20,7 +24,7 @@ impl display HashAlgorithm {
 }
 
 /// Signature algorithms, as defined in [RFC5246]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Nom)]
 pub struct SignAlgorithm(pub u8);
 
 newtype_enum! {
@@ -34,14 +38,14 @@ impl display SignAlgorithm {
 }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Nom)]
 pub struct SignatureAndHashAlgorithm {
     pub hash: HashAlgorithm,
     pub sign: SignAlgorithm,
 }
 
 /// Signature algorithms, as defined in [RFC8446] 4.2.3
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Nom)]
 pub struct SignatureScheme(pub u16);
 
 newtype_enum! {
@@ -111,23 +115,22 @@ pub struct DigitallySigned<'a> {
     pub data: &'a [u8],
 }
 
-named! {pub parse_digitally_signed_old<DigitallySigned>,
-    map!(
-        length_data!(be_u16),
-        |d| { DigitallySigned{ alg:None, data:d } }
-    )
+pub fn parse_digitally_signed_old(i: &[u8]) -> IResult<&[u8], DigitallySigned> {
+    map(length_data(be_u16), |data| DigitallySigned {
+        alg: None,
+        data,
+    })(i)
 }
 
-named! {pub parse_digitally_signed<DigitallySigned>,
-    do_parse!(
-        h: be_u8 >>
-        s: be_u8 >>
-        d: length_data!(be_u16) >>
-        ( DigitallySigned{
-            alg: Some( SignatureAndHashAlgorithm{ hash:HashAlgorithm(h), sign:SignAlgorithm(s) } ),
-            data: d,
-        })
-    )
+pub fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned> {
+    let (i, hash) = HashAlgorithm::parse(i)?;
+    let (i, sign) = SignAlgorithm::parse(i)?;
+    let (i, data) = length_data(be_u16)(i)?;
+    let signed = DigitallySigned {
+        alg: Some(SignatureAndHashAlgorithm { hash, sign }),
+        data,
+    };
+    Ok((i, signed))
 }
 
 /// Parse DigitallySigned object, depending on the `ext` parameter which should
@@ -141,8 +144,8 @@ where
     F: Fn(&'a [u8]) -> IResult<&[u8], T>,
 {
     if ext {
-        pair!(i, fun, parse_digitally_signed)
+        pair(fun, parse_digitally_signed)(i)
     } else {
-        pair!(i, fun, parse_digitally_signed_old)
+        pair(fun, parse_digitally_signed_old)(i)
     }
 }

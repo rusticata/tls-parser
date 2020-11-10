@@ -1,10 +1,14 @@
 //! # TLS parser
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
 
-use nom::error::ErrorKind;
+use nom::branch::alt;
+use nom::bytes::streaming::take;
+use nom::combinator::{complete, cond, map, map_parser, opt, verify};
+use nom::error::{make_error, ErrorKind};
+use nom::multi::{length_count, length_data, many0, many1};
 use nom::number::streaming::{be_u16, be_u24, be_u32, be_u8};
-use nom::*;
-use rusticata_macros::{error_if, newtype_enum};
+use nom_derive::Nom;
+use rusticata_macros::newtype_enum;
 
 use crate::tls_alert::*;
 use crate::tls_ciphers::*;
@@ -24,7 +28,7 @@ pub const MAX_RECORD_LEN: u16 = 1 << 14;
 /// Handshake types are defined in [RFC5246](https://tools.ietf.org/html/rfc5246) and
 /// the [IANA HandshakeType
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-7)
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct TlsHandshakeType(pub u8);
 
 newtype_enum! {
@@ -61,7 +65,7 @@ impl From<TlsHandshakeType> for u8 {
 ///
 /// Only the TLS version defined in the TLS message header is meaningful, the
 /// version defined in the record should be ignored or set to TLS 1.0
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct TlsVersion(pub u16);
 
 newtype_enum! {
@@ -94,7 +98,7 @@ impl fmt::LowerHex for TlsVersion {
 }
 
 /// Heartbeat type, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520) section 3
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct TlsHeartbeatMessageType(pub u8);
 
 newtype_enum! {
@@ -111,7 +115,7 @@ impl From<TlsHeartbeatMessageType> for u8 {
 }
 
 /// Content type, as defined in IANA TLS ContentType registry
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct TlsRecordType(pub u8);
 
 newtype_enum! {
@@ -130,7 +134,7 @@ impl From<TlsRecordType> for u8 {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct TlsCompressionID(pub u8);
 
 newtype_enum! {
@@ -158,7 +162,7 @@ impl AsRef<u8> for TlsCompressionID {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct TlsCipherSuiteID(pub u16);
 
 impl TlsCipherSuiteID {
@@ -440,7 +444,7 @@ pub struct TlsMessageHeartbeat<'a> {
 }
 
 /// TLS record header
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Nom)]
 pub struct TlsRecordHeader {
     pub record_type: TlsRecordType,
     pub version: TlsVersion,
@@ -498,7 +502,7 @@ fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCipherSuit
         return Ok((i, Vec::new()));
     }
     if len % 2 == 1 || len > i.len() {
-        return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
+        return Err(Err::Error(make_error(i, ErrorKind::LengthValue)));
     }
     let v = (&i[..len])
         .chunks(2)
@@ -512,7 +516,7 @@ fn parse_compressions_algs(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCompre
         return Ok((i, Vec::new()));
     }
     if len > i.len() {
-        return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
+        return Err(Err::Error(make_error(i, ErrorKind::LengthValue)));
     }
     let v = (&i[..len]).iter().map(|&it| TlsCompressionID(it)).collect();
     Ok((&i[len..], v))
@@ -524,7 +528,7 @@ pub(crate) fn parse_tls_versions(i: &[u8]) -> IResult<&[u8], Vec<TlsVersion>> {
         return Ok((i, Vec::new()));
     }
     if len % 2 == 1 || len > i.len() {
-        return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
+        return Err(Err::Error(make_error(i, ErrorKind::LengthValue)));
     }
     let v = (&i[..len])
         .chunks(2)
@@ -533,15 +537,10 @@ pub(crate) fn parse_tls_versions(i: &[u8]) -> IResult<&[u8], Vec<TlsVersion>> {
     Ok((&i[len..], v))
 }
 
-named! {parse_certs<Vec<RawCertificate>>,
-    many0!(
-        complete!(
-            map!(
-                length_data!(be_u24),
-                |s| RawCertificate{ data: s }
-                )
-        )
-    )
+fn parse_certs(i: &[u8]) -> IResult<&[u8], Vec<RawCertificate>> {
+    many0(complete(map(length_data(be_u24), |data| RawCertificate {
+        data,
+    })))(i)
 }
 
 /// Read TLS record header
@@ -549,91 +548,70 @@ named! {parse_certs<Vec<RawCertificate>>,
 /// This function is used to get the record header.
 /// After calling this function, caller can read the expected number of bytes and use
 /// `parse_tls_record_with_header` to parse content.
+#[inline]
 pub fn parse_tls_record_header(i: &[u8]) -> IResult<&[u8], TlsRecordHeader> {
-    let (i, t) = be_u8(i)?;
-    let (i, v) = be_u16(i)?;
-    let (i, len) = be_u16(i)?;
-    let hdr = TlsRecordHeader {
-        record_type: TlsRecordType(t),
-        version: TlsVersion(v),
-        len,
+    TlsRecordHeader::parse(i)
+}
+
+fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    Ok((i, TlsMessageHandshake::HelloRequest))
+}
+
+fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    let (i, version) = be_u16(i)?;
+    let (i, rand_time) = be_u32(i)?;
+    let (i, rand_data) = take(28usize)(i)?; // 28 as 32 (aligned) - 4 (time)
+    let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
+    let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
+    let (i, ciphers_len) = be_u16(i)?;
+    let (i, ciphers) = parse_cipher_suites(i, ciphers_len as usize)?;
+    let (i, comp_len) = be_u8(i)?;
+    let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
+    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let content =
+        TlsClientHelloContents::new(version, rand_time, rand_data, sid, ciphers, comp, ext);
+    Ok((i, TlsMessageHandshake::ClientHello(content)))
+}
+
+fn parse_tls_handshake_msg_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    let (i, version) = be_u16(i)?;
+    let (i, rand_time) = be_u32(i)?;
+    let (i, rand_data) = take(28usize)(i)?; // 28 as 32 (aligned) - 4 (time)
+    let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
+    let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
+    let (i, cipher) = be_u16(i)?;
+    let (i, comp) = be_u8(i)?;
+    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let content =
+        TlsServerHelloContents::new(version, rand_time, rand_data, sid, cipher, comp, ext);
+    Ok((i, TlsMessageHandshake::ServerHello(content)))
+}
+
+fn parse_tls_handshake_msg_server_hello_tlsv13draft18(
+    i: &[u8],
+) -> IResult<&[u8], TlsMessageHandshake> {
+    let (i, version) = TlsVersion::parse(i)?;
+    let (i, random) = take(32usize)(i)?;
+    let (i, cipher) = map(be_u16, TlsCipherSuiteID)(i)?;
+    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let content = TlsServerHelloV13Draft18Contents {
+        version,
+        random,
+        cipher,
+        ext,
     };
-    Ok((i, hdr))
-}
-
-named!(
-    parse_tls_handshake_msg_hello_request<TlsMessageHandshake>,
-    value!(TlsMessageHandshake::HelloRequest)
-);
-
-named! {parse_tls_handshake_msg_client_hello<TlsMessageHandshake>,
-    do_parse!(
-        v:         be_u16  >>
-        rand_time: be_u32 >>
-        rand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
-        sidlen:    be_u8 >> // check <= 32, can be 0
-                   error_if!(sidlen > 32, ErrorKind::Verify) >>
-        sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
-        ciphers_len: be_u16 >>
-        ciphers:   call!(parse_cipher_suites, ciphers_len as usize) >>
-        comp_len:  be_u8 >>
-        comp:      call!(parse_compressions_algs, comp_len as usize) >>
-        ext:       opt!(complete!(length_data!(be_u16))) >>
-        (
-            TlsMessageHandshake::ClientHello(
-                TlsClientHelloContents::new(v,rand_time,rand_data,sid,ciphers,comp.to_vec(),ext)
-            )
-        )
-    )
-}
-
-named! {parse_tls_handshake_msg_server_hello_tlsv12<TlsMessageHandshake>,
-    do_parse!(
-        v:         be_u16 >>
-        rand_time: be_u32 >>
-        rand_data: take!(28) >> // 28 as 32 (aligned) - 4 (time)
-        sidlen:    be_u8 >> // check <= 32, can be 0
-                   error_if!(sidlen > 32, ErrorKind::Verify) >>
-        sid:       cond!(sidlen > 0, take!(sidlen as usize)) >>
-        cipher:    be_u16 >>
-        comp:      be_u8 >>
-        ext:       opt!(complete!(length_data!(be_u16))) >>
-        (
-            TlsMessageHandshake::ServerHello(
-                TlsServerHelloContents::new(v,rand_time,rand_data,sid,cipher,comp,ext)
-            )
-        )
-    )
-}
-
-named! {parse_tls_handshake_msg_server_hello_tlsv13draft18<TlsMessageHandshake>,
-    do_parse!(
-        hv:     be_u16 >>
-        random: take!(32) >>
-        cipher: be_u16 >>
-        ext:    opt!(complete!(length_data!(be_u16))) >>
-        (
-            TlsMessageHandshake::ServerHelloV13Draft18(
-                TlsServerHelloV13Draft18Contents {
-                    version: TlsVersion(hv),
-                    random,
-                    cipher: TlsCipherSuiteID(cipher),
-                    ext,
-                }
-            )
-        )
-    )
+    Ok((i, TlsMessageHandshake::ServerHelloV13Draft18(content)))
 }
 
 fn parse_tls_handshake_msg_server_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
-    let (_, version) = peek!(i, call!(be_u16))?;
+    let (_, version) = be_u16(i)?;
     match version {
         0x7f12 => parse_tls_handshake_msg_server_hello_tlsv13draft18(i),
         0x0303 => parse_tls_handshake_msg_server_hello_tlsv12(i),
         0x0302 => parse_tls_handshake_msg_server_hello_tlsv12(i),
         0x0301 => parse_tls_handshake_msg_server_hello_tlsv12(i),
         // 0x0300 => call!(parse_tls_handshake_msg_server_hello_sslv3(i),
-        _ => Err(Err::Error(error_position!(i, ErrorKind::Tag))),
+        _ => Err(Err::Error(make_error(i, ErrorKind::Tag))),
     }
 }
 
@@ -642,180 +620,140 @@ fn parse_tls_handshake_msg_newsessionticket(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
-    do_parse!(
-        i,
-        hint: be_u32
-            >> raw: take!(len - 4)
-            >> (TlsMessageHandshake::NewSessionTicket(TlsNewSessionTicketContent {
-                ticket_lifetime_hint: hint,
-                ticket: raw,
-            }))
-    )
+    if len < 4 {
+        return Err(Err::Error(make_error(i, ErrorKind::Verify)));
+    }
+    let (i, ticket_lifetime_hint) = be_u32(i)?;
+    let (i, ticket) = take(len - 4)(i)?;
+    let content = TlsNewSessionTicketContent {
+        ticket_lifetime_hint,
+        ticket,
+    };
+    Ok((i, TlsMessageHandshake::NewSessionTicket(content)))
 }
 
-named! {parse_tls_handshake_msg_hello_retry_request<TlsMessageHandshake>,
-    do_parse!(
-        hv:  be_u16 >>
-        c:   be_u16 >>
-        ext: opt!(complete!(length_data!(be_u16))) >>
-        (
-            TlsMessageHandshake::HelloRetryRequest(
-                TlsHelloRetryRequestContents {
-                    version: TlsVersion(hv),
-                    cipher: TlsCipherSuiteID(c),
-                    ext,
-                    }
-            )
-        )
-    )
+fn parse_tls_handshake_msg_hello_retry_request(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    let (i, version) = TlsVersion::parse(i)?;
+    let (i, cipher) = map(be_u16, TlsCipherSuiteID)(i)?;
+    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let content = TlsHelloRetryRequestContents {
+        version,
+        cipher,
+        ext,
+    };
+    Ok((i, TlsMessageHandshake::HelloRetryRequest(content)))
 }
 
-named! {parse_tls_handshake_msg_certificate<TlsMessageHandshake>,
-    do_parse!(
-        cert_len: be_u24 >>
-        certs:    flat_map!(take!(cert_len),parse_certs) >>
-        (
-            TlsMessageHandshake::Certificate(
-                TlsCertificateContents {
-                    cert_chain: certs,
-                }
-            )
-        )
-    )
+fn parse_tls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    let (i, cert_len) = be_u24(i)?;
+    let (i, cert_chain) = map_parser(take(cert_len as usize), parse_certs)(i)?;
+    let content = TlsCertificateContents { cert_chain };
+    Ok((i, TlsMessageHandshake::Certificate(content)))
 }
 
 fn parse_tls_handshake_msg_serverkeyexchange(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
-    map!(i, take!(len), |ext| {
+    map(take(len), |ext| {
         TlsMessageHandshake::ServerKeyExchange(TlsServerKeyExchangeContents { parameters: ext })
-    })
+    })(i)
 }
 
 fn parse_tls_handshake_msg_serverdone(i: &[u8], len: usize) -> IResult<&[u8], TlsMessageHandshake> {
-    map!(i, take!(len), |ext| {
-        TlsMessageHandshake::ServerDone(ext)
-    })
+    map(take(len), TlsMessageHandshake::ServerDone)(i)
 }
 
 fn parse_tls_handshake_msg_certificateverify(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
-    map!(i, take!(len), |blob| {
-        TlsMessageHandshake::CertificateVerify(blob)
-    })
+    map(take(len), TlsMessageHandshake::CertificateVerify)(i)
 }
 
 fn parse_tls_handshake_msg_clientkeyexchange(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
-    map!(i, take!(len), |ext| {
+    map(take(len), |ext| {
         TlsMessageHandshake::ClientKeyExchange(TlsClientKeyExchangeContents::Unknown(ext))
-    })
+    })(i)
 }
 
 fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
-    do_parse! {
-        i,
-        cert_types:        length_count!(be_u8,be_u8) >>
-        ca_len:            be_u16 >>
-        ca:                flat_map!(take!(ca_len),many0!(complete!(length_data!(be_u16)))) >>
-        (
-            TlsMessageHandshake::CertificateRequest(
-                TlsCertificateRequestContents {
-                    cert_types,
-                    // sig_hash_algs: Some(sig_hash_algs),
-                    sig_hash_algs: None,
-                    unparsed_ca: ca,
-                }
-            )
-        )
-    }
+    let (i, cert_types) = length_count(be_u8, be_u8)(i)?;
+    let (i, ca_len) = be_u16(i)?;
+    let (i, unparsed_ca) =
+        map_parser(take(ca_len as usize), many0(complete(length_data(be_u16))))(i)?;
+    let content = TlsCertificateRequestContents {
+        cert_types,
+        // sig_hash_algs: Some(sig_hash_algs),
+        sig_hash_algs: None,
+        unparsed_ca,
+    };
+    Ok((i, TlsMessageHandshake::CertificateRequest(content)))
 }
 
 fn parse_certrequest_full(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
-    do_parse! {
-        i,
-        cert_types:        length_count!(be_u8,be_u8) >>
-        sig_hash_algs_len: be_u16 >>
-        sig_hash_algs:     flat_map!(take!(sig_hash_algs_len),many0!(complete!(be_u16))) >>
-        ca_len:            be_u16 >>
-        ca:                flat_map!(take!(ca_len),many0!(complete!(length_data!(be_u16)))) >>
-        (
-            TlsMessageHandshake::CertificateRequest(
-                TlsCertificateRequestContents {
-                    cert_types,
-                    sig_hash_algs: Some(sig_hash_algs),
-                    unparsed_ca: ca,
-                }
-            )
-        )
-    }
+    let (i, cert_types) = length_count(be_u8, be_u8)(i)?;
+    let (i, sig_hash_algs_len) = be_u16(i)?;
+    let (i, sig_hash_algs) =
+        map_parser(take(sig_hash_algs_len as usize), many0(complete(be_u16)))(i)?;
+    let (i, ca_len) = be_u16(i)?;
+    let (i, unparsed_ca) =
+        map_parser(take(ca_len as usize), many0(complete(length_data(be_u16))))(i)?;
+    let content = TlsCertificateRequestContents {
+        cert_types,
+        sig_hash_algs: Some(sig_hash_algs),
+        unparsed_ca,
+    };
+    Ok((i, TlsMessageHandshake::CertificateRequest(content)))
 }
 
 #[inline]
 fn parse_tls_handshake_msg_certificaterequest(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
-    alt!(
-        i,
-        complete!(parse_certrequest_full) | complete!(parse_certrequest_nosigalg)
-    )
+    alt((
+        complete(parse_certrequest_full),
+        complete(parse_certrequest_nosigalg),
+    ))(i)
 }
 
 fn parse_tls_handshake_msg_finished(i: &[u8], len: usize) -> IResult<&[u8], TlsMessageHandshake> {
-    map!(i, take!(len), |blob| {
-        TlsMessageHandshake::Finished(blob)
-    })
+    map(take(len), TlsMessageHandshake::Finished)(i)
 }
 
 // Defined in [RFC6066]
 // if status_type == 0, blob is a OCSPResponse, as defined in [RFC2560](https://tools.ietf.org/html/rfc2560)
 // Note that the OCSPResponse object is DER-encoded.
-named! {parse_tls_handshake_msg_certificatestatus<TlsMessageHandshake>,
-    do_parse!(
-        status_type: be_u8 >>
-        blob:        length_data!(be_u24) >>
-        ( TlsMessageHandshake::CertificateStatus(
-                TlsCertificateStatusContents{
-                    status_type,
-                    blob,
-                }
-        ) )
-    )
+fn parse_tls_handshake_msg_certificatestatus(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    let (i, status_type) = be_u8(i)?;
+    let (i, blob) = length_data(be_u24)(i)?;
+    let content = TlsCertificateStatusContents { status_type, blob };
+    Ok((i, TlsMessageHandshake::CertificateStatus(content)))
 }
 
 /// NextProtocol handshake message, as defined in
 /// [draft-agl-tls-nextprotoneg-03](https://tools.ietf.org/html/draft-agl-tls-nextprotoneg-03)
 /// Deprecated in favour of ALPN.
 fn parse_tls_handshake_msg_next_protocol(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
-    do_parse! {
-        i,
-        selected_protocol: length_data!(be_u8) >>
-        padding:           length_data!(be_u8) >>
-        (
-            TlsMessageHandshake::NextProtocol(
-                TlsNextProtocolContent {
-                    selected_protocol,
-                    padding,
-                }
-            )
-        )
-    }
+    let (i, selected_protocol) = length_data(be_u8)(i)?;
+    let (i, padding) = length_data(be_u8)(i)?;
+    let next_proto = TlsNextProtocolContent {
+        selected_protocol,
+        padding,
+    };
+    Ok((i, TlsMessageHandshake::NextProtocol(next_proto)))
 }
 
 fn parse_tls_handshake_msg_key_update(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
-    map!(i, be_u8, |update_request| {
-        TlsMessageHandshake::KeyUpdate(update_request)
-    })
+    map(be_u8, TlsMessageHandshake::KeyUpdate)(i)
 }
 
 /// Parse a TLS handshake message
 pub fn parse_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage> {
     let (i, ht) = be_u8(i)?;
     let (i, hl) = be_u24(i)?;
-    let (i, raw_msg) = take!(i, hl)?;
+    let (i, raw_msg) = take(hl)(i)?;
     let (_, msg) = match TlsHandshakeType(ht) {
         TlsHandshakeType::HelloRequest => parse_tls_handshake_msg_hello_request(raw_msg),
         TlsHandshakeType::ClientHello => parse_tls_handshake_msg_client_hello(raw_msg),
@@ -842,7 +780,7 @@ pub fn parse_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage> {
         TlsHandshakeType::CertificateStatus => parse_tls_handshake_msg_certificatestatus(raw_msg),
         TlsHandshakeType::KeyUpdate => parse_tls_handshake_msg_key_update(raw_msg),
         TlsHandshakeType::NextProtocol => parse_tls_handshake_msg_next_protocol(raw_msg),
-        _ => Err(Err::Error(error_position!(i, ErrorKind::Switch))),
+        _ => Err(Err::Error(make_error(i, ErrorKind::Switch))),
     }?;
     Ok((i, TlsMessage::Handshake(msg)))
 }
@@ -850,7 +788,7 @@ pub fn parse_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage> {
 /// Parse a TLS changecipherspec message
 // XXX add extra verification hdr.len == 1
 pub fn parse_tls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], TlsMessage> {
-    let (i, _) = verify!(i, be_u8, |&tag| tag == 0x01)?;
+    let (i, _) = verify(be_u8, |&tag| tag == 0x01)(i)?;
     Ok((i, TlsMessage::ChangeCipherSpec))
 }
 
@@ -879,21 +817,18 @@ pub fn parse_tls_message_heartbeat(
     i: &[u8],
     tls_plaintext_len: u16,
 ) -> IResult<&[u8], Vec<TlsMessage>> {
-    do_parse! {i,
-        hb_type: be_u8 >>
-        hb_len: be_u16 >>
-           error_if!(tls_plaintext_len < 3, ErrorKind::Verify) >>
-        b: take!(tls_plaintext_len - 3) >> // payload (hb_len) + padding
-        (
-            vec![TlsMessage::Heartbeat(
-                TlsMessageHeartbeat {
-                    heartbeat_type: TlsHeartbeatMessageType(hb_type),
-                    payload_len: hb_len,
-                    payload: b,
-                }
-            )]
-        )
+    let (i, heartbeat_type) = TlsHeartbeatMessageType::parse(i)?;
+    let (i, payload_len) = be_u16(i)?;
+    if tls_plaintext_len < 3 {
+        return Err(Err::Error(make_error(i, ErrorKind::Verify)));
     }
+    let (i, payload) = take(payload_len as usize)(i)?;
+    let v = vec![TlsMessage::Heartbeat(TlsMessageHeartbeat {
+        heartbeat_type,
+        payload_len,
+        payload,
+    })];
+    Ok((i, v))
 }
 
 /// Given data and a TLS record header, parse content.
@@ -906,38 +841,37 @@ pub fn parse_tls_message_heartbeat(
 #[allow(clippy::trivially_copy_pass_by_ref)] // TlsRecordHeader is only 6 bytes, but we prefer not breaking current API
 pub fn parse_tls_record_with_header<'i, 'hdr>(i:&'i [u8], hdr:&'hdr TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
     match hdr.record_type {
-        TlsRecordType::ChangeCipherSpec => many1!(i, complete!(parse_tls_message_changecipherspec)),
-        TlsRecordType::Alert            => many1!(i, complete!(parse_tls_message_alert)),
-        TlsRecordType::Handshake        => many1!(i, complete!(parse_tls_message_handshake)),
-        TlsRecordType::ApplicationData  => many1!(i, complete!(parse_tls_message_applicationdata)),
+        TlsRecordType::ChangeCipherSpec => many1(complete(parse_tls_message_changecipherspec))(i),
+        TlsRecordType::Alert            => many1(complete(parse_tls_message_alert))(i),
+        TlsRecordType::Handshake        => many1(complete(parse_tls_message_handshake))(i),
+        TlsRecordType::ApplicationData  => many1(complete(parse_tls_message_applicationdata))(i),
         TlsRecordType::Heartbeat        => parse_tls_message_heartbeat(i, hdr.len),
-        _                               => Err(Err::Error(error_position!(i, ErrorKind::Switch)))
+        _                               => Err(Err::Error(make_error(i, ErrorKind::Switch)))
     }
 }
 
 /// Parse one packet only, as plaintext
 /// A single record can contain multiple messages, they must share the same record type
 pub fn parse_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
-    do_parse! {
-        i,
-        hdr: parse_tls_record_header >>
-             error_if!(hdr.len > MAX_RECORD_LEN, ErrorKind::TooLarge) >>
-        msg: flat_map!(take!(hdr.len),
-            call!(parse_tls_record_with_header, &hdr)
-            ) >>
-        ( TlsPlaintext { hdr, msg } )
+    let (i, hdr) = parse_tls_record_header(i)?;
+    if hdr.len > MAX_RECORD_LEN {
+        return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
     }
+    let (i, msg) = map_parser(take(hdr.len as usize), |i| {
+        parse_tls_record_with_header(i, &hdr)
+    })(i)?;
+    Ok((i, TlsPlaintext { hdr, msg }))
 }
 
 /// Parse one packet only, as encrypted content
 pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted> {
-    do_parse! {
-        i,
-        hdr: parse_tls_record_header >>
-             error_if!(hdr.len > MAX_RECORD_LEN, ErrorKind::TooLarge) >>
-        blob: take!(hdr.len) >>
-        ( TlsEncrypted { hdr, msg:TlsEncryptedContent{ blob } } )
+    let (i, hdr) = parse_tls_record_header(i)?;
+    if hdr.len > MAX_RECORD_LEN {
+        return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
     }
+    let (i, blob) = take(hdr.len as usize)(i)?;
+    let msg = TlsEncryptedContent { blob };
+    Ok((i, TlsEncrypted { hdr, msg }))
 }
 
 /// Read TLS record envelope, but do not decode data
@@ -946,13 +880,12 @@ pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted> {
 /// complete (not fragmented).
 /// After calling this function, use `parse_tls_record_with_header` to parse content.
 pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
-    do_parse! {
-        i,
-        hdr: parse_tls_record_header >>
-             error_if!(hdr.len > MAX_RECORD_LEN, ErrorKind::TooLarge) >>
-        data: take!(hdr.len) >>
-        ( TlsRawRecord { hdr, data } )
+    let (i, hdr) = parse_tls_record_header(i)?;
+    if hdr.len > MAX_RECORD_LEN {
+        return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
     }
+    let (i, data) = take(hdr.len as usize)(i)?;
+    Ok((i, TlsRawRecord { hdr, data }))
 }
 
 /// Parse one packet only, as plaintext
@@ -960,6 +893,8 @@ pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
 ///
 /// This function will be removed from API, as the name is not correct: it is
 /// not possible to parse TLS packets without knowing the TLS state.
+#[deprecated(since = "0.5.0", note = "Use parse_tls_plaintext")]
+#[inline]
 pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
     parse_tls_plaintext(i)
 }
@@ -971,5 +906,5 @@ pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
 /// This function will be removed from API, as it should be replaced by a more
 /// useful one to handle fragmentation.
 pub fn tls_parser_many(i: &[u8]) -> IResult<&[u8], Vec<TlsPlaintext>> {
-    many1!(i, complete!(parse_tls_plaintext))
+    many1(complete(parse_tls_plaintext))(i)
 }

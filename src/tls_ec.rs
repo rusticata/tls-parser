@@ -1,12 +1,14 @@
-use nom::error::ErrorKind;
-use nom::number::streaming::{be_u16, be_u8};
-use nom::{call, do_parse, error_position, length_data, map, named, switch, value, Err, IResult};
+use nom::error::{make_error, ErrorKind};
+use nom::multi::length_data;
+use nom::number::streaming::be_u8;
+use nom::{Err, IResult};
+use nom_derive::Nom;
 use rusticata_macros::newtype_enum;
 
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
 /// [IANA Supported Groups
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8)
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct NamedGroup(pub u16);
 
 newtype_enum! {
@@ -96,16 +98,18 @@ impl NamedGroup {
 /// Elliptic curve
 ///
 /// a and b specify the coefficients of the curve
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Nom)]
 pub struct ECCurve<'a> {
+    #[nom(Parse = "length_data(be_u8)")]
     pub a: &'a [u8],
+    #[nom(Parse = "length_data(be_u8)")]
     pub b: &'a [u8],
 }
 
 /// Elliptic curve types, as defined in the
 /// [IANA EC Curve Type Registry
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-10)
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct ECCurveType(pub u8);
 
 newtype_enum! {
@@ -117,43 +121,52 @@ impl display ECCurveType {
 }
 
 /// EC Point
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Nom)]
 pub struct ECPoint<'a> {
+    #[nom(Parse = "length_data(be_u8)")]
     pub point: &'a [u8],
 }
 
 /// Elliptic curve parameters, conveyed verbosely as a prime field, as
 /// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Nom)]
 pub struct ExplicitPrimeContent<'a> {
+    #[nom(Parse = "length_data(be_u8)")]
     pub prime_p: &'a [u8],
     pub curve: ECCurve<'a>,
     pub base: ECPoint<'a>,
+    #[nom(Parse = "length_data(be_u8)")]
     pub order: &'a [u8],
+    #[nom(Parse = "length_data(be_u8)")]
     pub cofactor: &'a [u8],
 }
 
 /// Elliptic curve parameters content (depending on EC type)
-#[derive(PartialEq)]
+#[derive(PartialEq, Nom)]
+#[nom(Selector = "ECCurveType")]
 pub enum ECParametersContent<'a> {
+    #[nom(Selector = "ECCurveType::ExplicitPrime")]
     ExplicitPrime(ExplicitPrimeContent<'a>),
     // TODO ExplicitChar2 is defined in [RFC4492] section 5.4
-    ExplicitChar2(&'a [u8]),
+    // #[nom(Selector="ECCurveType::ExplicitChar2")]
+    // ExplicitChar2(&'a [u8]),
+    #[nom(Selector = "ECCurveType::NamedGroup")]
     NamedGroup(NamedGroup),
 }
 
 /// Elliptic curve parameters,
 /// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
-#[derive(PartialEq)]
+#[derive(PartialEq, Nom)]
 pub struct ECParameters<'a> {
     /// Should match a [ECCurveType](enum.ECCurveType.html) value
     pub curve_type: ECCurveType,
+    #[nom(Parse = "{|i| ECParametersContent::parse(i, curve_type)}")]
     pub params_content: ECParametersContent<'a>,
 }
 
 /// ECDH parameters
 /// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Nom)]
 pub struct ServerECDHParams<'a> {
     pub curve_params: ECParameters<'a>,
     pub public: ECPoint<'a>,
@@ -166,7 +179,7 @@ pub fn parse_named_groups(i: &[u8]) -> IResult<&[u8], Vec<NamedGroup>> {
         return Ok((i, Vec::new()));
     }
     if len % 2 == 1 || len > i.len() {
-        return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
+        return Err(Err::Error(make_error(i, ErrorKind::LengthValue)));
     }
     let v = (&i[..len])
         .chunks(2)
@@ -175,67 +188,12 @@ pub fn parse_named_groups(i: &[u8]) -> IResult<&[u8], Vec<NamedGroup>> {
     Ok((&i[len..], v))
 }
 
-named!(
-    parse_ec_point<ECPoint>,
-    map!(length_data!(be_u8), |d| { ECPoint { point: d } })
-);
-
-named! {parse_ec_curve<ECCurve>,
-    do_parse!(
-        a: length_data!(be_u8) >>
-        b: length_data!(be_u8) >>
-        ( ECCurve{a,b} )
-    )
+#[inline]
+pub fn parse_ec_parameters(i: &[u8]) -> IResult<&[u8], ECParameters> {
+    ECParameters::parse(i)
 }
 
-named! {parse_ec_explicit_prime_content<ECParametersContent>,
-    do_parse!(
-        prime_p:  length_data!(be_u8) >>
-        curve:    parse_ec_curve >>
-        base:     parse_ec_point >>
-        order:    length_data!(be_u8) >>
-        cofactor: length_data!(be_u8) >>
-        (
-            ECParametersContent::ExplicitPrime(
-                ExplicitPrimeContent{
-                    prime_p,
-                    curve,
-                    base,
-                    order,
-                    cofactor,
-                }
-            )
-        )
-    )
-}
-
-named!(
-    parse_ec_named_curve_content<ECParametersContent>,
-    map!(be_u16, |c| {
-        ECParametersContent::NamedGroup(NamedGroup(c))
-    })
-);
-
-named! {pub parse_ec_parameters<ECParameters>,
-    do_parse!(
-        curve_type: be_u8  >>
-        d: switch!(value!(curve_type),
-            1 => call!(parse_ec_explicit_prime_content) |
-            3 => call!(parse_ec_named_curve_content)
-        ) >>
-        (
-            ECParameters{
-                curve_type: ECCurveType(curve_type),
-                params_content: d,
-            }
-        )
-    )
-}
-
-named! {pub parse_ecdh_params<ServerECDHParams>,
-    do_parse!(
-        c: parse_ec_parameters >>
-        p: parse_ec_point >>
-        ( ServerECDHParams{curve_params:c,public:p} )
-    )
+#[inline]
+pub fn parse_ecdh_params(i: &[u8]) -> IResult<&[u8], ServerECDHParams> {
+    ServerECDHParams::parse(i)
 }

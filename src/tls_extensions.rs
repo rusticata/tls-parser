@@ -6,9 +6,13 @@
 //! - [RFC7366](https://tools.ietf.org/html/rfc7366)
 //! - [RFC7627](https://tools.ietf.org/html/rfc7627)
 
+use nom::bytes::streaming::{tag, take};
+use nom::combinator::{complete, map, map_parser};
 use nom::error::ErrorKind;
+use nom::multi::{length_data, many0};
 use nom::number::streaming::{be_u16, be_u32, be_u8};
 use nom::*;
+use nom_derive::Nom;
 use rusticata_macros::{error_if, newtype_enum};
 use std::convert::From;
 
@@ -19,7 +23,7 @@ use crate::tls_ec::{parse_named_groups, NamedGroup};
 /// defined in the [IANA Transport Layer Security (TLS)
 /// Extensions](http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml)
 /// registry
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
 pub struct TlsExtensionType(pub u16);
 
 newtype_enum! {
@@ -177,7 +181,7 @@ pub struct KeyShareEntry<'a> {
     pub kx: &'a [u8],      // Key Exchange Data
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
 pub struct PskKeyExchangeMode(pub u8);
 
 newtype_enum! {
@@ -187,7 +191,7 @@ impl PskKeyExchangeMode {
 }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
 pub struct SNIType(pub u8);
 
 newtype_enum! {
@@ -196,7 +200,7 @@ impl display SNIType {
 }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct CertificateStatusType(pub u8);
 
 newtype_enum! {
@@ -211,47 +215,53 @@ pub struct OidFilter<'a> {
     pub cert_ext_val: &'a [u8],
 }
 
-named! {pub parse_tls_extension_sni_hostname<(SNIType,&[u8])>,
-    do_parse!(
-        t: be_u8 >>
-        v: length_data!(be_u16) >>
-        ( SNIType(t), v )
-    )
+// struct {
+//     NameType name_type;
+//     select (name_type) {
+//         case host_name: HostName;
+//     } name;
+// } ServerName;
+//
+// enum {
+//     host_name(0), (255)
+// } NameType;
+//
+// opaque HostName<1..2^16-1>;
+pub fn parse_tls_extension_sni_hostname(i: &[u8]) -> IResult<&[u8], (SNIType, &[u8])> {
+    let (i, t) = SNIType::parse(i)?;
+    let (i, v) = length_data(be_u16)(i)?;
+    Ok((i, (t, v)))
 }
 
-named! {pub parse_tls_extension_sni_content<TlsExtension>,
-    do_parse!(
-        list_len: be_u16 >>
-        v: flat_map!(take!(list_len),
-            many0!(complete!(parse_tls_extension_sni_hostname))
-        ) >>
-        ( TlsExtension::SNI(v) )
-    )
+// struct {
+//     ServerName server_name_list<1..2^16-1>
+// } ServerNameList;
+pub fn parse_tls_extension_sni_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    let (i, list_len) = be_u16(i)?;
+    let (i, v) = map_parser(
+        take(list_len),
+        many0(complete(parse_tls_extension_sni_hostname)),
+    )(i)?;
+    Ok((i, TlsExtension::SNI(v)))
 }
 
-named! {pub parse_tls_extension_sni<TlsExtension>,
-    do_parse!(
-        tag!([0x00,0x00]) >>
-        ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),parse_tls_extension_sni_content) >>
-        ( ext )
-    )
+pub fn parse_tls_extension_sni(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    let (i, _) = tag([0x00, 0x00])(i)?;
+    map_parser(length_data(be_u16), parse_tls_extension_sni_content)(i)
 }
 
 /// Max fragment length [RFC6066]
 pub fn parse_tls_extension_max_fragment_length_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
-    map!(i, be_u8, |l| { TlsExtension::MaxFragmentLength(l) })
+    map(be_u8, TlsExtension::MaxFragmentLength)(i)
 }
 
 /// Max fragment length [RFC6066]
 pub fn parse_tls_extension_max_fragment_length(i: &[u8]) -> IResult<&[u8], TlsExtension> {
-    do_parse! {
-        i,
-        tag!([0x00,0x01]) >>
-        ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),parse_tls_extension_max_fragment_length_content) >>
-        ( ext )
-    }
+    let (i, _) = tag([0x00, 0x01])(i)?;
+    map_parser(
+        length_data(be_u16),
+        parse_tls_extension_max_fragment_length_content,
+    )(i)
 }
 
 /// Status Request [RFC6066]
@@ -262,55 +272,49 @@ fn parse_tls_extension_status_request_content(
     match ext_len {
         0 => Ok((i, TlsExtension::StatusRequest(None))),
         _ => {
-            do_parse! {
+            let (i, status_type) = be_u8(i)?;
+            let (i, request) = take(ext_len - 1)(i)?;
+            Ok((
                 i,
-                status_type: be_u8 >>
-                request: take!(ext_len-1) >>
-                ( TlsExtension::StatusRequest(Some((CertificateStatusType(status_type),request))) )
-            }
+                TlsExtension::StatusRequest(Some((CertificateStatusType(status_type), request))),
+            ))
         }
     }
 }
 
-named! {pub parse_tls_extension_status_request<TlsExtension>,
-    do_parse!(
-        tag!([0x00,0x05]) >>
-        ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),call!(parse_tls_extension_status_request_content,ext_len)) >>
-        ( ext )
-    )
+pub fn parse_tls_extension_status_request(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    let (i, _) = tag([0x00, 0x05])(i)?;
+    let (i, ext_len) = be_u16(i)?;
+    map_parser(take(ext_len), move |d| {
+        parse_tls_extension_status_request_content(d, ext_len)
+    })(i)
 }
 
-named! {pub parse_tls_extension_elliptic_curves_content<TlsExtension>,
-    flat_map!(
-        length_data!(be_u16),
-        map!(parse_named_groups, |x| TlsExtension::EllipticCurves(x))
-    )
+pub fn parse_tls_extension_elliptic_curves_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    map_parser(
+        length_data(be_u16),
+        map(parse_named_groups, TlsExtension::EllipticCurves),
+    )(i)
 }
 
-named! {pub parse_tls_extension_elliptic_curves<TlsExtension>,
-    do_parse!(
-        tag!([0x00,0x0a]) >>
-        ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),parse_tls_extension_elliptic_curves_content) >>
-        ( ext )
-    )
+pub fn parse_tls_extension_elliptic_curves(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    let (i, _) = tag([0x00, 0x0a])(i)?;
+    map_parser(
+        length_data(be_u16),
+        parse_tls_extension_elliptic_curves_content,
+    )(i)
 }
 
-named! {pub parse_tls_extension_ec_point_formats_content<TlsExtension>,
-    map!(
-        length_data!(be_u8),
-        |v| { TlsExtension::EcPointFormats(v) }
-    )
+pub fn parse_tls_extension_ec_point_formats_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    map(length_data(be_u8), TlsExtension::EcPointFormats)(i)
 }
 
-named! {pub parse_tls_extension_ec_point_formats<TlsExtension>,
-    do_parse!(
-        tag!([0x00,0x0b]) >>
-        ext_len:  be_u16 >>
-        ext: flat_map!(take!(ext_len),parse_tls_extension_ec_point_formats_content) >>
-        ( ext )
-    )
+pub fn parse_tls_extension_ec_point_formats(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    let (i, _) = tag([0x00, 0x0a])(i)?;
+    map_parser(
+        length_data(be_u16),
+        parse_tls_extension_ec_point_formats_content,
+    )(i)
 }
 
 named! {pub parse_tls_extension_signature_algorithms_content<TlsExtension>,

@@ -140,6 +140,11 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.10.0
+
+- Upgrade to nom 6
+- Remove all macro-base parsers (use functions, and nom-derive when possible)
+
 ### 0.9.2
 
 - Upgrade to phf 0.8
