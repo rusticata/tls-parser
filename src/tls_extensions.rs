@@ -237,6 +237,10 @@ pub fn parse_tls_extension_sni_hostname(i: &[u8]) -> IResult<&[u8], (SNIType, &[
 //     ServerName server_name_list<1..2^16-1>
 // } ServerNameList;
 pub fn parse_tls_extension_sni_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    if i.is_empty() {
+        // special case: SNI extension in server can be empty
+        return Ok((i, TlsExtension::SNI(Vec::new())));
+    }
     let (i, list_len) = be_u16(i)?;
     let (i, v) = map_parser(
         take(list_len),
