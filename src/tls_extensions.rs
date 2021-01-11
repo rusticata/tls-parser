@@ -218,14 +218,19 @@ named! {pub parse_tls_extension_sni_hostname<(SNIType,&[u8])>,
     )
 }
 
-named! {pub parse_tls_extension_sni_content<TlsExtension>,
-    do_parse!(
+pub fn parse_tls_extension_sni_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    if i.is_empty() {
+        // special case: SNI extension in server can be empty
+        return Ok((i, TlsExtension::SNI(Vec::new())));
+    }
+    do_parse! {
+        i,
         list_len: be_u16 >>
         v: flat_map!(take!(list_len),
             many0!(complete!(parse_tls_extension_sni_hostname))
         ) >>
         ( TlsExtension::SNI(v) )
-    )
+    }
 }
 
 named! {pub parse_tls_extension_sni<TlsExtension>,
