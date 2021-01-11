@@ -36,6 +36,7 @@ impl debug TlsHandshakeType {
     HelloRequest        = 0x00,
     ClientHello         = 0x01,
     ServerHello         = 0x02,
+    HelloVerifyRequest  = 0x03,
     NewSessionTicket    = 0x04,
     EndOfEarlyData      = 0x05,
     HelloRetryRequest   = 0x06,
@@ -82,6 +83,10 @@ impl debug TlsVersion {
     Tls13Draft21 = 0x7f15,
     Tls13Draft22 = 0x7f16,
     Tls13Draft23 = 0x7f17,
+
+    DTls10       = 0xfeff,
+    DTls11       = 0xfefe,
+    DTls12       = 0xfefd,
 }
 }
 
@@ -497,7 +502,7 @@ pub struct TlsRawRecord<'a> {
     pub data: &'a [u8],
 }
 
-fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCipherSuiteID>> {
+pub(crate) fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCipherSuiteID>> {
     if len == 0 {
         return Ok((i, Vec::new()));
     }
@@ -511,7 +516,10 @@ fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCipherSuit
     Ok((&i[len..], v))
 }
 
-fn parse_compressions_algs(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCompressionID>> {
+pub(crate) fn parse_compressions_algs(
+    i: &[u8],
+    len: usize,
+) -> IResult<&[u8], Vec<TlsCompressionID>> {
     if len == 0 {
         return Ok((i, Vec::new()));
     }
@@ -574,6 +582,13 @@ fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
 }
 
 fn parse_tls_handshake_msg_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    map(
+        parse_tls_server_hello_tlsv12,
+        TlsMessageHandshake::ServerHello,
+    )(i)
+}
+
+pub(crate) fn parse_tls_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsServerHelloContents> {
     let (i, version) = be_u16(i)?;
     let (i, rand_time) = be_u32(i)?;
     let (i, rand_data) = take(28usize)(i)?; // 28 as 32 (aligned) - 4 (time)
@@ -584,7 +599,7 @@ fn parse_tls_handshake_msg_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsMe
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
     let content =
         TlsServerHelloContents::new(version, rand_time, rand_data, sid, cipher, comp, ext);
-    Ok((i, TlsMessageHandshake::ServerHello(content)))
+    Ok((i, content))
 }
 
 fn parse_tls_handshake_msg_server_hello_tlsv13draft18(
@@ -644,11 +659,15 @@ fn parse_tls_handshake_msg_hello_retry_request(i: &[u8]) -> IResult<&[u8], TlsMe
     Ok((i, TlsMessageHandshake::HelloRetryRequest(content)))
 }
 
-fn parse_tls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+pub(crate) fn parse_tls_certificate(i: &[u8]) -> IResult<&[u8], TlsCertificateContents> {
     let (i, cert_len) = be_u24(i)?;
     let (i, cert_chain) = map_parser(take(cert_len as usize), parse_certs)(i)?;
     let content = TlsCertificateContents { cert_chain };
-    Ok((i, TlsMessageHandshake::Certificate(content)))
+    Ok((i, content))
+}
+
+fn parse_tls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    map(parse_tls_certificate, TlsMessageHandshake::Certificate)(i)
 }
 
 fn parse_tls_handshake_msg_serverkeyexchange(
@@ -671,13 +690,20 @@ fn parse_tls_handshake_msg_certificateverify(
     map(take(len), TlsMessageHandshake::CertificateVerify)(i)
 }
 
+pub(crate) fn parse_tls_clientkeyexchange(
+    len: usize,
+) -> impl FnMut(&[u8]) -> IResult<&[u8], TlsClientKeyExchangeContents> {
+    move |i| map(take(len), TlsClientKeyExchangeContents::Unknown)(i)
+}
+
 fn parse_tls_handshake_msg_clientkeyexchange(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
-    map(take(len), |ext| {
-        TlsMessageHandshake::ClientKeyExchange(TlsClientKeyExchangeContents::Unknown(ext))
-    })(i)
+    map(
+        parse_tls_clientkeyexchange(len),
+        TlsMessageHandshake::ClientKeyExchange,
+    )(i)
 }
 
 fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
@@ -795,13 +821,8 @@ pub fn parse_tls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], TlsMessage
 /// Parse a TLS alert message
 // XXX add extra verification hdr.len == 2
 pub fn parse_tls_message_alert(i: &[u8]) -> IResult<&[u8], TlsMessage> {
-    let (i, s) = be_u8(i)?;
-    let (i, c) = be_u8(i)?;
-    let alert = TlsMessage::Alert(TlsMessageAlert {
-        severity: TlsAlertSeverity(s),
-        code: TlsAlertDescription(c),
-    });
-    Ok((i, alert))
+    let (i, alert) = TlsMessageAlert::parse(i)?;
+    Ok((i, TlsMessage::Alert(alert)))
 }
 
 /// Parse a TLS applicationdata message
