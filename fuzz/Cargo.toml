@@ -24,3 +24,9 @@ path = "fuzzers/parse_tls_plaintext.rs"
 [[bin]]
 name = "parse_tls_extension"
 path = "fuzzers/parse_tls_extension.rs"
+
+[[bin]]
+name = "parse_dtls_plaintext"
+path = "fuzzers/parse_dtls_plaintext.rs"
+test = false
+doc = false
