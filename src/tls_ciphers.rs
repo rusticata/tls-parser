@@ -7,8 +7,6 @@
 
 #![allow(non_camel_case_types)]
 
-use phf;
-
 enum_from_primitive! {
 /// Key exchange methods
 #[derive(Clone,Debug,PartialEq)]

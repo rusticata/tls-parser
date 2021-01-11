@@ -179,7 +179,7 @@ named! {parse_ec_curve<ECCurve>,
     do_parse!(
         a: length_data!(be_u8) >>
         b: length_data!(be_u8) >>
-        ( ECCurve{a:a,b:b} )
+        ( ECCurve{a,b} )
     )
 }
 
@@ -194,10 +194,10 @@ named! {parse_ec_explicit_prime_content<ECParametersContent>,
             ECParametersContent::ExplicitPrime(
                 ExplicitPrimeContent{
                     prime_p:  p,
-                    curve:    curve,
-                    base:     base,
-                    order:    order,
-                    cofactor: cofactor,
+                    curve,
+                    base,
+                    order,
+                    cofactor,
                 }
             )
         )

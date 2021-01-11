@@ -78,11 +78,11 @@ impl<'a> fmt::Debug for TlsServerKeyExchangeContents<'a> {
 impl<'a> fmt::Debug for TlsClientKeyExchangeContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &TlsClientKeyExchangeContents::Dh(ref p) => {
+            TlsClientKeyExchangeContents::Dh(ref p) => {
                 fmt.write_fmt(format_args!("{:?}", HexSlice(p)))
             }
-            &TlsClientKeyExchangeContents::Ecdh(ref p) => fmt.write_fmt(format_args!("{:?}", p)),
-            &TlsClientKeyExchangeContents::Unknown(ref p) => {
+            TlsClientKeyExchangeContents::Ecdh(ref p) => fmt.write_fmt(format_args!("{:?}", p)),
+            TlsClientKeyExchangeContents::Unknown(ref p) => {
                 fmt.write_fmt(format_args!("{:?}", HexSlice(p)))
             }
         }
@@ -126,13 +126,13 @@ impl<'a> fmt::Debug for ServerDHParams<'a> {
 impl<'a> fmt::Debug for ECParametersContent<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &ECParametersContent::ExplicitPrime(ref p) => {
+            ECParametersContent::ExplicitPrime(ref p) => {
                 fmt.write_fmt(format_args!("ExplicitPrime({:?})", p))
             }
-            &ECParametersContent::ExplicitChar2(ref p) => {
+            ECParametersContent::ExplicitChar2(ref p) => {
                 fmt.write_fmt(format_args!("ExplicitChar2({:?})", HexSlice(p)))
             }
-            &ECParametersContent::NamedGroup(p) => write!(fmt, "{}", p),
+            ECParametersContent::NamedGroup(p) => write!(fmt, "{}", p),
         }
     }
 }
@@ -221,7 +221,7 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
                     .iter()
                     .map(|c| {
                         let s = from_utf8(c).unwrap_or("<error decoding utf8 string>");
-                        format!("{}", s)
+                        s.to_string()
                     })
                     .collect();
                 write!(fmt, "TlsExtension::ALPN({:?})", v)
