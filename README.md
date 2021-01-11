@@ -140,6 +140,10 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.9.4
+
+- In ServerHello, an empty SNI extension can be sent (RFC 6066)
+
 ### 0.9.3
 
 - Fix error in state machine (wrong Client Certificate direction)
