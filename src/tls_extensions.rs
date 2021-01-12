@@ -41,17 +41,17 @@ impl display TlsExtensionType {
     SupportedGroups                     = 0x000a, // [RFC4492][RFC7919]
     EcPointFormats                      = 0x000b, // [RFC4492]
     Srp                                 = 0x000c, // [RFC5054]
-    SignatureAlgorithms                 = 0x000d,
+    SignatureAlgorithms                 = 0x000d, // [RFC8446]
     UseSrtp                             = 0x000e,
-    Heartbeat                           = 0x000f,
+    Heartbeat                           = 0x000f, // [RFC6520]
     ApplicationLayerProtocolNegotiation = 0x0010, // [RFC7301]
     StatusRequestv2                     = 0x0011,
     SignedCertificateTimestamp          = 0x0012,
     ClientCertificateType               = 0x0013,
     ServerCertificateType               = 0x0014,
     Padding                             = 0x0015, // [RFC7685]
-    EncryptThenMac                      = 0x0016,
-    ExtendedMasterSecret                = 0x0017,
+    EncryptThenMac                      = 0x0016, // [RFC7366]
+    ExtendedMasterSecret                = 0x0017, // [RFC7627]
     TokenBinding                        = 0x0018,
     CachedInfo                          = 0x0019,
 
@@ -59,15 +59,15 @@ impl display TlsExtensionType {
 
     SessionTicketTLS                    = 0x0023,
 
-    KeyShareOld                         = 0x0028, // move to 51 in TLS 1.3 draft 23
-    PreSharedKey                        = 0x0029,
-    EarlyData                           = 0x002a,
-    SupportedVersions                   = 0x002b,
-    Cookie                              = 0x002c,
-    PskExchangeModes                    = 0x002d,
+    KeyShareOld                         = 0x0028, // moved to 51 in TLS 1.3 draft 23
+    PreSharedKey                        = 0x0029, // [RFC8446]
+    EarlyData                           = 0x002a, // [RFC8446]
+    SupportedVersions                   = 0x002b, // [RFC8446]
+    Cookie                              = 0x002c, // [RFC8446]
+    PskExchangeModes                    = 0x002d, // [RFC8446]
     TicketEarlyDataInfo                 = 0x002e, // TLS 1.3 draft 18, removed in draft 19
     CertificateAuthorities              = 0x002f,
-    OidFilters                          = 0x0030,
+    OidFilters                          = 0x0030, // [RFC8446]
     PostHandshakeAuth                   = 0x0031, // TLS 1.3 draft 20
     SigAlgorithmsCert                   = 0x0032, // TLS 1.3 draft 23
     KeyShare                            = 0x0033, // TLS 1.3 draft 23
@@ -76,7 +76,7 @@ impl display TlsExtensionType {
 
     Grease                              = 0xfafa,
 
-    RenegotiationInfo                   = 0xff01,
+    RenegotiationInfo                   = 0xff01, // [RFC5746]
     EncryptedServerName                 = 0xffce, // draft-ietf-tls-esni
 }
 }
@@ -294,6 +294,7 @@ pub fn parse_tls_extension_status_request(i: &[u8]) -> IResult<&[u8], TlsExtensi
     })(i)
 }
 
+// defined in rfc8422
 pub fn parse_tls_extension_elliptic_curves_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     map_parser(
         length_data(be_u16),
@@ -321,19 +322,21 @@ pub fn parse_tls_extension_ec_point_formats(i: &[u8]) -> IResult<&[u8], TlsExten
     )(i)
 }
 
+/// Parse 'Signature Algorithms' extension (rfc8446, TLS 1.3 only)
 pub fn parse_tls_extension_signature_algorithms_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, l) = map_parser(length_data(be_u16), many0(complete(be_u16)))(i)?;
     Ok((i, TlsExtension::SignatureAlgorithms(l))) // XXX SignatureAlgorithms or SignatureScheme
 }
 
 pub fn parse_tls_extension_signature_algorithms(i: &[u8]) -> IResult<&[u8], TlsExtension> {
-    let (i, _) = tag([0x00, 0x0d])(i)?;
+    let (i, _) = tag([0x00, 13])(i)?;
     map_parser(
         length_data(be_u16),
         parse_tls_extension_signature_algorithms_content,
     )(i)
 }
 
+// rfc6520
 pub fn parse_tls_extension_heartbeat_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     map(be_u8, TlsExtension::Heartbeat)(i)
 }
@@ -607,55 +610,138 @@ pub fn parse_tls_extension_unknown(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     ))
 }
 
-fn parse_tls_extension_with_type(
-    i: &[u8],
-    ext_type: u16,
-    ext_len: u16,
-) -> IResult<&[u8], TlsExtension> {
+/// Parse a single TLS Client Hello extension
+pub fn parse_tls_client_hello_extension(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    let (i, ext_type) = be_u16(i)?;
+    let (i, ext_data) = length_data(be_u16)(i)?;
     if ext_type & 0x0f0f == 0x0a0a {
-        return map(take(ext_len), |d| TlsExtension::Grease(ext_type, d))(i);
+        return Ok((i, TlsExtension::Grease(ext_type, ext_data)));
     }
-    match ext_type {
-        0x0000 => parse_tls_extension_sni_content(i),
-        0x0001 => parse_tls_extension_max_fragment_length_content(i),
-        0x0005 => parse_tls_extension_status_request_content(i, ext_len),
-        0x000a => parse_tls_extension_elliptic_curves_content(i),
-        0x000b => parse_tls_extension_ec_point_formats_content(i),
-        0x000d => parse_tls_extension_signature_algorithms_content(i),
-        0x000f => parse_tls_extension_heartbeat_content(i),
-        0x0010 => parse_tls_extension_alpn_content(i),
-        0x0012 => parse_tls_extension_signed_certificate_timestamp_content(i),
-        0x0015 => parse_tls_extension_padding_content(i, ext_len),
-        0x0016 => parse_tls_extension_encrypt_then_mac_content(i, ext_len),
-        0x0017 => parse_tls_extension_extended_master_secret_content(i, ext_len),
-        0x001c => parse_tls_extension_record_size_limit(i),
-        0x0023 => parse_tls_extension_session_ticket_content(i, ext_len),
-        0x0028 => parse_tls_extension_key_share_old_content(i, ext_len),
-        0x0029 => parse_tls_extension_pre_shared_key_content(i, ext_len),
-        0x002a => parse_tls_extension_early_data_content(i, ext_len),
-        0x002b => parse_tls_extension_supported_versions_content(i, ext_len),
-        0x002c => parse_tls_extension_cookie_content(i, ext_len),
-        0x002d => parse_tls_extension_psk_key_exchange_modes_content(i),
-        0x0030 => parse_tls_extension_oid_filters(i),
-        0x0031 => parse_tls_extension_post_handshake_auth_content(i, ext_len),
-        0x0033 => parse_tls_extension_key_share_content(i, ext_len),
-        0x3374 => parse_tls_extension_npn_content(i, ext_len),
-        0xff01 => parse_tls_extension_renegotiation_info_content(i),
-        0xffce => parse_tls_extension_encrypted_server_name(i),
-        _ => map(take(ext_len), |ext_data| {
-            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data)
-        })(i),
-    }
+    let ext_len = ext_data.len() as u16;
+    let (_, ext) = match ext_type {
+        0 => parse_tls_extension_sni_content(ext_data),
+        1 => parse_tls_extension_max_fragment_length_content(ext_data),
+        5 => parse_tls_extension_status_request_content(ext_data, ext_len),
+        10 => parse_tls_extension_elliptic_curves_content(ext_data),
+        11 => parse_tls_extension_ec_point_formats_content(ext_data),
+        13 => parse_tls_extension_signature_algorithms_content(ext_data),
+        15 => parse_tls_extension_heartbeat_content(ext_data),
+        16 => parse_tls_extension_alpn_content(ext_data),
+        18 => parse_tls_extension_signed_certificate_timestamp_content(ext_data), // ok XXX should be empty
+        21 => parse_tls_extension_padding_content(ext_data, ext_len),
+        22 => parse_tls_extension_encrypt_then_mac_content(ext_data, ext_len),
+        23 => parse_tls_extension_extended_master_secret_content(ext_data, ext_len),
+        28 => parse_tls_extension_record_size_limit(ext_data),
+        35 => parse_tls_extension_session_ticket_content(ext_data, ext_len),
+        41 => parse_tls_extension_pre_shared_key_content(ext_data, ext_len),
+        42 => parse_tls_extension_early_data_content(ext_data, ext_len),
+        43 => parse_tls_extension_supported_versions_content(ext_data, ext_len),
+        44 => parse_tls_extension_cookie_content(ext_data, ext_len),
+        45 => parse_tls_extension_psk_key_exchange_modes_content(ext_data),
+        48 => parse_tls_extension_oid_filters(ext_data),
+        49 => parse_tls_extension_post_handshake_auth_content(ext_data, ext_len),
+        51 => parse_tls_extension_key_share_content(ext_data, ext_len), // XXX request
+        13172 => parse_tls_extension_npn_content(ext_data, ext_len),    // XXX must be empty
+        0xff01 => parse_tls_extension_renegotiation_info_content(ext_data),
+        0xffce => parse_tls_extension_encrypted_server_name(ext_data),
+        _ => Ok((
+            i,
+            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data),
+        )),
+    }?;
+    Ok((i, ext))
 }
 
+/// Parse a single TLS Server Hello extension
+pub fn parse_tls_server_hello_extension(i: &[u8]) -> IResult<&[u8], TlsExtension> {
+    let (i, ext_type) = be_u16(i)?;
+    let (i, ext_data) = length_data(be_u16)(i)?;
+    if ext_type & 0x0f0f == 0x0a0a {
+        return Ok((i, TlsExtension::Grease(ext_type, ext_data)));
+    }
+    let ext_len = ext_data.len() as u16;
+    let (_, ext) = match ext_type {
+        0 => parse_tls_extension_sni_content(ext_data), // XXX SHALL be empty (RFC6066 section 3)
+        1 => parse_tls_extension_max_fragment_length_content(ext_data),
+        5 => parse_tls_extension_status_request_content(ext_data, ext_len), // SHALL be empty
+        11 => parse_tls_extension_ec_point_formats_content(ext_data),       // ok XXX only one
+        13 => parse_tls_extension_signature_algorithms_content(ext_data),   // XXX allowed?
+        15 => parse_tls_extension_heartbeat_content(ext_data),
+        16 => parse_tls_extension_alpn_content(ext_data), // ok XXX MUST contain one protocol name
+        18 => parse_tls_extension_signed_certificate_timestamp_content(ext_data),
+        21 => parse_tls_extension_encrypt_then_mac_content(ext_data, ext_len),
+        23 => parse_tls_extension_extended_master_secret_content(ext_data, ext_len),
+        28 => parse_tls_extension_record_size_limit(ext_data),
+        35 => parse_tls_extension_session_ticket_content(ext_data, ext_len),
+        41 => parse_tls_extension_pre_shared_key_content(ext_data, ext_len),
+        42 => parse_tls_extension_early_data_content(ext_data, ext_len),
+        43 => parse_tls_extension_supported_versions_content(ext_data, ext_len), // ok XXX only one
+        44 => parse_tls_extension_cookie_content(ext_data, ext_len),
+        51 => parse_tls_extension_key_share_content(ext_data, ext_len), // XXX selected entry
+        13172 => parse_tls_extension_npn_content(ext_data, ext_len),
+        0xff01 => parse_tls_extension_renegotiation_info_content(ext_data),
+        _ => Ok((
+            i,
+            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data),
+        )),
+    }?;
+    Ok((i, ext))
+}
+
+/// Parse a single TLS extension (of any type)
 pub fn parse_tls_extension(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, ext_type) = be_u16(i)?;
-    let (i, ext_len) = be_u16(i)?;
-    map_parser(take(ext_len), move |d| {
-        parse_tls_extension_with_type(d, ext_type, ext_len)
-    })(i)
+    let (i, ext_data) = length_data(be_u16)(i)?;
+    if ext_type & 0x0f0f == 0x0a0a {
+        return Ok((i, TlsExtension::Grease(ext_type, ext_data)));
+    }
+    let ext_len = ext_data.len() as u16;
+    let (_, ext) = match ext_type {
+        0 => parse_tls_extension_sni_content(ext_data),
+        1 => parse_tls_extension_max_fragment_length_content(ext_data),
+        5 => parse_tls_extension_status_request_content(ext_data, ext_len),
+        10 => parse_tls_extension_elliptic_curves_content(ext_data),
+        11 => parse_tls_extension_ec_point_formats_content(ext_data),
+        13 => parse_tls_extension_signature_algorithms_content(ext_data),
+        15 => parse_tls_extension_heartbeat_content(ext_data),
+        16 => parse_tls_extension_alpn_content(ext_data),
+        18 => parse_tls_extension_signed_certificate_timestamp_content(ext_data),
+        21 => parse_tls_extension_padding_content(ext_data, ext_len),
+        22 => parse_tls_extension_encrypt_then_mac_content(ext_data, ext_len),
+        23 => parse_tls_extension_extended_master_secret_content(ext_data, ext_len),
+        28 => parse_tls_extension_record_size_limit(ext_data),
+        35 => parse_tls_extension_session_ticket_content(ext_data, ext_len),
+        40 => parse_tls_extension_key_share_old_content(ext_data, ext_len),
+        41 => parse_tls_extension_pre_shared_key_content(ext_data, ext_len),
+        42 => parse_tls_extension_early_data_content(ext_data, ext_len),
+        43 => parse_tls_extension_supported_versions_content(ext_data, ext_len),
+        44 => parse_tls_extension_cookie_content(ext_data, ext_len),
+        45 => parse_tls_extension_psk_key_exchange_modes_content(ext_data),
+        48 => parse_tls_extension_oid_filters(ext_data),
+        49 => parse_tls_extension_post_handshake_auth_content(ext_data, ext_len),
+        51 => parse_tls_extension_key_share_content(ext_data, ext_len),
+        13172 => parse_tls_extension_npn_content(ext_data, ext_len),
+        0xff01 => parse_tls_extension_renegotiation_info_content(ext_data),
+        0xffce => parse_tls_extension_encrypted_server_name(ext_data),
+        _ => Ok((
+            i,
+            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data),
+        )),
+    }?;
+    Ok((i, ext))
 }
 
+/// Parse zero or more TLS Client Hello extensions
+pub fn parse_tls_client_hello_extensions(i: &[u8]) -> IResult<&[u8], Vec<TlsExtension>> {
+    many0(complete(parse_tls_client_hello_extension))(i)
+}
+
+/// Parse zero or more TLS Server Hello extensions
+pub fn parse_tls_server_hello_extensions(i: &[u8]) -> IResult<&[u8], Vec<TlsExtension>> {
+    many0(complete(parse_tls_server_hello_extension))(i)
+}
+
+/// Parse zero or more TLS extensions (of any type)
 pub fn parse_tls_extensions(i: &[u8]) -> IResult<&[u8], Vec<TlsExtension>> {
     many0(complete(parse_tls_extension))(i)
 }
