@@ -28,51 +28,51 @@ pub struct TlsExtensionType(pub u16);
 
 newtype_enum! {
 impl display TlsExtensionType {
-    ServerName                          = 0x0000, // [RFC6066]
-    MaxFragmentLength                   = 0x0001,
-    ClientCertificate                   = 0x0002,
-    TrustedCaKeys                       = 0x0003,
-    TruncatedHMac                       = 0x0004,
-    StatusRequest                       = 0x0005, // [RFC6066]
-    UserMapping                         = 0x0006,
-    ClientAuthz                         = 0x0007,
-    ServerAuthz                         = 0x0008,
-    CertType                            = 0x0009,
-    SupportedGroups                     = 0x000a, // [RFC4492][RFC7919]
-    EcPointFormats                      = 0x000b, // [RFC4492]
-    Srp                                 = 0x000c, // [RFC5054]
-    SignatureAlgorithms                 = 0x000d, // [RFC8446]
-    UseSrtp                             = 0x000e,
-    Heartbeat                           = 0x000f, // [RFC6520]
-    ApplicationLayerProtocolNegotiation = 0x0010, // [RFC7301]
-    StatusRequestv2                     = 0x0011,
-    SignedCertificateTimestamp          = 0x0012,
-    ClientCertificateType               = 0x0013,
-    ServerCertificateType               = 0x0014,
-    Padding                             = 0x0015, // [RFC7685]
-    EncryptThenMac                      = 0x0016, // [RFC7366]
-    ExtendedMasterSecret                = 0x0017, // [RFC7627]
-    TokenBinding                        = 0x0018,
-    CachedInfo                          = 0x0019,
+    ServerName                          = 0, // [RFC6066]
+    MaxFragmentLength                   = 1,
+    ClientCertificate                   = 2,
+    TrustedCaKeys                       = 3,
+    TruncatedHMac                       = 4,
+    StatusRequest                       = 5, // [RFC6066]
+    UserMapping                         = 6,
+    ClientAuthz                         = 7,
+    ServerAuthz                         = 8,
+    CertType                            = 9,
+    SupportedGroups                     = 10, // [RFC4492][RFC7919]
+    EcPointFormats                      = 11, // [RFC4492]
+    Srp                                 = 12, // [RFC5054]
+    SignatureAlgorithms                 = 13, // [RFC8446]
+    UseSrtp                             = 14,
+    Heartbeat                           = 15, // [RFC6520]
+    ApplicationLayerProtocolNegotiation = 16, // [RFC7301]
+    StatusRequestv2                     = 17,
+    SignedCertificateTimestamp          = 18,
+    ClientCertificateType               = 19,
+    ServerCertificateType               = 20,
+    Padding                             = 21, // [RFC7685]
+    EncryptThenMac                      = 22, // [RFC7366]
+    ExtendedMasterSecret                = 23, // [RFC7627]
+    TokenBinding                        = 24,
+    CachedInfo                          = 25,
 
-    RecordSizeLimit                     = 0x001c, // [RFC8449]
+    RecordSizeLimit                     = 28, // [RFC8449]
 
-    SessionTicketTLS                    = 0x0023,
+    SessionTicketTLS                    = 35,
 
-    KeyShareOld                         = 0x0028, // moved to 51 in TLS 1.3 draft 23
-    PreSharedKey                        = 0x0029, // [RFC8446]
-    EarlyData                           = 0x002a, // [RFC8446]
-    SupportedVersions                   = 0x002b, // [RFC8446]
-    Cookie                              = 0x002c, // [RFC8446]
-    PskExchangeModes                    = 0x002d, // [RFC8446]
-    TicketEarlyDataInfo                 = 0x002e, // TLS 1.3 draft 18, removed in draft 19
-    CertificateAuthorities              = 0x002f,
-    OidFilters                          = 0x0030, // [RFC8446]
-    PostHandshakeAuth                   = 0x0031, // TLS 1.3 draft 20
-    SigAlgorithmsCert                   = 0x0032, // TLS 1.3 draft 23
-    KeyShare                            = 0x0033, // TLS 1.3 draft 23
+    KeyShareOld                         = 40, // moved to 51 in TLS 1.3 draft 23
+    PreSharedKey                        = 41, // [RFC8446]
+    EarlyData                           = 42, // [RFC8446]
+    SupportedVersions                   = 43, // [RFC8446]
+    Cookie                              = 44, // [RFC8446]
+    PskExchangeModes                    = 45, // [RFC8446]
+    TicketEarlyDataInfo                 = 46, // TLS 1.3 draft 18, removed in draft 19
+    CertificateAuthorities              = 47,
+    OidFilters                          = 48, // [RFC8446]
+    PostHandshakeAuth                   = 49, // TLS 1.3 draft 20
+    SigAlgorithmsCert                   = 50, // TLS 1.3 draft 23
+    KeyShare                            = 51, // TLS 1.3 draft 23
 
-    NextProtocolNegotiation             = 0x3374,
+    NextProtocolNegotiation             = 13172,
 
     Grease                              = 0xfafa,
 
