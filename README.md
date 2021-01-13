@@ -144,6 +144,16 @@ values than to get a generic parse error).
 
 - Upgrade to nom 6
 - Remove all macro-base parsers (use functions, and nom-derive when possible)
+- Add support for DTLS (Handshake)
+- Add functions to parse extensions expected in Client/Server Hello
+
+### 0.9.4
+
+- In ServerHello, an empty SNI extension can be sent (RFC 6066)
+
+### 0.9.3
+
+- Fix error in state machine (wrong Client Certificate direction)
 
 ### 0.9.2
 
