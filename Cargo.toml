@@ -45,7 +45,7 @@ rusticata-macros = "3.0"
 
 [dev-dependencies]
 hex-literal = "0.3"
-pretty_assertions = "0.6"
+pretty_assertions = "0.7"
 
 [build-dependencies]
 phf_codegen = "0.8"
