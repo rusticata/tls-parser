@@ -561,6 +561,7 @@ pub fn parse_tls_record_header(i: &[u8]) -> IResult<&[u8], TlsRecordHeader> {
     TlsRecordHeader::parse(i)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     Ok((i, TlsMessageHandshake::HelloRequest))
 }
