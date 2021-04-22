@@ -3,7 +3,7 @@ use nom::multi::length_data;
 use nom::number::streaming::be_u16;
 use nom::sequence::pair;
 use nom::IResult;
-use nom_derive::Nom;
+use nom_derive::*;
 use rusticata_macros::newtype_enum;
 
 /// Hash algorithms, as defined in [RFC5246]

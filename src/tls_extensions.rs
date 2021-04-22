@@ -12,7 +12,7 @@ use nom::error::{make_error, ErrorKind};
 use nom::multi::{length_data, many0};
 use nom::number::streaming::{be_u16, be_u32, be_u8};
 use nom::{Err, IResult};
-use nom_derive::Nom;
+use nom_derive::*;
 use rusticata_macros::newtype_enum;
 use std::convert::From;
 

@@ -7,7 +7,7 @@ use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
 use nom::multi::{length_count, length_data, many0, many1};
 use nom::number::streaming::{be_u16, be_u24, be_u32, be_u8};
-use nom_derive::Nom;
+use nom_derive::*;
 use rusticata_macros::newtype_enum;
 
 use crate::tls_alert::*;

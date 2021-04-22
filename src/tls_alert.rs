@@ -1,4 +1,4 @@
-use nom_derive::Nom;
+use nom_derive::*;
 use rusticata_macros::newtype_enum;
 
 /// TLS alert severity
