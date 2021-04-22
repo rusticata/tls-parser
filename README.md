@@ -2,8 +2,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE-MIT)
 [![Apache License 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE-APACHE)
-[![Build Status](https://travis-ci.org/rusticata/tls-parser.svg?branch=master)](https://travis-ci.org/rusticata/tls-parser)
 [![Crates.io Version](https://img.shields.io/crates/v/tls-parser.svg)](https://crates.io/crates/tls-parser)
+[![Github CI](https://github.com/rusticata/der-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/der-parser/actions)
+[![Minimum rustc version](https://img.shields.io/badge/rustc-1.44.0+-lightgray.svg)](#rust-version-requirements)
+
 
 ## Overview
 
@@ -16,7 +18,7 @@ The parser is published on `crates.io`.
 To use it, add the following to your `Cargo.toml` file:
 ```
 [dependencies]
-tls-parser = "0.7.0"
+tls-parser = "0.10.0"
 ```
 
 <!-- cargo-sync-readme start -->
