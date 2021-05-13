@@ -3,7 +3,7 @@
 use crate::tls::*;
 use crate::TlsMessageAlert;
 use nom::bytes::streaming::take;
-use nom::combinator::{complete, cond, map, map_parser, verify};
+use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
 use nom::multi::{length_data, many1};
 use nom::number::streaming::{be_u16, be_u24, be_u64, be_u8};
@@ -47,6 +47,7 @@ pub struct DTLSClientHello<'a> {
     pub ciphers: Vec<TlsCipherSuiteID>,
     /// A list of compression methods supported by client
     pub comp: Vec<TlsCompressionID>,
+    pub ext: Option<&'a [u8]>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -131,6 +132,7 @@ fn parse_dtls_client_hello(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody>
     let (i, ciphers) = parse_cipher_suites(i, ciphers_len as usize)?;
     let (i, comp_len) = be_u8(i)?;
     let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
+    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
     let content = DTLSClientHello {
         version,
         random,
@@ -138,6 +140,7 @@ fn parse_dtls_client_hello(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody>
         cookie,
         ciphers,
         comp,
+        ext,
     };
     Ok((i, DTLSMessageHandshakeBody::ClientHello(content)))
 }
