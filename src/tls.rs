@@ -91,6 +91,12 @@ impl debug TlsVersion {
 }
 }
 
+impl From<u16> for TlsVersion {
+    fn from(v: u16) -> TlsVersion {
+        TlsVersion(v)
+    }
+}
+
 impl From<TlsVersion> for u16 {
     fn from(v: TlsVersion) -> u16 {
         v.0
@@ -149,6 +155,12 @@ impl debug TlsCompressionID {
 }
 }
 
+impl From<u8> for TlsCompressionID {
+    fn from(c: u8) -> TlsCompressionID {
+        TlsCompressionID(c)
+    }
+}
+
 impl From<TlsCompressionID> for u8 {
     fn from(c: TlsCompressionID) -> u8 {
         c.0
@@ -174,6 +186,12 @@ pub struct TlsCipherSuiteID(pub u16);
 impl TlsCipherSuiteID {
     pub fn get_ciphersuite(self) -> Option<&'static TlsCipherSuite> {
         TlsCipherSuite::from_id(self.0)
+    }
+}
+
+impl From<u16> for TlsCipherSuiteID {
+    fn from(c: u16) -> TlsCipherSuiteID {
+        TlsCipherSuiteID(c)
     }
 }
 
@@ -236,21 +254,21 @@ pub struct TlsClientHelloContents<'a> {
 }
 
 impl<'a> TlsClientHelloContents<'a> {
-    pub fn new(
-        v: u16,
-        rd: [u8; 32],
-        sid: Option<&'a [u8]>,
-        c: Vec<TlsCipherSuiteID>,
-        co: Vec<TlsCompressionID>,
-        e: Option<&'a [u8]>,
+    pub fn new<V: Into<TlsVersion>>(
+        version: V,
+        random: [u8; 32],
+        session_id: Option<&'a [u8]>,
+        ciphers: Vec<TlsCipherSuiteID>,
+        comp: Vec<TlsCompressionID>,
+        ext: Option<&'a [u8]>,
     ) -> Self {
         TlsClientHelloContents {
-            version: TlsVersion(v),
-            random: rd,
-            session_id: sid,
-            ciphers: c,
-            comp: co,
-            ext: e,
+            version: version.into(),
+            random,
+            session_id,
+            ciphers,
+            comp,
+            ext,
         }
     }
 
@@ -305,21 +323,26 @@ pub struct TlsHelloRetryRequestContents<'a> {
 }
 
 impl<'a> TlsServerHelloContents<'a> {
-    pub fn new(
-        v: u16,
-        rd: [u8; 32],
-        sid: Option<&'a [u8]>,
-        c: u16,
-        co: u8,
-        e: Option<&'a [u8]>,
-    ) -> Self {
+    pub fn new<V, Ci, Co>(
+        version: V,
+        random: [u8; 32],
+        session_id: Option<&'a [u8]>,
+        cipher: Ci,
+        compression: Co,
+        ext: Option<&'a [u8]>,
+    ) -> Self
+    where
+        V: Into<TlsVersion>,
+        Ci: Into<TlsCipherSuiteID>,
+        Co: Into<TlsCompressionID>,
+    {
         TlsServerHelloContents {
-            version: TlsVersion(v),
-            random: rd,
-            session_id: sid,
-            cipher: TlsCipherSuiteID(c),
-            compression: TlsCompressionID(co),
-            ext: e,
+            version: version.into(),
+            random,
+            session_id,
+            cipher: cipher.into(),
+            compression: compression.into(),
+            ext,
         }
     }
 
