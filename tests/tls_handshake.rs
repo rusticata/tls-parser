@@ -6,6 +6,7 @@ extern crate tls_parser;
 
 mod tls_handshake {
     use nom::{Err, Needed};
+    use std::borrow::Cow;
     use tls_parser::*;
 
     #[rustfmt::skip]
@@ -534,7 +535,9 @@ static CLIENT_REPLY1: &[u8] = &[
                 version: TlsVersion::Tls12,
                 len: bytes.len() as u16 - 5,
             },
-            msg: TlsEncryptedContent { blob: &bytes[5..] },
+            msg: TlsEncryptedContent {
+                blob: Cow::Borrowed(&bytes[5..]),
+            },
         };
         assert_eq!(parse_tls_encrypted(&bytes), Ok((empty, expected)));
     }

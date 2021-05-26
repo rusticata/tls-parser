@@ -64,7 +64,7 @@
 //! // [ 0x16, 0x03, 0x01 ... ];
 //! match parse_tls_raw_record(bytes) {
 //!     Ok((rem, ref r)) => {
-//!         match parse_tls_record_with_header(r.data, &r.hdr) {
+//!         match parse_tls_record_with_header(&r.data, &r.hdr) {
 //!             Ok((rem2,ref msg_list)) => {
 //!                 for msg in msg_list {
 //!                     // msg has type TlsMessage

@@ -142,6 +142,10 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.11.0
+
+- Use `Cow` to allow having owned objects
+
 ### 0.10.0
 
 - Upgrade to nom 6

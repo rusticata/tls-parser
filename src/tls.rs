@@ -14,6 +14,7 @@ use crate::tls_alert::*;
 use crate::tls_ciphers::*;
 use crate::tls_ec::ECPoint;
 
+use std::borrow::Cow;
 use std::convert::AsRef;
 use std::fmt;
 use std::ops::Deref;
@@ -434,7 +435,7 @@ pub enum TlsMessageHandshake<'a> {
 /// stored as opaque.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TlsMessageApplicationData<'a> {
-    pub blob: &'a [u8],
+    pub blob: Cow<'a, [u8]>,
 }
 
 /// TLS heartbeat message, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520)
@@ -445,7 +446,7 @@ pub struct TlsMessageApplicationData<'a> {
 pub struct TlsMessageHeartbeat<'a> {
     pub heartbeat_type: TlsHeartbeatMessageType,
     pub payload_len: u16,
-    pub payload: &'a [u8],
+    pub payload: Cow<'a, [u8]>,
 }
 
 /// TLS record header
@@ -483,7 +484,7 @@ pub struct TlsPlaintext<'a> {
 /// This struct only contains an opaque pointer (data are encrypted).
 #[derive(Clone, Debug, PartialEq)]
 pub struct TlsEncryptedContent<'a> {
-    pub blob: &'a [u8],
+    pub blob: Cow<'a, [u8]>,
 }
 
 /// Encrypted TLS record (containing opaque data)
@@ -499,7 +500,7 @@ pub struct TlsEncrypted<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TlsRawRecord<'a> {
     pub hdr: TlsRecordHeader,
-    pub data: &'a [u8],
+    pub data: Cow<'a, [u8]>,
 }
 
 pub(crate) fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCipherSuiteID>> {
@@ -830,7 +831,9 @@ pub fn parse_tls_message_alert(i: &[u8]) -> IResult<&[u8], TlsMessage> {
 ///
 /// Read the entire input as applicationdata
 pub fn parse_tls_message_applicationdata(i: &[u8]) -> IResult<&[u8], TlsMessage> {
-    let msg = TlsMessage::ApplicationData(TlsMessageApplicationData { blob: i });
+    let msg = TlsMessage::ApplicationData(TlsMessageApplicationData {
+        blob: Cow::Borrowed(i),
+    });
     Ok((&[], msg))
 }
 
@@ -848,7 +851,7 @@ pub fn parse_tls_message_heartbeat(
     let v = vec![TlsMessage::Heartbeat(TlsMessageHeartbeat {
         heartbeat_type,
         payload_len,
-        payload,
+        payload: Cow::Borrowed(payload),
     })];
     Ok((i, v))
 }
@@ -892,6 +895,7 @@ pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted> {
         return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
     }
     let (i, blob) = take(hdr.len as usize)(i)?;
+    let blob = Cow::Borrowed(blob);
     let msg = TlsEncryptedContent { blob };
     Ok((i, TlsEncrypted { hdr, msg }))
 }
@@ -907,6 +911,7 @@ pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
         return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
     }
     let (i, data) = take(hdr.len as usize)(i)?;
+    let data = Cow::Borrowed(data);
     Ok((i, TlsRawRecord { hdr, data }))
 }
 
