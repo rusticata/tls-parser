@@ -15,9 +15,8 @@ use crate::tls_ciphers::*;
 use crate::tls_ec::ECPoint;
 
 use std::borrow::Cow;
-use std::convert::{AsRef, TryFrom};
+use std::convert::TryFrom;
 use std::fmt;
-use std::ops::Deref;
 
 pub use nom::{Err, IResult};
 
@@ -55,6 +54,12 @@ impl debug TlsHandshakeType {
 
     NextProtocol        = 0x43,
 }
+}
+
+impl From<u8> for TlsHandshakeType {
+    fn from(v: u8) -> TlsHandshakeType {
+        TlsHandshakeType(v)
+    }
 }
 
 impl From<TlsHandshakeType> for u8 {
@@ -120,6 +125,12 @@ impl debug TlsHeartbeatMessageType {
 }
 }
 
+impl From<u8> for TlsHeartbeatMessageType {
+    fn from(v: u8) -> TlsHeartbeatMessageType {
+        TlsHeartbeatMessageType(v)
+    }
+}
+
 impl From<TlsHeartbeatMessageType> for u8 {
     fn from(v: TlsHeartbeatMessageType) -> u8 {
         v.0
@@ -138,6 +149,12 @@ impl debug TlsRecordType {
     ApplicationData  = 0x17,
     Heartbeat        = 0x18,
 }
+}
+
+impl From<u8> for TlsRecordType {
+    fn from(v: u8) -> TlsRecordType {
+        TlsRecordType(v)
+    }
 }
 
 impl From<TlsRecordType> for u8 {
@@ -167,19 +184,6 @@ impl From<TlsCompressionID> for u8 {
     }
 }
 
-impl Deref for TlsCompressionID {
-    type Target = u8;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl AsRef<u8> for TlsCompressionID {
-    fn as_ref(&self) -> &u8 {
-        &self.0
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Nom)]
 pub struct TlsCipherSuiteID(pub u16);
 
@@ -198,19 +202,6 @@ impl From<u16> for TlsCipherSuiteID {
 impl From<TlsCipherSuiteID> for u16 {
     fn from(c: TlsCipherSuiteID) -> u16 {
         c.0
-    }
-}
-
-impl Deref for TlsCipherSuiteID {
-    type Target = u16;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl AsRef<u16> for TlsCipherSuiteID {
-    fn as_ref(&self) -> &u16 {
-        &self.0
     }
 }
 
