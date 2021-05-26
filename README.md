@@ -1,28 +1,5 @@
 # tls-parser
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE-MIT)
-[![Apache License 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE-APACHE)
-[![Crates.io Version](https://img.shields.io/crates/v/tls-parser.svg)](https://crates.io/crates/tls-parser)
-[![Github CI](https://github.com/rusticata/der-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/der-parser/actions)
-[![Minimum rustc version](https://img.shields.io/badge/rustc-1.44.0+-lightgray.svg)](#rust-version-requirements)
-
-
-## Overview
-
-tls-parser is a parser for the TLS protocol. The parser supports protocols SSLv3 to TLSv1.3.
-
-The parser is based on [nom](https://github.com/rusticata/tls-parser) (see nom's documentation for return and
-error types).
-
-The parser is published on `crates.io`.
-To use it, add the following to your `Cargo.toml` file:
-```
-[dependencies]
-tls-parser = "0.10.0"
-```
-
-<!-- cargo-sync-readme start -->
-
 # TLS Parser
 
 A TLS parser, implemented with the [nom](https://github.com/Geal/nom)
@@ -84,7 +61,7 @@ Here is an example of two-steps parsing:
 // [ 0x16, 0x03, 0x01 ... ];
 match parse_tls_raw_record(bytes) {
     Ok((rem, ref r)) => {
-        match parse_tls_record_with_header(r.data, &r.hdr) {
+        match parse_tls_record_with_header(&r.data, &r.hdr) {
             Ok((rem2,ref msg_list)) => {
                 for msg in msg_list {
                     // msg has type TlsMessage
@@ -137,7 +114,6 @@ When parsing messages, if a field is an integer corresponding to an enum of know
 it is not parsed as an enum type, but as an integer. While this complicates accesses,
 it allows to read invalid values and continue parsing (for an IDS, it's better to read
 values than to get a generic parse error).
-
 <!-- cargo-sync-readme end -->
 
 ## Changes
