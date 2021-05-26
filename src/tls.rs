@@ -15,7 +15,7 @@ use crate::tls_ciphers::*;
 use crate::tls_ec::ECPoint;
 
 use std::borrow::Cow;
-use std::convert::AsRef;
+use std::convert::{AsRef, TryFrom};
 use std::fmt;
 use std::ops::Deref;
 
@@ -225,8 +225,7 @@ impl fmt::LowerHex for TlsCipherSuiteID {
 pub struct TlsClientHelloContents<'a> {
     /// TLS version of message
     pub version: TlsVersion,
-    pub rand_time: u32,
-    pub rand_data: &'a [u8],
+    pub random: [u8; 32],
     pub session_id: Option<&'a [u8]>,
     /// A list of ciphers supported by client
     pub ciphers: Vec<TlsCipherSuiteID>,
@@ -239,8 +238,7 @@ pub struct TlsClientHelloContents<'a> {
 impl<'a> TlsClientHelloContents<'a> {
     pub fn new(
         v: u16,
-        rt: u32,
-        rd: &'a [u8],
+        rd: [u8; 32],
         sid: Option<&'a [u8]>,
         c: Vec<TlsCipherSuiteID>,
         co: Vec<TlsCompressionID>,
@@ -248,8 +246,7 @@ impl<'a> TlsClientHelloContents<'a> {
     ) -> Self {
         TlsClientHelloContents {
             version: TlsVersion(v),
-            rand_time: rt,
-            rand_data: rd,
+            random: rd,
             session_id: sid,
             ciphers: c,
             comp: co,
@@ -264,14 +261,23 @@ impl<'a> TlsClientHelloContents<'a> {
     pub fn get_ciphers(&self) -> Vec<Option<&'static TlsCipherSuite>> {
         self.ciphers.iter().map(|&x| x.get_ciphersuite()).collect()
     }
+
+    pub fn rand_time(&self) -> u32 {
+        let b = [
+            self.random[0],
+            self.random[1],
+            self.random[2],
+            self.random[3],
+        ];
+        u32::from_be_bytes(b)
+    }
 }
 
 /// TLS Server Hello (from TLS 1.0 to TLS 1.2)
 #[derive(Clone, PartialEq)]
 pub struct TlsServerHelloContents<'a> {
     pub version: TlsVersion,
-    pub rand_time: u32,
-    pub rand_data: &'a [u8],
+    pub random: [u8; 32],
     pub session_id: Option<&'a [u8]>,
     pub cipher: TlsCipherSuiteID,
     pub compression: TlsCompressionID,
@@ -283,7 +289,7 @@ pub struct TlsServerHelloContents<'a> {
 #[derive(Clone, PartialEq)]
 pub struct TlsServerHelloV13Draft18Contents<'a> {
     pub version: TlsVersion,
-    pub random: &'a [u8],
+    pub random: [u8; 32],
     pub cipher: TlsCipherSuiteID,
 
     pub ext: Option<&'a [u8]>,
@@ -301,8 +307,7 @@ pub struct TlsHelloRetryRequestContents<'a> {
 impl<'a> TlsServerHelloContents<'a> {
     pub fn new(
         v: u16,
-        rt: u32,
-        rd: &'a [u8],
+        rd: [u8; 32],
         sid: Option<&'a [u8]>,
         c: u16,
         co: u8,
@@ -310,8 +315,7 @@ impl<'a> TlsServerHelloContents<'a> {
     ) -> Self {
         TlsServerHelloContents {
             version: TlsVersion(v),
-            rand_time: rt,
-            rand_data: rd,
+            random: rd,
             session_id: sid,
             cipher: TlsCipherSuiteID(c),
             compression: TlsCompressionID(co),
@@ -569,8 +573,11 @@ fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMessageH
 
 fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     let (i, version) = be_u16(i)?;
-    let (i, rand_time) = be_u32(i)?;
-    let (i, rand_data) = take(28usize)(i)?; // 28 as 32 (aligned) - 4 (time)
+    let (i, random) = take(32usize)(i)?;
+    let random = match <[u8; 32]>::try_from(random) {
+        Ok(s) => s,
+        Err(_) => unreachable!(),
+    };
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
     let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
     let (i, ciphers_len) = be_u16(i)?;
@@ -578,8 +585,7 @@ fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
     let (i, comp_len) = be_u8(i)?;
     let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
-    let content =
-        TlsClientHelloContents::new(version, rand_time, rand_data, sid, ciphers, comp, ext);
+    let content = TlsClientHelloContents::new(version, random, sid, ciphers, comp, ext);
     Ok((i, TlsMessageHandshake::ClientHello(content)))
 }
 
@@ -592,15 +598,17 @@ fn parse_tls_handshake_msg_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsMe
 
 pub(crate) fn parse_tls_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsServerHelloContents> {
     let (i, version) = be_u16(i)?;
-    let (i, rand_time) = be_u32(i)?;
-    let (i, rand_data) = take(28usize)(i)?; // 28 as 32 (aligned) - 4 (time)
+    let (i, random) = take(32usize)(i)?;
+    let random = match <[u8; 32]>::try_from(random) {
+        Ok(s) => s,
+        Err(_) => unreachable!(),
+    };
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
     let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
     let (i, cipher) = be_u16(i)?;
     let (i, comp) = be_u8(i)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
-    let content =
-        TlsServerHelloContents::new(version, rand_time, rand_data, sid, cipher, comp, ext);
+    let content = TlsServerHelloContents::new(version, random, sid, cipher, comp, ext);
     Ok((i, content))
 }
 
@@ -609,6 +617,10 @@ fn parse_tls_handshake_msg_server_hello_tlsv13draft18(
 ) -> IResult<&[u8], TlsMessageHandshake> {
     let (i, version) = TlsVersion::parse(i)?;
     let (i, random) = take(32usize)(i)?;
+    let random = match <[u8; 32]>::try_from(random) {
+        Ok(s) => s,
+        Err(_) => unreachable!(),
+    };
     let (i, cipher) = map(be_u16, TlsCipherSuiteID)(i)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
     let content = TlsServerHelloV13Draft18Contents {

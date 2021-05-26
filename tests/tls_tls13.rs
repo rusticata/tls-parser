@@ -2,6 +2,7 @@ extern crate nom;
 extern crate tls_parser;
 
 mod tls_13 {
+    use std::convert::TryFrom;
     use tls_parser::*;
 
     // Test vectors from https://tools.ietf.org/html/draft-thomson-tls-tls13-vectors-01
@@ -61,6 +62,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
             0xc027, 0xc014, 0x009e, 0xccaa, 0x0033, 0x0032, 0x0067, 0x0039, 0x0038, 0x006b, 0x0016,
             0x0013, 0x009c, 0x002f, 0x003c, 0x0035, 0x003d, 0x000a, 0x0005, 0x0004,
         ];
+        let random = <[u8; 32]>::try_from(&bytes[11..11 + 32]).unwrap();
         let expected_ch = TlsPlaintext {
             hdr: TlsRecordHeader {
                 record_type: TlsRecordType::Handshake,
@@ -70,8 +72,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
             msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
                 TlsClientHelloContents {
                     version: TlsVersion::Tls12,
-                    rand_time: 0xce05_cfa3,
-                    rand_data: &bytes[15..15 + 28],
+                    random,
                     session_id: None,
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                     comp: vec![TlsCompressionID(0)],
@@ -87,6 +88,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
     fn test_tls13_sh() {
         let empty = &b""[..];
         let bytes = TV_SERVER_HELLO_1;
+        let random = <[u8; 32]>::try_from(&bytes[11..43]).unwrap();
         let expected_sh = TlsPlaintext {
             hdr: TlsRecordHeader {
                 record_type: TlsRecordType::Handshake,
@@ -96,7 +98,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
             msg: vec![TlsMessage::Handshake(
                 TlsMessageHandshake::ServerHelloV13Draft18(TlsServerHelloV13Draft18Contents {
                     version: TlsVersion::Tls13Draft18,
-                    random: &bytes[11..11 + 32],
+                    random,
                     cipher: TlsCipherSuiteID(0x1301),
                     ext: Some(&bytes[47..]),
                 }),
