@@ -2,6 +2,7 @@ extern crate nom;
 extern crate tls_parser;
 
 mod tls_13 {
+    use std::borrow::Cow;
     use std::convert::TryFrom;
     use tls_parser::*;
 
@@ -73,10 +74,10 @@ static TV_SERVER_HELLO_1: &[u8] = &[
                 TlsClientHelloContents {
                     version: TlsVersion::Tls12,
                     random,
-                    session_id: None,
+                    session_id: Cow::default(),
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                     comp: vec![TlsCompressionID(0)],
-                    ext: Some(&bytes[112..]),
+                    ext: Cow::Borrowed(&bytes[112..]),
                 },
             ))],
         };
@@ -100,7 +101,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
                     version: TlsVersion::Tls13Draft18,
                     random,
                     cipher: TlsCipherSuiteID(0x1301),
-                    ext: Some(&bytes[47..]),
+                    ext: Cow::Borrowed(&bytes[47..]),
                 }),
             )],
         };
@@ -111,9 +112,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
 
         let msg = &res.1.msg[0];
         let ext_raw = match *msg {
-            TlsMessage::Handshake(TlsMessageHandshake::ServerHelloV13Draft18(ref sh)) => {
-                sh.ext.unwrap()
-            }
+            TlsMessage::Handshake(TlsMessageHandshake::ServerHelloV13Draft18(ref sh)) => &sh.ext,
             _ => {
                 panic!("Extensions parsing failed");
             }

@@ -122,23 +122,29 @@ where
     length_be_u16(many_ref(m, gen_tls_extension))
 }
 
-fn gen_tls_sessionid<'a, W>(m: &'a Option<&[u8]>) -> impl SerializeFn<W> + 'a
+fn gen_tls_sessionid<'a, W>(session_id: &'a [u8]) -> impl SerializeFn<W> + 'a
 where
     W: Write + 'a,
 {
-    move |out| match m {
-        None => be_u8(0)(out),
-        Some(o) => be_u8(o.len() as u8)(out).and_then(slice(o)),
+    move |out| {
+        if session_id.is_empty() {
+            be_u8(0)(out)
+        } else {
+            be_u8(session_id.len() as u8)(out).and_then(slice(session_id))
+        }
     }
 }
 
-fn maybe_extensions<'a, W>(m: &'a Option<&[u8]>) -> impl SerializeFn<W> + 'a
+fn maybe_extensions<'a, W>(ext: &'a [u8]) -> impl SerializeFn<W> + 'a
 where
     W: Write + 'a,
 {
-    move |out| match m {
-        Some(o) => be_u16(o.len() as u16)(out).and_then(slice(o)),
-        None => be_u16(0)(out),
+    move |out| {
+        if ext.is_empty() {
+            be_u16(0)(out)
+        } else {
+            be_u16(ext.len() as u16)(out).and_then(slice(ext))
+        }
     }
 }
 
@@ -366,6 +372,7 @@ mod tests {
     use super::*;
     use crate::tls_extensions::parse_tls_extension;
     use hex_literal::hex;
+    use std::borrow::Cow;
 
     const CH_DHE: &[u8] = include_bytes!("../assets/client_hello_dhe.bin");
 
@@ -446,10 +453,10 @@ mod tests {
                 TlsClientHelloContents {
                     version: TlsVersion::Tls12,
                     random,
-                    session_id: None,
+                    session_id: Cow::default(),
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                     comp,
-                    ext: Some(&[]),
+                    ext: Cow::default(),
                 },
             ))],
         };
@@ -502,10 +509,10 @@ mod tests {
         let m = TlsMessageHandshake::ClientHello(TlsClientHelloContents {
             version: TlsVersion::Tls12,
             random,
-            session_id: None,
+            session_id: Cow::default(),
             ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
             comp,
-            ext: None,
+            ext: Cow::default(),
         });
 
         let res = m.serialize().expect("Could not serialize messages");
@@ -533,10 +540,10 @@ mod tests {
         let m = TlsMessageHandshake::ServerHello(TlsServerHelloContents {
             version: TlsVersion::Tls12,
             random,
-            session_id: None,
+            session_id: Cow::default(),
             cipher: TlsCipherSuiteID(0xc030),
             compression: TlsCompressionID(0),
-            ext: None,
+            ext: Cow::default(),
         });
 
         let res = gen_simple(gen_tls_messagehandshake(&m), Vec::new())

@@ -244,31 +244,32 @@ pub struct TlsClientHelloContents<'a> {
     /// TLS version of message
     pub version: TlsVersion,
     pub random: [u8; 32],
-    pub session_id: Option<&'a [u8]>,
+    // opaque SessionID<0..32>;
+    pub session_id: Cow<'a, [u8]>,
     /// A list of ciphers supported by client
     pub ciphers: Vec<TlsCipherSuiteID>,
     /// A list of compression methods supported by client
     pub comp: Vec<TlsCompressionID>,
 
-    pub ext: Option<&'a [u8]>,
+    pub ext: Cow<'a, [u8]>,
 }
 
 impl<'a> TlsClientHelloContents<'a> {
     pub fn new<V: Into<TlsVersion>>(
         version: V,
         random: [u8; 32],
-        session_id: Option<&'a [u8]>,
+        session_id: &'a [u8],
         ciphers: Vec<TlsCipherSuiteID>,
         comp: Vec<TlsCompressionID>,
-        ext: Option<&'a [u8]>,
+        ext: &'a [u8],
     ) -> Self {
         TlsClientHelloContents {
             version: version.into(),
             random,
-            session_id,
+            session_id: Cow::Borrowed(session_id),
             ciphers,
             comp,
-            ext,
+            ext: Cow::Borrowed(ext),
         }
     }
 
@@ -296,11 +297,11 @@ impl<'a> TlsClientHelloContents<'a> {
 pub struct TlsServerHelloContents<'a> {
     pub version: TlsVersion,
     pub random: [u8; 32],
-    pub session_id: Option<&'a [u8]>,
+    pub session_id: Cow<'a, [u8]>,
     pub cipher: TlsCipherSuiteID,
     pub compression: TlsCompressionID,
 
-    pub ext: Option<&'a [u8]>,
+    pub ext: Cow<'a, [u8]>,
 }
 
 /// TLS Server Hello (TLS 1.3 draft 18)
@@ -310,7 +311,7 @@ pub struct TlsServerHelloV13Draft18Contents<'a> {
     pub random: [u8; 32],
     pub cipher: TlsCipherSuiteID,
 
-    pub ext: Option<&'a [u8]>,
+    pub ext: Cow<'a, [u8]>,
 }
 
 /// TLS Hello Retry Request (TLS 1.3)
@@ -319,17 +320,17 @@ pub struct TlsHelloRetryRequestContents<'a> {
     pub version: TlsVersion,
     pub cipher: TlsCipherSuiteID,
 
-    pub ext: Option<&'a [u8]>,
+    pub ext: Cow<'a, [u8]>,
 }
 
 impl<'a> TlsServerHelloContents<'a> {
     pub fn new<V, Ci, Co>(
         version: V,
         random: [u8; 32],
-        session_id: Option<&'a [u8]>,
+        session_id: &'a [u8],
         cipher: Ci,
         compression: Co,
-        ext: Option<&'a [u8]>,
+        ext: &'a [u8],
     ) -> Self
     where
         V: Into<TlsVersion>,
@@ -339,10 +340,10 @@ impl<'a> TlsServerHelloContents<'a> {
         TlsServerHelloContents {
             version: version.into(),
             random,
-            session_id,
+            session_id: Cow::Borrowed(session_id),
             cipher: cipher.into(),
             compression: compression.into(),
-            ext,
+            ext: Cow::Borrowed(ext),
         }
     }
 
@@ -603,11 +604,13 @@ fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
     };
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
     let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
+    let sid = sid.unwrap_or_default();
     let (i, ciphers_len) = be_u16(i)?;
     let (i, ciphers) = parse_cipher_suites(i, ciphers_len as usize)?;
     let (i, comp_len) = be_u8(i)?;
     let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let ext = ext.unwrap_or_default();
     let content = TlsClientHelloContents::new(version, random, sid, ciphers, comp, ext);
     Ok((i, TlsMessageHandshake::ClientHello(content)))
 }
@@ -628,9 +631,11 @@ pub(crate) fn parse_tls_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsServe
     };
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
     let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
+    let sid = sid.unwrap_or_default();
     let (i, cipher) = be_u16(i)?;
     let (i, comp) = be_u8(i)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let ext = ext.unwrap_or_default();
     let content = TlsServerHelloContents::new(version, random, sid, cipher, comp, ext);
     Ok((i, content))
 }
@@ -646,11 +651,12 @@ fn parse_tls_handshake_msg_server_hello_tlsv13draft18(
     };
     let (i, cipher) = map(be_u16, TlsCipherSuiteID)(i)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let ext = ext.unwrap_or_default();
     let content = TlsServerHelloV13Draft18Contents {
         version,
         random,
         cipher,
-        ext,
+        ext: Cow::Borrowed(ext),
     };
     Ok((i, TlsMessageHandshake::ServerHelloV13Draft18(content)))
 }
@@ -691,7 +697,7 @@ fn parse_tls_handshake_msg_hello_retry_request(i: &[u8]) -> IResult<&[u8], TlsMe
     let content = TlsHelloRetryRequestContents {
         version,
         cipher,
-        ext,
+        ext: Cow::Borrowed(ext.unwrap_or_default()),
     };
     Ok((i, TlsMessageHandshake::HelloRetryRequest(content)))
 }

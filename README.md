@@ -145,6 +145,8 @@ values than to get a generic parse error).
 ### 0.11.0
 
 - Use `Cow` to allow having owned objects
+- Convert `session_id` and `ext` fields to `Cow`, and remove option
+  If field is not present, slice will be empty.
 
 ### 0.10.0
 

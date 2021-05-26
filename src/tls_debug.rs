@@ -16,10 +16,10 @@ impl<'a> fmt::Debug for TlsClientHelloContents<'a> {
         fmt.debug_struct("TlsClientHelloContents")
             .field("version", &self.version)
             .field("random", &HexSlice(&self.random))
-            .field("session_id", &self.session_id.map(HexSlice))
+            .field("session_id", &HexSlice(&self.session_id))
             .field("ciphers", &self.ciphers)
             .field("comp", &self.comp)
-            .field("ext", &self.ext.map(HexSlice))
+            .field("ext", &HexSlice(&self.ext))
             .finish()
     }
 }
@@ -29,10 +29,10 @@ impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
         fmt.debug_struct("TlsServerHelloContents")
             .field("version", &self.version)
             .field("random", &HexSlice(&self.random))
-            .field("session_id", &self.session_id.map(HexSlice))
+            .field("session_id", &HexSlice(&self.session_id))
             .field("cipher", &self.cipher)
             .field("compression", &self.compression)
-            .field("ext", &self.ext.map(HexSlice))
+            .field("ext", &HexSlice(&self.ext))
             .finish()
     }
 }
@@ -43,7 +43,7 @@ impl<'a> fmt::Debug for TlsServerHelloV13Draft18Contents<'a> {
             .field("version", &self.version)
             .field("random", &HexSlice(&self.random))
             .field("cipher", &self.cipher)
-            .field("ext", &self.ext.map(HexSlice))
+            .field("ext", &HexSlice(&self.ext))
             .finish()
     }
 }
@@ -52,7 +52,7 @@ impl<'a> fmt::Debug for TlsHelloRetryRequestContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsHelloRetryRequestContents")
             .field("version", &self.version)
-            .field("ext", &self.ext.map(HexSlice))
+            .field("ext", &HexSlice(&self.ext))
             .finish()
     }
 }

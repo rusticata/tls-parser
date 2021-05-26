@@ -69,10 +69,10 @@ static CH : &[u8] = &[
                 TlsClientHelloContents {
                     version: TlsVersion::Tls12,
                     random,
-                    session_id: None,
+                    session_id: Cow::default(),
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                     comp,
-                    ext: Some(&CH[220..]),
+                    ext: Cow::Borrowed(&CH[220..]),
                 },
             ))],
         };
@@ -396,10 +396,10 @@ static SERVER_REPLY1: &[u8] = &[
                 TlsServerHelloContents {
                     version: TlsVersion::Tls12,
                     random,
-                    session_id: None,
+                    session_id: Cow::default(),
                     cipher: TlsCipherSuiteID(0xc02f),
                     compression: TlsCompressionID(0),
-                    ext: Some(&bytes[49..]),
+                    ext: Cow::Borrowed(&bytes[49..]),
                 },
             ))],
         };

@@ -48,9 +48,10 @@ pub enum TlsState {
 fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to_server:bool) -> Result<TlsState,StateChangeError> {
     match (state,msg,to_server) {
         (TlsState::None,             &TlsMessageHandshake::ClientHello(ref msg), true) => {
-            match msg.session_id {
-                Some(_) => Ok(TlsState::AskResumeSession),
-                _       => Ok(TlsState::ClientHello)
+            if msg.session_id.is_empty() {
+                Ok(TlsState::ClientHello)
+            } else {
+                Ok(TlsState::AskResumeSession)
             }
         },
         // Server certificate
