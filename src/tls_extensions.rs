@@ -6,6 +6,7 @@
 //! - [RFC7366](https://tools.ietf.org/html/rfc7366)
 //! - [RFC7627](https://tools.ietf.org/html/rfc7627)
 
+use derive_more::{From, Into};
 use nom::bytes::streaming::{tag, take};
 use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
@@ -23,7 +24,7 @@ use crate::tls_ec::{parse_named_groups, NamedGroup};
 /// defined in the [IANA Transport Layer Security (TLS)
 /// Extensions](http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml)
 /// registry
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, From, Into, Nom)]
 pub struct TlsExtensionType(pub u16);
 
 newtype_enum! {
@@ -79,18 +80,6 @@ impl display TlsExtensionType {
     RenegotiationInfo                   = 0xff01, // [RFC5746]
     EncryptedServerName                 = 0xffce, // draft-ietf-tls-esni
 }
-}
-
-impl TlsExtensionType {
-    pub fn from_u16(t: u16) -> TlsExtensionType {
-        TlsExtensionType(t)
-    }
-}
-
-impl From<TlsExtensionType> for u16 {
-    fn from(ext: TlsExtensionType) -> u16 {
-        ext.0
-    }
 }
 
 /// TLS extensions

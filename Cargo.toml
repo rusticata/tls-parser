@@ -37,6 +37,7 @@ unstable = []
 
 [dependencies]
 cookie-factory = { version="0.3", optional=true }
+derive_more = { version="0.99.14", default-features=false, features = ["from", "into"] }
 enum_primitive = "^0.1"
 nom = "6.0"
 nom-derive = "0.8"

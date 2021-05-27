@@ -1,3 +1,4 @@
+use derive_more::{From, Into};
 use nom::error::{make_error, ErrorKind};
 use nom::multi::length_data;
 use nom::number::streaming::be_u8;
@@ -8,7 +9,7 @@ use rusticata_macros::newtype_enum;
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
 /// [IANA Supported Groups
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8)
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, From, Into, Nom)]
 pub struct NamedGroup(pub u16);
 
 newtype_enum! {

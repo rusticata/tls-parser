@@ -1,6 +1,7 @@
 //! # TLS parser
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
 
+use derive_more::{From, Into};
 use nom::branch::alt;
 use nom::bytes::streaming::take;
 use nom::combinator::{complete, cond, map, map_parser, opt, verify};
@@ -28,7 +29,7 @@ pub const MAX_RECORD_LEN: u16 = 1 << 14;
 /// Handshake types are defined in [RFC5246](https://tools.ietf.org/html/rfc5246) and
 /// the [IANA HandshakeType
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-7)
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, From, Into, Nom)]
 pub struct TlsHandshakeType(pub u8);
 
 newtype_enum! {
@@ -56,23 +57,11 @@ impl debug TlsHandshakeType {
 }
 }
 
-impl From<u8> for TlsHandshakeType {
-    fn from(v: u8) -> TlsHandshakeType {
-        TlsHandshakeType(v)
-    }
-}
-
-impl From<TlsHandshakeType> for u8 {
-    fn from(v: TlsHandshakeType) -> u8 {
-        v.0
-    }
-}
-
 /// TLS version
 ///
 /// Only the TLS version defined in the TLS message header is meaningful, the
 /// version defined in the record should be ignored or set to TLS 1.0
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, From, Into, Nom)]
 pub struct TlsVersion(pub u16);
 
 newtype_enum! {
@@ -96,18 +85,6 @@ impl debug TlsVersion {
 }
 }
 
-impl From<u16> for TlsVersion {
-    fn from(v: u16) -> TlsVersion {
-        TlsVersion(v)
-    }
-}
-
-impl From<TlsVersion> for u16 {
-    fn from(v: TlsVersion) -> u16 {
-        v.0
-    }
-}
-
 impl fmt::LowerHex for TlsVersion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:x}", self.0)
@@ -115,7 +92,7 @@ impl fmt::LowerHex for TlsVersion {
 }
 
 /// Heartbeat type, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520) section 3
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, From, Into, Nom)]
 pub struct TlsHeartbeatMessageType(pub u8);
 
 newtype_enum! {
@@ -125,20 +102,8 @@ impl debug TlsHeartbeatMessageType {
 }
 }
 
-impl From<u8> for TlsHeartbeatMessageType {
-    fn from(v: u8) -> TlsHeartbeatMessageType {
-        TlsHeartbeatMessageType(v)
-    }
-}
-
-impl From<TlsHeartbeatMessageType> for u8 {
-    fn from(v: TlsHeartbeatMessageType) -> u8 {
-        v.0
-    }
-}
-
 /// Content type, as defined in IANA TLS ContentType registry
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, From, Into, Nom)]
 pub struct TlsRecordType(pub u8);
 
 newtype_enum! {
@@ -151,19 +116,7 @@ impl debug TlsRecordType {
 }
 }
 
-impl From<u8> for TlsRecordType {
-    fn from(v: u8) -> TlsRecordType {
-        TlsRecordType(v)
-    }
-}
-
-impl From<TlsRecordType> for u8 {
-    fn from(v: TlsRecordType) -> u8 {
-        v.0
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, From, Into, Nom)]
 pub struct TlsCompressionID(pub u8);
 
 newtype_enum! {
@@ -172,36 +125,12 @@ impl debug TlsCompressionID {
 }
 }
 
-impl From<u8> for TlsCompressionID {
-    fn from(c: u8) -> TlsCompressionID {
-        TlsCompressionID(c)
-    }
-}
-
-impl From<TlsCompressionID> for u8 {
-    fn from(c: TlsCompressionID) -> u8 {
-        c.0
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, From, Into, Nom)]
 pub struct TlsCipherSuiteID(pub u16);
 
 impl TlsCipherSuiteID {
     pub fn get_ciphersuite(self) -> Option<&'static TlsCipherSuite> {
         TlsCipherSuite::from_id(self.0)
-    }
-}
-
-impl From<u16> for TlsCipherSuiteID {
-    fn from(c: u16) -> TlsCipherSuiteID {
-        TlsCipherSuiteID(c)
-    }
-}
-
-impl From<TlsCipherSuiteID> for u16 {
-    fn from(c: TlsCipherSuiteID) -> u16 {
-        c.0
     }
 }
 
