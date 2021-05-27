@@ -142,6 +142,7 @@ mod tls_ec;
 mod tls_extensions;
 mod tls_sign_hash;
 mod tls_states;
+mod utils;
 
 pub use dtls::*;
 pub use tls::*;

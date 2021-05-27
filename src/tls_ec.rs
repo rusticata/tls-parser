@@ -1,8 +1,6 @@
+use crate::utils::*;
 use derive_more::{From, Into};
-use nom::combinator::map;
 use nom::error::{make_error, ErrorKind};
-use nom::multi::length_data;
-use nom::number::streaming::be_u8;
 use nom::{Err, IResult};
 use nom_derive::*;
 use rusticata_macros::newtype_enum;
@@ -199,8 +197,4 @@ pub fn parse_ec_parameters(i: &[u8]) -> IResult<&[u8], ECParameters> {
 #[inline]
 pub fn parse_ecdh_params(i: &[u8]) -> IResult<&[u8], ServerECDHParams> {
     ServerECDHParams::parse(i)
-}
-
-fn length_data_cow_u8(i: &[u8]) -> IResult<&[u8], Cow<'_, [u8]>> {
-    map(length_data(be_u8), Cow::Borrowed)(i)
 }

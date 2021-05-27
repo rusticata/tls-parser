@@ -1,10 +1,10 @@
+use crate::utils::*;
 use nom::combinator::map;
-use nom::multi::length_data;
-use nom::number::streaming::be_u16;
 use nom::sequence::pair;
 use nom::IResult;
 use nom_derive::*;
 use rusticata_macros::newtype_enum;
+use std::borrow::Cow;
 
 /// Hash algorithms, as defined in [RFC5246]
 #[derive(Debug, PartialEq, Eq, Nom)]
@@ -112,11 +112,11 @@ impl SignatureScheme {
 pub struct DigitallySigned<'a> {
     pub alg: Option<SignatureAndHashAlgorithm>,
     // pub alg: Option<u16>, // SignatureScheme
-    pub data: &'a [u8],
+    pub data: Cow<'a, [u8]>,
 }
 
 pub fn parse_digitally_signed_old(i: &[u8]) -> IResult<&[u8], DigitallySigned> {
-    map(length_data(be_u16), |data| DigitallySigned {
+    map(length_data_cow_u16, |data| DigitallySigned {
         alg: None,
         data,
     })(i)
@@ -125,7 +125,7 @@ pub fn parse_digitally_signed_old(i: &[u8]) -> IResult<&[u8], DigitallySigned> {
 pub fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned> {
     let (i, hash) = HashAlgorithm::parse(i)?;
     let (i, sign) = SignAlgorithm::parse(i)?;
-    let (i, data) = length_data(be_u16)(i)?;
+    let (i, data) = length_data_cow_u16(i)?;
     let signed = DigitallySigned {
         alg: Some(SignatureAndHashAlgorithm { hash, sign }),
         data,

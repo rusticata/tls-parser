@@ -1,12 +1,14 @@
 //! Datagram Transport Layer Security Version 1.2 (RFC 6347)
 
 use crate::tls::*;
+use crate::utils::*;
 use crate::TlsMessageAlert;
 use nom::bytes::streaming::take;
-use nom::combinator::{complete, cond, map, map_parser, verify};
+use nom::combinator::{complete, map, map_parser, verify};
 use nom::error::{make_error, ErrorKind};
 use nom::multi::{length_data, many1};
 use nom::number::streaming::{be_u16, be_u24, be_u64, be_u8};
+use std::borrow::Cow;
 
 /// DTLS Plaintext record header
 #[derive(Debug, PartialEq)]
@@ -34,15 +36,15 @@ pub struct DTLSPlaintext<'a> {
 #[derive(Debug, PartialEq)]
 pub struct DTLSRawRecord<'a> {
     pub header: DTLSRecordHeader,
-    pub fragment: &'a [u8],
+    pub fragment: Cow<'a, [u8]>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct DTLSClientHello<'a> {
     pub version: TlsVersion,
-    pub random: &'a [u8],
-    pub session_id: Option<&'a [u8]>,
-    pub cookie: &'a [u8],
+    pub random: Cow<'a, [u8]>,
+    pub session_id: Cow<'a, [u8]>,
+    pub cookie: Cow<'a, [u8]>,
     /// A list of ciphers supported by client
     pub ciphers: Vec<TlsCipherSuiteID>,
     /// A list of compression methods supported by client
@@ -52,7 +54,7 @@ pub struct DTLSClientHello<'a> {
 #[derive(Debug, PartialEq)]
 pub struct DTLSHelloVerifyRequest<'a> {
     pub server_version: TlsVersion,
-    pub cookie: &'a [u8],
+    pub cookie: Cow<'a, [u8]>,
 }
 
 /// DTLS Generic handshake message
@@ -78,10 +80,10 @@ pub enum DTLSMessageHandshakeBody<'a> {
     Certificate(TlsCertificateContents<'a>),
     ServerKeyExchange(TlsServerKeyExchangeContents<'a>),
     CertificateRequest(TlsCertificateRequestContents<'a>),
-    ServerDone(&'a [u8]),
-    CertificateVerify(&'a [u8]),
+    ServerDone(Cow<'a, [u8]>),
+    CertificateVerify(Cow<'a, [u8]>),
     ClientKeyExchange(TlsClientKeyExchangeContents<'a>),
-    Finished(&'a [u8]),
+    Finished(Cow<'a, [u8]>),
     CertificateStatus(TlsCertificateStatusContents<'a>),
     NextProtocol(TlsNextProtocolContent<'a>),
 }
@@ -125,7 +127,11 @@ fn parse_dtls_client_hello(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody>
     let (i, version) = TlsVersion::parse(i)?;
     let (i, random) = take(32usize)(i)?;
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
-    let (i, session_id) = cond(sidlen > 0, take(sidlen as usize))(i)?;
+    let (i, session_id) = if sidlen > 0 {
+        take_cow(sidlen)(i)?
+    } else {
+        (i, Cow::default())
+    };
     let (i, cookie) = length_data(be_u8)(i)?;
     let (i, ciphers_len) = be_u16(i)?;
     let (i, ciphers) = parse_cipher_suites(i, ciphers_len as usize)?;
@@ -133,9 +139,9 @@ fn parse_dtls_client_hello(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody>
     let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
     let content = DTLSClientHello {
         version,
-        random,
+        random: random.into(),
         session_id,
-        cookie,
+        cookie: cookie.into(),
         ciphers,
         comp,
     };
@@ -149,7 +155,7 @@ fn parse_dtls_hello_verify_request(i: &[u8]) -> IResult<&[u8], DTLSMessageHandsh
     let (i, cookie) = length_data(be_u8)(i)?;
     let content = DTLSHelloVerifyRequest {
         server_version,
-        cookie,
+        cookie: cookie.into(),
     };
     Ok((i, DTLSMessageHandshakeBody::HelloVerifyRequest(content)))
 }
@@ -167,7 +173,7 @@ fn parse_dtls_handshake_msg_serverdone(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], DTLSMessageHandshakeBody> {
-    map(take(len), DTLSMessageHandshakeBody::ServerDone)(i)
+    map(take_cow(len), DTLSMessageHandshakeBody::ServerDone)(i)
 }
 
 fn parse_dtls_handshake_msg_clientkeyexchange(
@@ -259,6 +265,7 @@ pub fn parse_dtls_raw_record(i: &[u8]) -> IResult<&[u8], DTLSRawRecord> {
         return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
     }
     let (i, fragment) = take(header.length as usize)(i)?;
+    let fragment = fragment.into();
     Ok((i, DTLSRawRecord { header, fragment }))
 }
 

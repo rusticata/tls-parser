@@ -113,9 +113,9 @@ impl<'a> fmt::Debug for ServerDHParams<'a> {
         let gs = self.dh_g.len() * 8;
         fmt.debug_struct("ServerDHParams")
             .field("group size", &gs)
-            .field("dh_p", &HexSlice(self.dh_p))
-            .field("dh_g", &HexSlice(self.dh_g))
-            .field("dh_ys", &HexSlice(self.dh_ys))
+            .field("dh_p", &HexSlice(&self.dh_p))
+            .field("dh_g", &HexSlice(&self.dh_g))
+            .field("dh_ys", &HexSlice(&self.dh_ys))
             .finish()
     }
 }
@@ -283,7 +283,7 @@ impl<'a> fmt::Debug for DigitallySigned<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("DigitallySigned")
             .field("alg", &self.alg)
-            .field("data", &HexSlice(self.data))
+            .field("data", &HexSlice(&self.data))
             .finish()
     }
 }

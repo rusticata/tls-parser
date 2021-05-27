@@ -54,7 +54,7 @@ static ECDHE_PARAMS: &[u8] = &[
                 hash: HashAlgorithm::Sha1,
                 sign: SignAlgorithm::Rsa,
             }),
-            data: &bytes[141..],
+            data: Cow::Borrowed(&bytes[141..]),
         };
         let res = pair!(bytes, parse_ecdh_params, parse_digitally_signed);
         assert_eq!(res, Ok((empty, (expected1, expected2))));
@@ -134,16 +134,16 @@ static DHE_PARAMS: &[u8] = &[
         let empty = &b""[..];
         let bytes = DHE_PARAMS;
         let expected1 = ServerDHParams {
-            dh_p: &bytes[2..258],
-            dh_g: &bytes[260..516],
-            dh_ys: &bytes[518..774],
+            dh_p: Cow::Borrowed(&bytes[2..258]),
+            dh_g: Cow::Borrowed(&bytes[260..516]),
+            dh_ys: Cow::Borrowed(&bytes[518..774]),
         };
         let expected2 = DigitallySigned {
             alg: Some(SignatureAndHashAlgorithm {
                 hash: HashAlgorithm::Sha512,
                 sign: SignAlgorithm::Rsa,
             }),
-            data: &bytes[778..],
+            data: Cow::Borrowed(&bytes[778..]),
         };
         let res = pair!(bytes, parse_dh_params, parse_digitally_signed);
         assert_eq!(res, Ok((empty, (expected1, expected2))));

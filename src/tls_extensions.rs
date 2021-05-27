@@ -20,6 +20,7 @@ use std::convert::From;
 
 use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
 use crate::tls_ec::{parse_named_groups, NamedGroup};
+use crate::utils::*;
 
 /// TLS extension types,
 /// defined in the [IANA Transport Layer Security (TLS)
@@ -302,9 +303,7 @@ pub fn parse_tls_extension_elliptic_curves(i: &[u8]) -> IResult<&[u8], TlsExtens
 }
 
 pub fn parse_tls_extension_ec_point_formats_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
-    map(length_data(be_u8), |b| {
-        TlsExtension::EcPointFormats(Cow::Borrowed(b))
-    })(i)
+    map(length_data_cow_u8, TlsExtension::EcPointFormats)(i)
 }
 
 pub fn parse_tls_extension_ec_point_formats(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -341,7 +340,7 @@ pub fn parse_tls_extension_heartbeat(i: &[u8]) -> IResult<&[u8], TlsExtension> {
 }
 
 fn parse_protocol_name(i: &[u8]) -> IResult<&[u8], Cow<'_, [u8]>> {
-    map(length_data(be_u8), Cow::Borrowed)(i)
+    length_data_cow_u8(i)
 }
 
 /// Defined in [RFC7301]
@@ -352,7 +351,7 @@ pub fn parse_tls_extension_alpn_content(i: &[u8]) -> IResult<&[u8], TlsExtension
 
 /// Defined in [RFC7685]
 fn parse_tls_extension_padding_content(i: &[u8], ext_len: u16) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), |b| TlsExtension::Padding(Cow::Borrowed(b)))(i)
+    map(take_cow(ext_len), TlsExtension::Padding)(i)
 }
 
 /// Defined in [RFC6962]
@@ -360,7 +359,7 @@ pub fn parse_tls_extension_signed_certificate_timestamp_content(
     i: &[u8],
 ) -> IResult<&[u8], TlsExtension> {
     map(
-        opt(map(complete(length_data(be_u16)), Cow::Borrowed)),
+        opt(complete(length_data_cow_u16)),
         TlsExtension::SignedCertificateTimestamp,
     )(i)
 }
@@ -414,9 +413,7 @@ fn parse_tls_extension_session_ticket_content(
     i: &[u8],
     ext_len: u16,
 ) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), |b| {
-        TlsExtension::SessionTicket(Cow::Borrowed(b))
-    })(i)
+    map(take_cow(ext_len), TlsExtension::SessionTicket)(i)
 }
 
 pub fn parse_tls_extension_session_ticket(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -431,13 +428,11 @@ fn parse_tls_extension_key_share_old_content(
     i: &[u8],
     ext_len: u16,
 ) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), |b| {
-        TlsExtension::KeyShareOld(Cow::Borrowed(b))
-    })(i)
+    map(take_cow(ext_len), TlsExtension::KeyShareOld)(i)
 }
 
 fn parse_tls_extension_key_share_content(i: &[u8], ext_len: u16) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), |b| TlsExtension::KeyShare(Cow::Borrowed(b)))(i)
+    map(take_cow(ext_len), TlsExtension::KeyShare)(i)
 }
 
 pub fn parse_tls_extension_key_share(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -452,9 +447,7 @@ fn parse_tls_extension_pre_shared_key_content(
     i: &[u8],
     ext_len: u16,
 ) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), |b| {
-        TlsExtension::PreSharedKey(Cow::Borrowed(b))
-    })(i)
+    map(take_cow(ext_len), TlsExtension::PreSharedKey)(i)
 }
 
 pub fn parse_tls_extension_pre_shared_key(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -516,7 +509,7 @@ pub fn parse_tls_extension_supported_versions(i: &[u8]) -> IResult<&[u8], TlsExt
 }
 
 fn parse_tls_extension_cookie_content(i: &[u8], ext_len: u16) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), |b| TlsExtension::Cookie(Cow::Borrowed(b)))(i)
+    map(take_cow(ext_len), TlsExtension::Cookie)(i)
 }
 
 pub fn parse_tls_extension_cookie(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -553,9 +546,7 @@ fn parse_tls_extension_npn_content(i: &[u8], ext_len: u16) -> IResult<&[u8], Tls
 
 /// Renegotiation Info, defined in [RFC5746]
 pub fn parse_tls_extension_renegotiation_info_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
-    map(length_data(be_u8), |b| {
-        TlsExtension::RenegotiationInfo(Cow::Borrowed(b))
-    })(i)
+    map(length_data_cow_u8, TlsExtension::RenegotiationInfo)(i)
 }
 
 /// Encrypted Server Name, defined in [draft-ietf-tls-esni]
