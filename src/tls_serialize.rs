@@ -6,15 +6,16 @@ use cookie_factory::combinator::slice;
 use cookie_factory::multi::{all, many_ref};
 use cookie_factory::sequence::tuple;
 use cookie_factory::*;
+use std::borrow::Cow;
 use std::io::Write;
 
 pub use cookie_factory::GenError;
 pub use rusticata_macros::Serialize;
 
 fn gen_tls_ext_sni_hostname<'a, 'b: 'a, W: Write + 'a>(
-    i: &(SNIType, &'b [u8]),
+    i: &'a (SNIType, Cow<'b, [u8]>),
 ) -> impl SerializeFn<W> + 'a {
-    tuple((be_u8((i.0).0 as u8), be_u16(i.1.len() as u16), slice(i.1)))
+    tuple((be_u8((i.0).0 as u8), be_u16(i.1.len() as u16), slice(&i.1)))
 }
 
 fn length_be_u16<W, F>(f: F) -> impl SerializeFn<W>
@@ -49,7 +50,7 @@ where
     move |out| tuple((be_u16(tag), length_be_u16(&f)))(out)
 }
 
-fn gen_tls_ext_sni<'a, W>(m: &'a [(SNIType, &[u8])]) -> impl SerializeFn<W> + 'a
+fn gen_tls_ext_sni<'a, W>(m: &'a [(SNIType, Cow<'a, [u8]>)]) -> impl SerializeFn<W> + 'a
 where
     W: Write + 'a,
 {
@@ -406,7 +407,7 @@ mod tests {
     fn serialize_tls_extensions() {
         let ext = vec![TlsExtension::SNI(vec![(
             SNIType::HostName,
-            b"www.google.com",
+            Cow::Borrowed(b"www.google.com"),
         )])];
 
         let res = gen_simple(gen_tls_extensions(&ext), Vec::new())
@@ -480,7 +481,7 @@ mod tests {
 
     #[test]
     fn serialize_tls_ext() {
-        let ext = TlsExtension::SNI(vec![(SNIType::HostName, b"www.google.com")]);
+        let ext = TlsExtension::SNI(vec![(SNIType::HostName, Cow::Borrowed(b"www.google.com"))]);
 
         let res =
             gen_simple(gen_tls_extension(&ext), Vec::new()).expect("Could not serialize messages");

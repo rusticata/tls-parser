@@ -5,6 +5,7 @@ extern crate nom;
 extern crate tls_parser;
 
 mod tls_extensions {
+    use std::borrow::Cow;
     use tls_parser::*;
 
     #[rustfmt::skip]
@@ -23,8 +24,8 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
     fn test_tls_extensions() {
         let empty = &b""[..];
         let bytes = CLIENT_EXTENSIONS1;
-        let ec_point_formats = &[0, 1, 2];
-        let ext1 = &[0, 0, 0, 0];
+        let ec_point_formats: Cow<[u8]> = Cow::Borrowed(&[0, 1, 2]);
+        let ext1: Cow<[u8]> = Cow::Borrowed(&[0, 0, 0, 0]);
         let ecc: Vec<_> = vec![23, 25, 28, 27, 24, 26, 22, 14, 13, 11, 12, 9, 10]
             .iter()
             .map(|&x| NamedGroup(x))
@@ -32,10 +33,10 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
         let expected = Ok((
             empty,
             vec![
-                TlsExtension::SNI(vec![(SNIType::HostName, b"www.google.com")]),
+                TlsExtension::SNI(vec![(SNIType::HostName, Cow::Borrowed(b"www.google.com"))]),
                 TlsExtension::EcPointFormats(ec_point_formats),
                 TlsExtension::EllipticCurves(ecc),
-                TlsExtension::SessionTicket(&empty),
+                TlsExtension::SessionTicket(Cow::default()),
                 TlsExtension::SignatureAlgorithms(vec![
                     0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403, 0x0301,
                     0x0302, 0x0303, 0x0201, 0x0202, 0x0203,
@@ -73,12 +74,12 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
         let expected = Ok((
             empty,
             TlsExtension::ALPN(vec![
-                b"h2-16",
-                b"h2-15",
-                b"h2-14",
-                b"h2",
-                b"spdy/3.1",
-                b"http/1.1",
+                Cow::Borrowed(b"h2-16"),
+                Cow::Borrowed(b"h2-15"),
+                Cow::Borrowed(b"h2-14"),
+                Cow::Borrowed(b"h2"),
+                Cow::Borrowed(b"spdy/3.1"),
+                Cow::Borrowed(b"http/1.1"),
             ]),
         ));
 
@@ -129,7 +130,7 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
             vec![
                 TlsExtension::StatusRequest(None),
                 TlsExtension::ExtendedMasterSecret,
-                TlsExtension::RenegotiationInfo(&[]),
+                TlsExtension::RenegotiationInfo(Cow::default()),
             ],
         ));
 
@@ -151,7 +152,7 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
         let expected = Ok((
             empty,
             vec![
-                TlsExtension::KeyShare(&bytes[4..40]),
+                TlsExtension::KeyShare(Cow::Borrowed(&bytes[4..40])),
                 TlsExtension::SupportedVersions(vec![TlsVersion(0x7f17)]),
             ],
         ));
@@ -175,7 +176,7 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
     fn test_tls_extension_grease() {
         let empty = &b""[..];
         let bytes = &[0x3a, 0x3a, 0x00, 0x01, 0x00];
-        let expected = TlsExtension::Grease(0x3a3a, &[0x00]);
+        let expected = TlsExtension::Grease(0x3a3a, Cow::Borrowed(&[0x00]));
 
         let res = parse_tls_extension(bytes);
 

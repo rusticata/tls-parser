@@ -147,12 +147,12 @@ impl<'a> fmt::Debug for ECParameters<'a> {
 // ------------------------- tls_extensions.rs ------------------------------
 impl<'a> fmt::Debug for TlsExtension<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             TlsExtension::SNI(ref v) => {
                 let v: Vec<_> = v
                     .iter()
-                    .map(|&(ty, n)| {
-                        let s = from_utf8(n).unwrap_or("<error decoding utf8 string>");
+                    .map(|(ty, n)| {
+                        let s = from_utf8(&n).unwrap_or("<error decoding utf8 string>");
                         format!("type={},name={}", ty, s)
                     })
                     .collect();

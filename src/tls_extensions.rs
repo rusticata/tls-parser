@@ -15,6 +15,7 @@ use nom::number::streaming::{be_u16, be_u32, be_u8};
 use nom::{Err, IResult};
 use nom_derive::*;
 use rusticata_macros::newtype_enum;
+use std::borrow::Cow;
 use std::convert::From;
 
 use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
@@ -86,26 +87,26 @@ impl display TlsExtensionType {
 ///
 #[derive(Clone, PartialEq)]
 pub enum TlsExtension<'a> {
-    SNI(Vec<(SNIType, &'a [u8])>),
+    SNI(Vec<(SNIType, Cow<'a, [u8]>)>),
     MaxFragmentLength(u8),
-    StatusRequest(Option<(CertificateStatusType, &'a [u8])>),
+    StatusRequest(Option<(CertificateStatusType, Cow<'a, [u8]>)>),
     EllipticCurves(Vec<NamedGroup>),
-    EcPointFormats(&'a [u8]),
+    EcPointFormats(Cow<'a, [u8]>),
     SignatureAlgorithms(Vec<u16>),
     RecordSizeLimit(u16),
-    SessionTicket(&'a [u8]),
-    KeyShareOld(&'a [u8]),
-    KeyShare(&'a [u8]),
-    PreSharedKey(&'a [u8]),
+    SessionTicket(Cow<'a, [u8]>),
+    KeyShareOld(Cow<'a, [u8]>),
+    KeyShare(Cow<'a, [u8]>),
+    PreSharedKey(Cow<'a, [u8]>),
     EarlyData(Option<u32>),
     SupportedVersions(Vec<TlsVersion>),
-    Cookie(&'a [u8]),
+    Cookie(Cow<'a, [u8]>),
     PskExchangeModes(Vec<u8>),
     Heartbeat(u8),
-    ALPN(Vec<&'a [u8]>),
+    ALPN(Vec<Cow<'a, [u8]>>),
 
-    SignedCertificateTimestamp(Option<&'a [u8]>),
-    Padding(&'a [u8]),
+    SignedCertificateTimestamp(Option<Cow<'a, [u8]>>),
+    Padding(Cow<'a, [u8]>),
     EncryptThenMac,
     ExtendedMasterSecret,
 
@@ -114,18 +115,18 @@ pub enum TlsExtension<'a> {
 
     NextProtocolNegotiation,
 
-    RenegotiationInfo(&'a [u8]),
+    RenegotiationInfo(Cow<'a, [u8]>),
     EncryptedServerName {
         ciphersuite: TlsCipherSuiteID,
         group: NamedGroup,
-        key_share: &'a [u8],
-        record_digest: &'a [u8],
-        encrypted_sni: &'a [u8],
+        key_share: Cow<'a, [u8]>,
+        record_digest: Cow<'a, [u8]>,
+        encrypted_sni: Cow<'a, [u8]>,
     },
 
-    Grease(u16, &'a [u8]),
+    Grease(u16, Cow<'a, [u8]>),
 
-    Unknown(TlsExtensionType, &'a [u8]),
+    Unknown(TlsExtensionType, Cow<'a, [u8]>),
 }
 
 impl<'a> From<&'a TlsExtension<'a>> for TlsExtensionType {
@@ -167,7 +168,7 @@ impl<'a> From<&'a TlsExtension<'a>> for TlsExtensionType {
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyShareEntry<'a> {
     pub group: NamedGroup, // NamedGroup
-    pub kx: &'a [u8],      // Key Exchange Data
+    pub kx: Cow<'a, [u8]>, // Key Exchange Data
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
@@ -200,8 +201,8 @@ impl debug CertificateStatusType {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OidFilter<'a> {
-    pub cert_ext_oid: &'a [u8],
-    pub cert_ext_val: &'a [u8],
+    pub cert_ext_oid: Cow<'a, [u8]>,
+    pub cert_ext_val: Cow<'a, [u8]>,
 }
 
 // struct {
@@ -216,10 +217,10 @@ pub struct OidFilter<'a> {
 // } NameType;
 //
 // opaque HostName<1..2^16-1>;
-pub fn parse_tls_extension_sni_hostname(i: &[u8]) -> IResult<&[u8], (SNIType, &[u8])> {
+pub fn parse_tls_extension_sni_hostname(i: &[u8]) -> IResult<&[u8], (SNIType, Cow<'_, [u8]>)> {
     let (i, t) = SNIType::parse(i)?;
     let (i, v) = length_data(be_u16)(i)?;
-    Ok((i, (t, v)))
+    Ok((i, (t, v.into())))
 }
 
 // struct {
@@ -267,6 +268,7 @@ fn parse_tls_extension_status_request_content(
         _ => {
             let (i, status_type) = be_u8(i)?;
             let (i, request) = take(ext_len - 1)(i)?;
+            let request = Cow::Borrowed(request);
             Ok((
                 i,
                 TlsExtension::StatusRequest(Some((CertificateStatusType(status_type), request))),
@@ -300,7 +302,9 @@ pub fn parse_tls_extension_elliptic_curves(i: &[u8]) -> IResult<&[u8], TlsExtens
 }
 
 pub fn parse_tls_extension_ec_point_formats_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
-    map(length_data(be_u8), TlsExtension::EcPointFormats)(i)
+    map(length_data(be_u8), |b| {
+        TlsExtension::EcPointFormats(Cow::Borrowed(b))
+    })(i)
 }
 
 pub fn parse_tls_extension_ec_point_formats(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -336,8 +340,8 @@ pub fn parse_tls_extension_heartbeat(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     map_parser(take(ext_len), parse_tls_extension_heartbeat_content)(i)
 }
 
-fn parse_protocol_name(i: &[u8]) -> IResult<&[u8], &[u8]> {
-    length_data(be_u8)(i)
+fn parse_protocol_name(i: &[u8]) -> IResult<&[u8], Cow<'_, [u8]>> {
+    map(length_data(be_u8), Cow::Borrowed)(i)
 }
 
 /// Defined in [RFC7301]
@@ -348,7 +352,7 @@ pub fn parse_tls_extension_alpn_content(i: &[u8]) -> IResult<&[u8], TlsExtension
 
 /// Defined in [RFC7685]
 fn parse_tls_extension_padding_content(i: &[u8], ext_len: u16) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), TlsExtension::Padding)(i)
+    map(take(ext_len), |b| TlsExtension::Padding(Cow::Borrowed(b)))(i)
 }
 
 /// Defined in [RFC6962]
@@ -356,7 +360,7 @@ pub fn parse_tls_extension_signed_certificate_timestamp_content(
     i: &[u8],
 ) -> IResult<&[u8], TlsExtension> {
     map(
-        opt(complete(length_data(be_u16))),
+        opt(map(complete(length_data(be_u16)), Cow::Borrowed)),
         TlsExtension::SignedCertificateTimestamp,
     )(i)
 }
@@ -410,7 +414,9 @@ fn parse_tls_extension_session_ticket_content(
     i: &[u8],
     ext_len: u16,
 ) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), TlsExtension::SessionTicket)(i)
+    map(take(ext_len), |b| {
+        TlsExtension::SessionTicket(Cow::Borrowed(b))
+    })(i)
 }
 
 pub fn parse_tls_extension_session_ticket(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -425,11 +431,13 @@ fn parse_tls_extension_key_share_old_content(
     i: &[u8],
     ext_len: u16,
 ) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), TlsExtension::KeyShareOld)(i)
+    map(take(ext_len), |b| {
+        TlsExtension::KeyShareOld(Cow::Borrowed(b))
+    })(i)
 }
 
 fn parse_tls_extension_key_share_content(i: &[u8], ext_len: u16) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), TlsExtension::KeyShare)(i)
+    map(take(ext_len), |b| TlsExtension::KeyShare(Cow::Borrowed(b)))(i)
 }
 
 pub fn parse_tls_extension_key_share(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -444,7 +452,9 @@ fn parse_tls_extension_pre_shared_key_content(
     i: &[u8],
     ext_len: u16,
 ) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), TlsExtension::PreSharedKey)(i)
+    map(take(ext_len), |b| {
+        TlsExtension::PreSharedKey(Cow::Borrowed(b))
+    })(i)
 }
 
 pub fn parse_tls_extension_pre_shared_key(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -506,7 +516,7 @@ pub fn parse_tls_extension_supported_versions(i: &[u8]) -> IResult<&[u8], TlsExt
 }
 
 fn parse_tls_extension_cookie_content(i: &[u8], ext_len: u16) -> IResult<&[u8], TlsExtension> {
-    map(take(ext_len), TlsExtension::Cookie)(i)
+    map(take(ext_len), |b| TlsExtension::Cookie(Cow::Borrowed(b)))(i)
 }
 
 pub fn parse_tls_extension_cookie(i: &[u8]) -> IResult<&[u8], TlsExtension> {
@@ -543,7 +553,9 @@ fn parse_tls_extension_npn_content(i: &[u8], ext_len: u16) -> IResult<&[u8], Tls
 
 /// Renegotiation Info, defined in [RFC5746]
 pub fn parse_tls_extension_renegotiation_info_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
-    map(length_data(be_u8), TlsExtension::RenegotiationInfo)(i)
+    map(length_data(be_u8), |b| {
+        TlsExtension::RenegotiationInfo(Cow::Borrowed(b))
+    })(i)
 }
 
 /// Encrypted Server Name, defined in [draft-ietf-tls-esni]
@@ -556,9 +568,9 @@ pub fn parse_tls_extension_encrypted_server_name(i: &[u8]) -> IResult<&[u8], Tls
     let esn = TlsExtension::EncryptedServerName {
         ciphersuite,
         group,
-        key_share,
-        record_digest,
-        encrypted_sni,
+        key_share: key_share.into(),
+        record_digest: record_digest.into(),
+        encrypted_sni: encrypted_sni.into(),
     };
     Ok((i, esn))
 }
@@ -567,8 +579,8 @@ fn parse_tls_oid_filter(i: &[u8]) -> IResult<&[u8], OidFilter> {
     let (i, cert_ext_oid) = length_data(be_u8)(i)?;
     let (i, cert_ext_val) = length_data(be_u16)(i)?;
     let filter = OidFilter {
-        cert_ext_oid,
-        cert_ext_val,
+        cert_ext_oid: cert_ext_oid.into(),
+        cert_ext_val: cert_ext_val.into(),
     };
     Ok((i, filter))
 }
@@ -595,7 +607,7 @@ pub fn parse_tls_extension_unknown(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, ext_data) = length_data(be_u16)(i)?;
     Ok((
         i,
-        TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data),
+        TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data.into()),
     ))
 }
 
@@ -604,7 +616,7 @@ pub fn parse_tls_client_hello_extension(i: &[u8]) -> IResult<&[u8], TlsExtension
     let (i, ext_type) = be_u16(i)?;
     let (i, ext_data) = length_data(be_u16)(i)?;
     if ext_type & 0x0f0f == 0x0a0a {
-        return Ok((i, TlsExtension::Grease(ext_type, ext_data)));
+        return Ok((i, TlsExtension::Grease(ext_type, ext_data.into())));
     }
     let ext_len = ext_data.len() as u16;
     let (_, ext) = match ext_type {
@@ -635,7 +647,7 @@ pub fn parse_tls_client_hello_extension(i: &[u8]) -> IResult<&[u8], TlsExtension
         0xffce => parse_tls_extension_encrypted_server_name(ext_data),
         _ => Ok((
             i,
-            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data),
+            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data.into()),
         )),
     }?;
     Ok((i, ext))
@@ -646,7 +658,7 @@ pub fn parse_tls_server_hello_extension(i: &[u8]) -> IResult<&[u8], TlsExtension
     let (i, ext_type) = be_u16(i)?;
     let (i, ext_data) = length_data(be_u16)(i)?;
     if ext_type & 0x0f0f == 0x0a0a {
-        return Ok((i, TlsExtension::Grease(ext_type, ext_data)));
+        return Ok((i, TlsExtension::Grease(ext_type, ext_data.into())));
     }
     let ext_len = ext_data.len() as u16;
     let (_, ext) = match ext_type {
@@ -671,7 +683,7 @@ pub fn parse_tls_server_hello_extension(i: &[u8]) -> IResult<&[u8], TlsExtension
         0xff01 => parse_tls_extension_renegotiation_info_content(ext_data),
         _ => Ok((
             i,
-            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data),
+            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data.into()),
         )),
     }?;
     Ok((i, ext))
@@ -682,7 +694,7 @@ pub fn parse_tls_extension(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, ext_type) = be_u16(i)?;
     let (i, ext_data) = length_data(be_u16)(i)?;
     if ext_type & 0x0f0f == 0x0a0a {
-        return Ok((i, TlsExtension::Grease(ext_type, ext_data)));
+        return Ok((i, TlsExtension::Grease(ext_type, ext_data.into())));
     }
     let ext_len = ext_data.len() as u16;
     let (_, ext) = match ext_type {
@@ -714,7 +726,7 @@ pub fn parse_tls_extension(i: &[u8]) -> IResult<&[u8], TlsExtension> {
         0xffce => parse_tls_extension_encrypted_server_name(ext_data),
         _ => Ok((
             i,
-            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data),
+            TlsExtension::Unknown(TlsExtensionType(ext_type), ext_data.into()),
         )),
     }?;
     Ok((i, ext))
