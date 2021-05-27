@@ -3,6 +3,7 @@ extern crate nom;
 extern crate tls_parser;
 
 mod tls_dh {
+    use std::borrow::Cow;
     use tls_parser::*;
 
     #[rustfmt::skip]
@@ -44,7 +45,9 @@ static ECDHE_PARAMS: &[u8] = &[
                 curve_type: ECCurveType::NamedGroup,
                 params_content: ECParametersContent::NamedGroup(NamedGroup::Secp521r1),
             },
-            public: ECPoint { point: point_data },
+            public: ECPoint {
+                point: Cow::Borrowed(point_data),
+            },
         };
         let expected2 = DigitallySigned {
             alg: Some(SignatureAndHashAlgorithm {

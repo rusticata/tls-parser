@@ -412,13 +412,13 @@ static SERVER_REPLY1: &[u8] = &[
         let bytes = &SERVER_REPLY1[64..3150];
         let chain = vec![
             RawCertificate {
-                data: &bytes[15..1171],
+                data: Cow::Borrowed(&bytes[15..1171]),
             },
             RawCertificate {
-                data: &bytes[1174..2186],
+                data: Cow::Borrowed(&bytes[1174..2186]),
             },
             RawCertificate {
-                data: &bytes[2189..3086],
+                data: Cow::Borrowed(&bytes[2189..3086]),
             },
         ];
         for cert in &chain {
@@ -449,7 +449,7 @@ static SERVER_REPLY1: &[u8] = &[
             },
             msg: vec![TlsMessage::Handshake(
                 TlsMessageHandshake::ServerKeyExchange(TlsServerKeyExchangeContents {
-                    parameters: &bytes[9..],
+                    parameters: Cow::Borrowed(&bytes[9..]),
                 }),
             )],
         };
@@ -467,7 +467,7 @@ static SERVER_REPLY1: &[u8] = &[
                 len: 4,
             },
             msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ServerDone(
-                empty,
+                Cow::default(),
             ))],
         };
         assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
@@ -504,7 +504,7 @@ static CLIENT_REPLY1: &[u8] = &[
             },
             msg: vec![TlsMessage::Handshake(
                 TlsMessageHandshake::ClientKeyExchange(TlsClientKeyExchangeContents::Unknown(
-                    &bytes[9..],
+                    Cow::Borrowed(&bytes[9..]),
                 )),
             )],
         };
@@ -654,7 +654,7 @@ static SERVER_CERTIFICATE_REQUEST_CA: &[u8] = &[
                         0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403,
                         0x0301, 0x0302, 0x0303, 0x0201, 0x0202, 0x0203,
                     ]),
-                    unparsed_ca: vec![ca1],
+                    unparsed_ca: vec![ca1.into()],
                 }),
             )],
         };
@@ -803,7 +803,7 @@ static SERVER_STATUS_RESPONSE: &[u8] = &[
     fn test_tls_message_status_response() {
         let empty = &b""[..];
         let bytes = SERVER_STATUS_RESPONSE;
-        let blob = &bytes[8..];
+        let blob = Cow::Borrowed(&bytes[8..]);
         let expected = vec![TlsMessage::Handshake(
             TlsMessageHandshake::CertificateStatus(TlsCertificateStatusContents {
                 status_type: 1,

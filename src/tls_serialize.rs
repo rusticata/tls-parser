@@ -236,7 +236,7 @@ where
         length_be_u24(tuple((
             // for ECDH, length is only 1 byte
             be_u8(m.point.len() as u8),
-            slice(m.point),
+            slice(&m.point),
         ))),
     ))
 }

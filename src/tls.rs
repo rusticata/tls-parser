@@ -280,7 +280,7 @@ impl<'a> TlsServerHelloContents<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TlsNewSessionTicketContent<'a> {
     pub ticket_lifetime_hint: u32,
-    pub ticket: &'a [u8],
+    pub ticket: Cow<'a, [u8]>,
 }
 
 /// A raw certificate, which should be a DER-encoded X.509 certificate.
@@ -288,7 +288,7 @@ pub struct TlsNewSessionTicketContent<'a> {
 /// See [RFC5280](https://tools.ietf.org/html/rfc5280) for X509v3 certificate format.
 #[derive(Clone, PartialEq)]
 pub struct RawCertificate<'a> {
-    pub data: &'a [u8],
+    pub data: Cow<'a, [u8]>,
 }
 
 /// The certificate chain, usually composed of the certificate, and all
@@ -307,7 +307,7 @@ pub struct TlsCertificateRequestContents<'a> {
     pub sig_hash_algs: Option<Vec<u16>>,
     /// A list of DER-encoded distinguished names. See
     /// [X.501](http://www.itu.int/rec/T-REC-X.501/en)
-    pub unparsed_ca: Vec<&'a [u8]>,
+    pub unparsed_ca: Vec<Cow<'a, [u8]>>,
 }
 
 /// Server key exchange parameters
@@ -316,7 +316,7 @@ pub struct TlsCertificateRequestContents<'a> {
 /// key exchange method.
 #[derive(Clone, PartialEq)]
 pub struct TlsServerKeyExchangeContents<'a> {
-    pub parameters: &'a [u8],
+    pub parameters: Cow<'a, [u8]>,
 }
 
 /// Client key exchange parameters
@@ -324,24 +324,24 @@ pub struct TlsServerKeyExchangeContents<'a> {
 /// Content depends on the selected key exchange method.
 #[derive(Clone, PartialEq)]
 pub enum TlsClientKeyExchangeContents<'a> {
-    Dh(&'a [u8]),
+    Dh(Cow<'a, [u8]>),
     Ecdh(ECPoint<'a>),
-    Unknown(&'a [u8]),
+    Unknown(Cow<'a, [u8]>),
 }
 
 /// Certificate status response, as defined in [RFC6066](https://tools.ietf.org/html/rfc6066) section 8
 #[derive(Clone, Debug, PartialEq)]
 pub struct TlsCertificateStatusContents<'a> {
     pub status_type: u8,
-    pub blob: &'a [u8],
+    pub blob: Cow<'a, [u8]>,
 }
 
 /// Next protocol response, defined in
 /// [draft-agl-tls-nextprotoneg-03](https://tools.ietf.org/html/draft-agl-tls-nextprotoneg-03)
 #[derive(Clone, Debug, PartialEq)]
 pub struct TlsNextProtocolContent<'a> {
-    pub selected_protocol: &'a [u8],
-    pub padding: &'a [u8],
+    pub selected_protocol: Cow<'a, [u8]>,
+    pub padding: Cow<'a, [u8]>,
 }
 
 /// Key update request (TLS 1.3)
@@ -368,10 +368,10 @@ pub enum TlsMessageHandshake<'a> {
     Certificate(TlsCertificateContents<'a>),
     ServerKeyExchange(TlsServerKeyExchangeContents<'a>),
     CertificateRequest(TlsCertificateRequestContents<'a>),
-    ServerDone(&'a [u8]),
-    CertificateVerify(&'a [u8]),
+    ServerDone(Cow<'a, [u8]>),
+    CertificateVerify(Cow<'a, [u8]>),
     ClientKeyExchange(TlsClientKeyExchangeContents<'a>),
-    Finished(&'a [u8]),
+    Finished(Cow<'a, [u8]>),
     CertificateStatus(TlsCertificateStatusContents<'a>),
     NextProtocol(TlsNextProtocolContent<'a>),
     KeyUpdate(u8),
@@ -495,8 +495,8 @@ pub(crate) fn parse_tls_versions(i: &[u8]) -> IResult<&[u8], Vec<TlsVersion>> {
 }
 
 fn parse_certs(i: &[u8]) -> IResult<&[u8], Vec<RawCertificate>> {
-    many0(complete(map(length_data(be_u24), |data| RawCertificate {
-        data,
+    many0(complete(map(length_data(be_u24), |b| RawCertificate {
+        data: Cow::Borrowed(b),
     })))(i)
 }
 
@@ -603,6 +603,7 @@ fn parse_tls_handshake_msg_newsessionticket(
     }
     let (i, ticket_lifetime_hint) = be_u32(i)?;
     let (i, ticket) = take(len - 4)(i)?;
+    let ticket = Cow::Borrowed(ticket);
     let content = TlsNewSessionTicketContent {
         ticket_lifetime_hint,
         ticket,
@@ -638,25 +639,32 @@ fn parse_tls_handshake_msg_serverkeyexchange(
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
     map(take(len), |ext| {
-        TlsMessageHandshake::ServerKeyExchange(TlsServerKeyExchangeContents { parameters: ext })
+        TlsMessageHandshake::ServerKeyExchange(TlsServerKeyExchangeContents {
+            parameters: Cow::Borrowed(ext),
+        })
     })(i)
 }
 
 fn parse_tls_handshake_msg_serverdone(i: &[u8], len: usize) -> IResult<&[u8], TlsMessageHandshake> {
-    map(take(len), TlsMessageHandshake::ServerDone)(i)
+    let (i, b) = take(len)(i)?;
+    Ok((i, TlsMessageHandshake::ServerDone(Cow::Borrowed(b))))
 }
 
 fn parse_tls_handshake_msg_certificateverify(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
-    map(take(len), TlsMessageHandshake::CertificateVerify)(i)
+    let (i, b) = take(len)(i)?;
+    Ok((i, TlsMessageHandshake::CertificateVerify(Cow::Borrowed(b))))
 }
 
 pub(crate) fn parse_tls_clientkeyexchange(
     len: usize,
 ) -> impl FnMut(&[u8]) -> IResult<&[u8], TlsClientKeyExchangeContents> {
-    move |i| map(take(len), TlsClientKeyExchangeContents::Unknown)(i)
+    move |i| {
+        let (r, b) = take(len)(i)?;
+        Ok((r, TlsClientKeyExchangeContents::Unknown(Cow::Borrowed(b))))
+    }
 }
 
 fn parse_tls_handshake_msg_clientkeyexchange(
@@ -672,8 +680,10 @@ fn parse_tls_handshake_msg_clientkeyexchange(
 fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     let (i, cert_types) = length_count(be_u8, be_u8)(i)?;
     let (i, ca_len) = be_u16(i)?;
-    let (i, unparsed_ca) =
-        map_parser(take(ca_len as usize), many0(complete(length_data(be_u16))))(i)?;
+    let (i, unparsed_ca) = map_parser(
+        take(ca_len as usize),
+        many0(map(complete(length_data(be_u16)), Cow::Borrowed)),
+    )(i)?;
     let content = TlsCertificateRequestContents {
         cert_types,
         // sig_hash_algs: Some(sig_hash_algs),
@@ -689,8 +699,10 @@ fn parse_certrequest_full(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     let (i, sig_hash_algs) =
         map_parser(take(sig_hash_algs_len as usize), many0(complete(be_u16)))(i)?;
     let (i, ca_len) = be_u16(i)?;
-    let (i, unparsed_ca) =
-        map_parser(take(ca_len as usize), many0(complete(length_data(be_u16))))(i)?;
+    let (i, unparsed_ca) = map_parser(
+        take(ca_len as usize),
+        many0(map(complete(length_data(be_u16)), Cow::Borrowed)),
+    )(i)?;
     let content = TlsCertificateRequestContents {
         cert_types,
         sig_hash_algs: Some(sig_hash_algs),
@@ -708,7 +720,8 @@ fn parse_tls_handshake_msg_certificaterequest(i: &[u8]) -> IResult<&[u8], TlsMes
 }
 
 fn parse_tls_handshake_msg_finished(i: &[u8], len: usize) -> IResult<&[u8], TlsMessageHandshake> {
-    map(take(len), TlsMessageHandshake::Finished)(i)
+    let (i, b) = take(len)(i)?;
+    Ok((i, TlsMessageHandshake::Finished(Cow::Borrowed(b))))
 }
 
 // Defined in [RFC6066]
@@ -717,6 +730,7 @@ fn parse_tls_handshake_msg_finished(i: &[u8], len: usize) -> IResult<&[u8], TlsM
 fn parse_tls_handshake_msg_certificatestatus(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     let (i, status_type) = be_u8(i)?;
     let (i, blob) = length_data(be_u24)(i)?;
+    let blob = Cow::Borrowed(blob);
     let content = TlsCertificateStatusContents { status_type, blob };
     Ok((i, TlsMessageHandshake::CertificateStatus(content)))
 }
@@ -728,8 +742,8 @@ fn parse_tls_handshake_msg_next_protocol(i: &[u8]) -> IResult<&[u8], TlsMessageH
     let (i, selected_protocol) = length_data(be_u8)(i)?;
     let (i, padding) = length_data(be_u8)(i)?;
     let next_proto = TlsNextProtocolContent {
-        selected_protocol,
-        padding,
+        selected_protocol: Cow::Borrowed(selected_protocol),
+        padding: Cow::Borrowed(padding),
     };
     Ok((i, TlsMessageHandshake::NextProtocol(next_proto)))
 }

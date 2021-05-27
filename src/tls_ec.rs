@@ -1,10 +1,12 @@
 use derive_more::{From, Into};
+use nom::combinator::map;
 use nom::error::{make_error, ErrorKind};
 use nom::multi::length_data;
 use nom::number::streaming::be_u8;
 use nom::{Err, IResult};
 use nom_derive::*;
 use rusticata_macros::newtype_enum;
+use std::borrow::Cow;
 
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
 /// [IANA Supported Groups
@@ -101,10 +103,10 @@ impl NamedGroup {
 /// a and b specify the coefficients of the curve
 #[derive(Debug, PartialEq, Nom)]
 pub struct ECCurve<'a> {
-    #[nom(Parse = "length_data(be_u8)")]
-    pub a: &'a [u8],
-    #[nom(Parse = "length_data(be_u8)")]
-    pub b: &'a [u8],
+    #[nom(Parse = "length_data_cow_u8")]
+    pub a: Cow<'a, [u8]>,
+    #[nom(Parse = "length_data_cow_u8")]
+    pub b: Cow<'a, [u8]>,
 }
 
 /// Elliptic curve types, as defined in the
@@ -124,22 +126,22 @@ impl display ECCurveType {
 /// EC Point
 #[derive(Clone, Debug, PartialEq, Nom)]
 pub struct ECPoint<'a> {
-    #[nom(Parse = "length_data(be_u8)")]
-    pub point: &'a [u8],
+    #[nom(Parse = "length_data_cow_u8")]
+    pub point: Cow<'a, [u8]>,
 }
 
 /// Elliptic curve parameters, conveyed verbosely as a prime field, as
 /// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
 #[derive(Debug, PartialEq, Nom)]
 pub struct ExplicitPrimeContent<'a> {
-    #[nom(Parse = "length_data(be_u8)")]
-    pub prime_p: &'a [u8],
+    #[nom(Parse = "length_data_cow_u8")]
+    pub prime_p: Cow<'a, [u8]>,
     pub curve: ECCurve<'a>,
     pub base: ECPoint<'a>,
-    #[nom(Parse = "length_data(be_u8)")]
-    pub order: &'a [u8],
-    #[nom(Parse = "length_data(be_u8)")]
-    pub cofactor: &'a [u8],
+    #[nom(Parse = "length_data_cow_u8")]
+    pub order: Cow<'a, [u8]>,
+    #[nom(Parse = "length_data_cow_u8")]
+    pub cofactor: Cow<'a, [u8]>,
 }
 
 /// Elliptic curve parameters content (depending on EC type)
@@ -197,4 +199,8 @@ pub fn parse_ec_parameters(i: &[u8]) -> IResult<&[u8], ECParameters> {
 #[inline]
 pub fn parse_ecdh_params(i: &[u8]) -> IResult<&[u8], ServerECDHParams> {
     ServerECDHParams::parse(i)
+}
+
+fn length_data_cow_u8(i: &[u8]) -> IResult<&[u8], Cow<'_, [u8]>> {
+    map(length_data(be_u8), Cow::Borrowed)(i)
 }

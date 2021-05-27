@@ -60,7 +60,7 @@ impl<'a> fmt::Debug for TlsHelloRetryRequestContents<'a> {
 impl<'a> fmt::Debug for RawCertificate<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("RawCertificate")
-            .field("data", &HexSlice(self.data))
+            .field("data", &HexSlice(&self.data))
             .finish()
     }
 }
@@ -68,7 +68,7 @@ impl<'a> fmt::Debug for RawCertificate<'a> {
 impl<'a> fmt::Debug for TlsServerKeyExchangeContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsServerKeyExchangeContents")
-            .field("parameters", &HexSlice(self.parameters))
+            .field("parameters", &HexSlice(&self.parameters))
             .finish()
     }
 }
