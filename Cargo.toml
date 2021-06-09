@@ -39,7 +39,7 @@ unstable = []
 cookie-factory = { version="0.3", optional=true }
 enum_primitive = "^0.1"
 nom = "6.0"
-nom-derive = "0.8"
+nom-derive = "0.9"
 phf = "0.8"
 rusticata-macros = "3.0"
 
