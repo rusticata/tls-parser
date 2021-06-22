@@ -1,12 +1,13 @@
 //! Datagram Transport Layer Security Version 1.2 (RFC 6347)
 
-use crate::tls::*;
-use crate::TlsMessageAlert;
 use nom::bytes::streaming::take;
 use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
 use nom::multi::{length_data, many1};
 use nom::number::streaming::{be_u16, be_u24, be_u64, be_u8};
+
+use crate::tls::*;
+use crate::TlsMessageAlert;
 
 /// DTLS Plaintext record header
 #[derive(Debug, PartialEq)]
@@ -48,6 +49,32 @@ pub struct DTLSClientHello<'a> {
     /// A list of compression methods supported by client
     pub comp: Vec<TlsCompressionID>,
     pub ext: Option<&'a [u8]>,
+}
+
+impl<'a> ClientHello<'a> for DTLSClientHello<'a> {
+    fn version(&self) -> TlsVersion {
+        self.version
+    }
+
+    fn rand_data(&self) -> &'a [u8] {
+        self.random
+    }
+
+    fn session_id(&self) -> Option<&'a [u8]> {
+        self.session_id
+    }
+
+    fn ciphers(&self) -> &Vec<TlsCipherSuiteID> {
+        &self.ciphers
+    }
+
+    fn comp(&self) -> &Vec<TlsCompressionID> {
+        &self.comp
+    }
+
+    fn ext(&self) -> Option<&'a [u8]> {
+        self.ext
+    }
 }
 
 #[derive(Debug, PartialEq)]

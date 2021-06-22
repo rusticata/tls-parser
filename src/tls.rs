@@ -216,6 +216,22 @@ impl fmt::LowerHex for TlsCipherSuiteID {
     }
 }
 
+/// A trait that both TLS & DTLS satisfy
+pub trait ClientHello<'a> {
+    /// TLS version of message
+    fn version(&self) -> TlsVersion;
+    fn rand_data(&self) -> &'a [u8];
+    fn session_id(&self) -> Option<&'a [u8]>;
+    /// A list of ciphers supported by client
+    fn ciphers(&self) -> &Vec<TlsCipherSuiteID>;
+    fn cipher_suites(&self) -> Vec<Option<&'static TlsCipherSuite>>{
+        self.ciphers().iter().map(|&x| x.get_ciphersuite()).collect()
+    }
+    /// A list of compression methods supported by client
+    fn comp(&self)-> &Vec<TlsCompressionID>;
+    fn ext(&self)-> Option<&'a [u8]>;
+}
+
 /// TLS Client Hello (from TLS 1.0 to TLS 1.2)
 ///
 /// Some fields are unparsed (for performance reasons), for ex to parse `ext`,
@@ -262,6 +278,32 @@ impl<'a> TlsClientHelloContents<'a> {
 
     pub fn get_ciphers(&self) -> Vec<Option<&'static TlsCipherSuite>> {
         self.ciphers.iter().map(|&x| x.get_ciphersuite()).collect()
+    }
+}
+
+impl<'a> ClientHello<'a> for TlsClientHelloContents<'a> {
+    fn version(&self) -> TlsVersion {
+        self.version
+    }
+
+    fn rand_data(&self) -> &'a [u8] {
+        self.rand_data
+    }
+
+    fn session_id(&self) -> Option<&'a [u8]> {
+        self.session_id
+    }
+
+    fn ciphers(&self) -> &Vec<TlsCipherSuiteID> {
+        &self.ciphers
+    }
+
+    fn comp(&self) -> &Vec<TlsCompressionID> {
+        &self.comp
+    }
+
+    fn ext(&self) -> Option<&'a [u8]> {
+        self.ext
     }
 }
 
