@@ -132,6 +132,7 @@
 
 pub extern crate rusticata_macros;
 
+mod certificate_transparency;
 mod dtls;
 mod tls;
 mod tls_alert;
@@ -143,6 +144,7 @@ mod tls_extensions;
 mod tls_sign_hash;
 mod tls_states;
 
+pub use certificate_transparency::*;
 pub use dtls::*;
 pub use tls::*;
 pub use tls_alert::*;
