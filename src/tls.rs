@@ -224,12 +224,15 @@ pub trait ClientHello<'a> {
     fn session_id(&self) -> Option<&'a [u8]>;
     /// A list of ciphers supported by client
     fn ciphers(&self) -> &Vec<TlsCipherSuiteID>;
-    fn cipher_suites(&self) -> Vec<Option<&'static TlsCipherSuite>>{
-        self.ciphers().iter().map(|&x| x.get_ciphersuite()).collect()
+    fn cipher_suites(&self) -> Vec<Option<&'static TlsCipherSuite>> {
+        self.ciphers()
+            .iter()
+            .map(|&x| x.get_ciphersuite())
+            .collect()
     }
     /// A list of compression methods supported by client
-    fn comp(&self)-> &Vec<TlsCompressionID>;
-    fn ext(&self)-> Option<&'a [u8]>;
+    fn comp(&self) -> &Vec<TlsCompressionID>;
+    fn ext(&self) -> Option<&'a [u8]>;
 }
 
 /// TLS Client Hello (from TLS 1.0 to TLS 1.2)
