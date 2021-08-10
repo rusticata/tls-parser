@@ -204,7 +204,7 @@ impl fmt::Display for TlsCipherSuiteID {
 impl fmt::Debug for TlsCipherSuiteID {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match TlsCipherSuite::from_id(self.0) {
-            Some(ref c) => write!(f, "0x{:04x}({})", self.0, c.name),
+            Some(c) => write!(f, "0x{:04x}({})", self.0, c.name),
             None => write!(f, "0x{:04x}(Unknown cipher)", self.0),
         }
     }
