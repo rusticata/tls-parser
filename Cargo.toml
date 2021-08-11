@@ -48,7 +48,7 @@ hex-literal = "0.3"
 pretty_assertions = "0.7"
 
 [build-dependencies]
-phf_codegen = "0.8"
+phf_codegen = "0.10"
 
 [badges]
 travis-ci = { repository = "rusticata/tls-parser" }
