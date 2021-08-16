@@ -4,24 +4,7 @@
 [![Apache License 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE-APACHE)
 [![Crates.io Version](https://img.shields.io/crates/v/tls-parser.svg)](https://crates.io/crates/tls-parser)
 [![Github CI](https://github.com/rusticata/der-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/der-parser/actions)
-[![Minimum rustc version](https://img.shields.io/badge/rustc-1.44.0+-lightgray.svg)](#rust-version-requirements)
-
-
-## Overview
-
-tls-parser is a parser for the TLS protocol. The parser supports protocols SSLv3 to TLSv1.3.
-
-The parser is based on [nom](https://github.com/rusticata/tls-parser) (see nom's documentation for return and
-error types).
-
-The parser is published on `crates.io`.
-To use it, add the following to your `Cargo.toml` file:
-```
-[dependencies]
-tls-parser = "0.10.0"
-```
-
-<!-- cargo-sync-readme start -->
+[![Minimum rustc version](https://img.shields.io/badge/rustc-1.46.0+-lightgray.svg)](#rust-version-requirements)
 
 # TLS Parser
 
@@ -36,6 +19,10 @@ need additional code to handle fragmentation, or to fully inspect messages.
 Parsing some TLS messages requires to know the previously selected parameters.
 See [the rusticata TLS parser](https://github.com/rusticata/rusticata/blob/master/src/tls.rs)
 for a full example.
+
+It is written in pure Rust, fast, and makes extensive use of zero-copy. A lot of care is taken
+to ensure security and safety of this crate, including design (recursion limit, defensive
+programming), tests, and fuzzing. It also aims to be panic-free.
 
 The code is available on [Github](https://github.com/rusticata/tls-parser)
 and is part of the [Rusticata](https://github.com/rusticata) project.
@@ -137,7 +124,6 @@ When parsing messages, if a field is an integer corresponding to an enum of know
 it is not parsed as an enum type, but as an integer. While this complicates accesses,
 it allows to read invalid values and continue parsing (for an IDS, it's better to read
 values than to get a generic parse error).
-
 <!-- cargo-sync-readme end -->
 
 ## Changes
