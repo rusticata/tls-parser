@@ -147,10 +147,10 @@ mod tests {
 
     #[test]
     fn test_cipher_filter() {
-        let ecdhe_ciphers: Vec<&TlsCipherSuite> = CIPHERS
+        let ecdhe_ciphers_count = CIPHERS
             .values()
             .filter(|c| c.kx == TlsCipherKx::Ecdhe)
-            .collect();
-        assert!(ecdhe_ciphers.len() > 20);
+            .count();
+        assert!(ecdhe_ciphers_count > 20);
     }
 }
