@@ -79,7 +79,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
                 },
             ))],
         };
-        let ires = parse_tls_plaintext(&bytes);
+        let ires = parse_tls_plaintext(bytes);
         assert_eq!(ires, Ok((empty, expected_ch)));
     }
 
@@ -103,7 +103,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
             )],
         };
         let expected_ext = vec![TlsExtension::KeyShareOld(&bytes[51..])];
-        let ires = parse_tls_plaintext(&bytes);
+        let ires = parse_tls_plaintext(bytes);
         assert_eq!(ires, Ok((empty, expected_sh)));
         let res = ires.unwrap();
 

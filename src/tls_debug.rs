@@ -78,11 +78,9 @@ impl<'a> fmt::Debug for TlsServerKeyExchangeContents<'a> {
 impl<'a> fmt::Debug for TlsClientKeyExchangeContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TlsClientKeyExchangeContents::Dh(ref p) => {
-                fmt.write_fmt(format_args!("{:?}", HexSlice(p)))
-            }
+            TlsClientKeyExchangeContents::Dh(p) => fmt.write_fmt(format_args!("{:?}", HexSlice(p))),
             TlsClientKeyExchangeContents::Ecdh(ref p) => fmt.write_fmt(format_args!("{:?}", p)),
-            TlsClientKeyExchangeContents::Unknown(ref p) => {
+            TlsClientKeyExchangeContents::Unknown(p) => {
                 fmt.write_fmt(format_args!("{:?}", HexSlice(p)))
             }
         }

@@ -401,7 +401,7 @@ static SERVER_REPLY1: &[u8] = &[
                 },
             ))],
         };
-        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
     }
 
     #[test]
@@ -432,7 +432,7 @@ static SERVER_REPLY1: &[u8] = &[
                 TlsCertificateContents { cert_chain: chain },
             ))],
         };
-        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
     }
 
     #[test]
@@ -451,7 +451,7 @@ static SERVER_REPLY1: &[u8] = &[
                 }),
             )],
         };
-        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
     }
 
     #[test]
@@ -468,7 +468,7 @@ static SERVER_REPLY1: &[u8] = &[
                 empty,
             ))],
         };
-        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
     }
 
     // client response, composed of 3 records:
@@ -506,7 +506,7 @@ static CLIENT_REPLY1: &[u8] = &[
                 )),
             )],
         };
-        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
     }
 
     #[test]
@@ -521,7 +521,7 @@ static CLIENT_REPLY1: &[u8] = &[
             },
             msg: vec![TlsMessage::ChangeCipherSpec],
         };
-        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
     }
 
     #[test]
@@ -536,7 +536,7 @@ static CLIENT_REPLY1: &[u8] = &[
             },
             msg: TlsEncryptedContent { blob: &bytes[5..] },
         };
-        assert_eq!(parse_tls_encrypted(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_encrypted(bytes), Ok((empty, expected)));
     }
 
     #[rustfmt::skip]
@@ -555,7 +555,7 @@ static SERVER_HELLO1: &[u8] = &[
         let bytes = v.as_mut_slice();
         bytes[4] = 0xff; // make record incomplete (longer than data)
         let expected = Err(Err::Incomplete(Needed::new(196)));
-        let res = parse_tls_plaintext(&bytes);
+        let res = parse_tls_plaintext(bytes);
         assert_eq!(res, expected);
     }
 
@@ -564,7 +564,7 @@ static SERVER_HELLO1: &[u8] = &[
         let mut v = SERVER_HELLO1.to_vec();
         let bytes = v.as_mut_slice();
         bytes[4] = 0x00; // make record incomplete (shorter than data)
-        let res = parse_tls_plaintext(&bytes);
+        let res = parse_tls_plaintext(bytes);
         assert!(res.is_err());
     }
 
@@ -573,7 +573,7 @@ static SERVER_HELLO1: &[u8] = &[
         let mut v = SERVER_HELLO1.to_vec();
         let bytes = v.as_mut_slice();
         bytes[8] = 0xff; // create message larger than record
-        let res = parse_tls_plaintext(&bytes);
+        let res = parse_tls_plaintext(bytes);
         assert!(res.is_err());
     }
 
@@ -582,7 +582,7 @@ static SERVER_HELLO1: &[u8] = &[
         let mut v = SERVER_HELLO1.to_vec();
         let bytes = v.as_mut_slice();
         bytes[8] = 0x01; // create message shorter than record
-        let res = parse_tls_plaintext(&bytes);
+        let res = parse_tls_plaintext(bytes);
         assert!(res.is_err());
     }
 
@@ -615,7 +615,7 @@ static SERVER_CERTIFICATE_REQUEST_NOCA: &[u8] = &[
                 }),
             )],
         };
-        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
     }
 
     #[rustfmt::skip]
@@ -654,7 +654,7 @@ static SERVER_CERTIFICATE_REQUEST_CA: &[u8] = &[
                 }),
             )],
         };
-        assert_eq!(parse_tls_plaintext(&bytes), Ok((empty, expected)));
+        assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
     }
 
     #[rustfmt::skip]
@@ -811,7 +811,7 @@ static SERVER_STATUS_RESPONSE: &[u8] = &[
             version: TlsVersion(0),
             len: 0x0,
         };
-        let res = parse_tls_record_with_header(&bytes, &hdr);
+        let res = parse_tls_record_with_header(bytes, &hdr);
         assert_eq!(res, Ok((empty, expected)));
     }
 } // mod tls_handshake

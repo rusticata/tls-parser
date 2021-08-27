@@ -245,8 +245,8 @@ where
     W: Write + 'a,
 {
     move |out| match m {
-        TlsClientKeyExchangeContents::Unknown(ref b) => gen_tls_clientkeyexchange_unknown(b)(out),
-        TlsClientKeyExchangeContents::Dh(ref b) => gen_tls_clientkeyexchange_dh(b)(out),
+        TlsClientKeyExchangeContents::Unknown(b) => gen_tls_clientkeyexchange_unknown(b)(out),
+        TlsClientKeyExchangeContents::Dh(b) => gen_tls_clientkeyexchange_dh(b)(out),
         TlsClientKeyExchangeContents::Ecdh(ref b) => gen_tls_clientkeyexchange_ecdh(b)(out),
     }
 }
@@ -281,7 +281,7 @@ where
         TlsMessageHandshake::ServerHello(ref m) => gen_tls_serverhello(m)(out),
         TlsMessageHandshake::ServerHelloV13Draft18(ref m) => gen_tls_serverhellodraft18(m)(out),
         TlsMessageHandshake::ClientKeyExchange(ref m) => gen_tls_clientkeyexchange(m)(out),
-        TlsMessageHandshake::Finished(ref m) => gen_tls_finished(m)(out),
+        TlsMessageHandshake::Finished(m) => gen_tls_finished(m)(out),
         _ => Err(GenError::NotYetImplemented),
     }
 }

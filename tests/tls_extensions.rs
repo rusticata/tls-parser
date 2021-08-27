@@ -35,7 +35,7 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
                 TlsExtension::SNI(vec![(SNIType::HostName, b"www.google.com")]),
                 TlsExtension::EcPointFormats(ec_point_formats),
                 TlsExtension::EllipticCurves(ecc),
-                TlsExtension::SessionTicket(&empty),
+                TlsExtension::SessionTicket(empty),
                 TlsExtension::SignatureAlgorithms(vec![
                     0x0601, 0x0602, 0x0603, 0x0501, 0x0502, 0x0503, 0x0401, 0x0402, 0x0403, 0x0301,
                     0x0302, 0x0303, 0x0201, 0x0202, 0x0203,
