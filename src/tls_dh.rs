@@ -1,10 +1,10 @@
 use nom::multi::length_data;
 use nom::number::streaming::be_u16;
 use nom::IResult;
-use nom_derive::Nom;
+use nom_derive::*;
 
 /// Diffie-Hellman parameters, defined in [RFC5246] section 7.4.3
-#[derive(PartialEq, Nom)]
+#[derive(PartialEq, NomBE)]
 pub struct ServerDHParams<'a> {
     /// The prime modulus used for the Diffie-Hellman operation.
     #[nom(Parse = "length_data(be_u16)")]

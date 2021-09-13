@@ -5,6 +5,7 @@ use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
 use nom::multi::{length_data, many1};
 use nom::number::streaming::{be_u16, be_u24, be_u64, be_u8};
+use nom_derive::Parse;
 
 use crate::tls::*;
 use crate::TlsMessageAlert;

@@ -28,7 +28,7 @@ pub const MAX_RECORD_LEN: u16 = 1 << 14;
 /// Handshake types are defined in [RFC5246](https://tools.ietf.org/html/rfc5246) and
 /// the [IANA HandshakeType
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-7)
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct TlsHandshakeType(pub u8);
 
 newtype_enum! {
@@ -66,7 +66,7 @@ impl From<TlsHandshakeType> for u8 {
 ///
 /// Only the TLS version defined in the TLS message header is meaningful, the
 /// version defined in the record should be ignored or set to TLS 1.0
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct TlsVersion(pub u16);
 
 newtype_enum! {
@@ -103,7 +103,7 @@ impl fmt::LowerHex for TlsVersion {
 }
 
 /// Heartbeat type, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520) section 3
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct TlsHeartbeatMessageType(pub u8);
 
 newtype_enum! {
@@ -120,7 +120,7 @@ impl From<TlsHeartbeatMessageType> for u8 {
 }
 
 /// Content type, as defined in IANA TLS ContentType registry
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct TlsRecordType(pub u8);
 
 newtype_enum! {
@@ -139,7 +139,7 @@ impl From<TlsRecordType> for u8 {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct TlsCompressionID(pub u8);
 
 newtype_enum! {
@@ -167,7 +167,7 @@ impl AsRef<u8> for TlsCompressionID {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct TlsCipherSuiteID(pub u16);
 
 impl TlsCipherSuiteID {
@@ -494,7 +494,7 @@ pub struct TlsMessageHeartbeat<'a> {
 }
 
 /// TLS record header
-#[derive(Clone, Copy, PartialEq, Nom)]
+#[derive(Clone, Copy, PartialEq, NomBE)]
 pub struct TlsRecordHeader {
     pub record_type: TlsRecordType,
     pub version: TlsVersion,

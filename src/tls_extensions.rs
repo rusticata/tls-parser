@@ -12,7 +12,7 @@ use nom::error::{make_error, ErrorKind};
 use nom::multi::{length_data, many0};
 use nom::number::streaming::{be_u16, be_u32, be_u8};
 use nom::{Err, IResult};
-use nom_derive::*;
+use nom_derive::{NomBE, Parse};
 use rusticata_macros::newtype_enum;
 use std::convert::From;
 
@@ -23,7 +23,7 @@ use crate::tls_ec::{parse_named_groups, NamedGroup};
 /// defined in the [IANA Transport Layer Security (TLS)
 /// Extensions](http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml)
 /// registry
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, NomBE)]
 pub struct TlsExtensionType(pub u16);
 
 newtype_enum! {
@@ -181,7 +181,7 @@ pub struct KeyShareEntry<'a> {
     pub kx: &'a [u8],      // Key Exchange Data
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, NomBE)]
 pub struct PskKeyExchangeMode(pub u8);
 
 newtype_enum! {
@@ -191,7 +191,7 @@ impl PskKeyExchangeMode {
 }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, NomBE)]
 pub struct SNIType(pub u8);
 
 newtype_enum! {
@@ -200,7 +200,7 @@ impl display SNIType {
 }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct CertificateStatusType(pub u8);
 
 newtype_enum! {

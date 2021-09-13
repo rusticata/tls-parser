@@ -38,10 +38,10 @@ unstable = []
 [dependencies]
 cookie-factory = { version="0.3", optional=true }
 enum_primitive = "^0.1"
-nom = "6.0"
-nom-derive = "0.8"
+nom = "7.0"
+nom-derive = "0.10"
 phf = "0.10"
-rusticata-macros = "3.0"
+rusticata-macros = "4.0"
 
 [dev-dependencies]
 hex-literal = "0.3"

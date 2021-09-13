@@ -8,7 +8,7 @@ use rusticata_macros::newtype_enum;
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
 /// [IANA Supported Groups
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8)
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct NamedGroup(pub u16);
 
 newtype_enum! {
@@ -98,7 +98,7 @@ impl NamedGroup {
 /// Elliptic curve
 ///
 /// a and b specify the coefficients of the curve
-#[derive(Debug, PartialEq, Nom)]
+#[derive(Debug, PartialEq, NomBE)]
 pub struct ECCurve<'a> {
     #[nom(Parse = "length_data(be_u8)")]
     pub a: &'a [u8],
@@ -109,7 +109,7 @@ pub struct ECCurve<'a> {
 /// Elliptic curve types, as defined in the
 /// [IANA EC Curve Type Registry
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-10)
-#[derive(Clone, Copy, PartialEq, Eq, Nom)]
+#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
 pub struct ECCurveType(pub u8);
 
 newtype_enum! {
@@ -121,7 +121,7 @@ impl display ECCurveType {
 }
 
 /// EC Point
-#[derive(Clone, Debug, PartialEq, Nom)]
+#[derive(Clone, Debug, PartialEq, NomBE)]
 pub struct ECPoint<'a> {
     #[nom(Parse = "length_data(be_u8)")]
     pub point: &'a [u8],
@@ -129,7 +129,7 @@ pub struct ECPoint<'a> {
 
 /// Elliptic curve parameters, conveyed verbosely as a prime field, as
 /// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
-#[derive(Debug, PartialEq, Nom)]
+#[derive(Debug, PartialEq, NomBE)]
 pub struct ExplicitPrimeContent<'a> {
     #[nom(Parse = "length_data(be_u8)")]
     pub prime_p: &'a [u8],
@@ -156,7 +156,7 @@ pub enum ECParametersContent<'a> {
 
 /// Elliptic curve parameters,
 /// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
-#[derive(PartialEq, Nom)]
+#[derive(PartialEq, NomBE)]
 pub struct ECParameters<'a> {
     /// Should match a [ECCurveType](enum.ECCurveType.html) value
     pub curve_type: ECCurveType,
@@ -166,7 +166,7 @@ pub struct ECParameters<'a> {
 
 /// ECDH parameters
 /// defined in [RFC4492](https://tools.ietf.org/html/rfc4492) section 5.4
-#[derive(Debug, PartialEq, Nom)]
+#[derive(Debug, PartialEq, NomBE)]
 pub struct ServerECDHParams<'a> {
     pub curve_params: ECParameters<'a>,
     pub public: ECPoint<'a>,
