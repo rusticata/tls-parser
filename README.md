@@ -125,6 +125,19 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.11.0
+
+- Upgrade to nom 7
+- Add `ClientHello` trait for common CH attributes
+- Get extensions in DTLS `ClientHello`
+- Add example/helper program to list/query ciphersuite information
+- Add pseudo-entries for `TLS_EMPTY_RENEGOTIATION_INFO_SCSV` and `TLS_FALLBACK_SCSV` (#16)
+- Update ciphersuites file
+- Added parsing for SignedCertificateTimestamp list
+- Re-export nom
+
+Thanks: @JackLiar, @xonatius
+
 ### 0.10.0
 
 - Upgrade to nom 6
