@@ -185,9 +185,10 @@ out = open(sys.argv[1], 'w')
 for value, desc, rfcs in ciphers:
     # filter special values
     full_desc = desc
-    if desc == "TLS_EMPTY_RENEGOTIATION_INFO_SCSV":
-        continue
-    elif desc == "TLS_FALLBACK_SCSV":
+    if desc == "TLS_EMPTY_RENEGOTIATION_INFO_SCSV" or desc == "TLS_FALLBACK_SCSV":
+        out.write("%s:%s:NULL:NULL:NULL::0:NULL:0:NULL:0:%s:0:0:0\n" %
+                (value,desc,rfcs,)
+                )
         continue
     elif desc.startswith("TLS_SM4"):
         # special case: draft-yang-tls-tls13-sm-suites-03
