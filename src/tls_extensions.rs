@@ -6,6 +6,10 @@
 //! - [RFC7366](https://tools.ietf.org/html/rfc7366)
 //! - [RFC7627](https://tools.ietf.org/html/rfc7627)
 
+use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
+use crate::tls_ec::{parse_named_groups, NamedGroup};
+use alloc::{vec, vec::Vec};
+use core::convert::From;
 use nom::bytes::streaming::{tag, take};
 use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
@@ -14,10 +18,6 @@ use nom::number::streaming::{be_u16, be_u32, be_u8};
 use nom::{Err, IResult};
 use nom_derive::{NomBE, Parse};
 use rusticata_macros::newtype_enum;
-use std::convert::From;
-
-use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
-use crate::tls_ec::{parse_named_groups, NamedGroup};
 
 /// TLS extension types,
 /// defined in the [IANA Transport Layer Security (TLS)

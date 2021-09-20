@@ -132,6 +132,13 @@
         /*unused_import_braces,*/ unused_qualifications)]
 #![forbid(unsafe_code)]
 #![allow(clippy::upper_case_acronyms)]
+#![no_std]
+
+#[cfg(any(test, feature = "std"))]
+#[macro_use]
+extern crate std;
+
+extern crate alloc;
 
 mod certificate_transparency;
 mod dtls;
@@ -156,7 +163,10 @@ pub use tls_extensions::*;
 pub use tls_sign_hash::*;
 pub use tls_states::*;
 
-#[cfg(feature = "serialize")]
+#[cfg(all(feature = "serialize", not(feature = "std")))]
+compile_error!("features `serialize` cannot be enable when using `no_std`");
+
+#[cfg(all(feature = "serialize", feature = "std"))]
 mod tls_serialize;
 #[cfg(feature = "serialize")]
 pub use tls_serialize::*;

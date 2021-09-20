@@ -1,6 +1,7 @@
 use crate::tls::*;
 use crate::tls_ec::{ECPoint, NamedGroup};
 use crate::tls_extensions::{SNIType, TlsExtension, TlsExtensionType};
+use alloc::vec::Vec;
 use cookie_factory::bytes::{be_u16, be_u24, be_u32, be_u8};
 use cookie_factory::combinator::slice;
 use cookie_factory::multi::{all, many_ref};

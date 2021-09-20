@@ -1,7 +1,8 @@
 ///!
 ///! Certificate Trasparency structures are defined in
 ///! [RFC6962](https://datatracker.ietf.org/doc/html/rfc6962).
-use std::convert::TryInto;
+use alloc::vec::Vec;
+use core::convert::TryInto;
 
 use nom::{
     bytes::streaming::take,

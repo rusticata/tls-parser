@@ -1,6 +1,10 @@
 //! # TLS parser
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
 
+use alloc::{vec, vec::Vec};
+use core::convert::AsRef;
+use core::fmt;
+use core::ops::Deref;
 use nom::branch::alt;
 use nom::bytes::streaming::take;
 use nom::combinator::{complete, cond, map, map_parser, opt, verify};
@@ -13,10 +17,6 @@ use rusticata_macros::newtype_enum;
 use crate::tls_alert::*;
 use crate::tls_ciphers::*;
 use crate::tls_ec::ECPoint;
-
-use std::convert::AsRef;
-use std::fmt;
-use std::ops::Deref;
 
 pub use nom::{Err, IResult};
 

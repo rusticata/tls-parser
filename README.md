@@ -135,6 +135,7 @@ values than to get a generic parse error).
 - Update ciphersuites file
 - Added parsing for SignedCertificateTimestamp list
 - Re-export nom
+- Add support for `no_std`
 
 Thanks: @JackLiar, @xonatius
 

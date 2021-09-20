@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use nom::error::{make_error, ErrorKind};
 use nom::multi::length_data;
 use nom::number::streaming::be_u8;

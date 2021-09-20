@@ -31,8 +31,9 @@ include = [
 name = "tls_parser"
 
 [features]
-default = []
+default = ["std"]
 serialize = ["cookie-factory"]
+std = []
 unstable = []
 
 [dependencies]
