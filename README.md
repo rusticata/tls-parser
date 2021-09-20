@@ -37,11 +37,8 @@ The main parsing functions are located in the [tls.rs](src/tls.rs) file. The ent
 # Examples
 
 ```rust
-extern crate nom;
-extern crate tls_parser;
-
-use nom::{Err, IResult};
 use tls_parser::parse_tls_plaintext;
+use tls_parser::nom::{Err, IResult};
 
 let bytes : &[u8]= include_bytes!("../assets/client_hello_dhe.bin");
 // [ 0x16, 0x03, 0x01 ... ];

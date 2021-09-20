@@ -35,11 +35,8 @@
 //! # Examples
 //!
 //! ```rust
-//! extern crate nom;
-//! extern crate tls_parser;
-//!
-//! use nom::{Err, IResult};
 //! use tls_parser::parse_tls_plaintext;
+//! use tls_parser::nom::{Err, IResult};
 //!
 //! let bytes : &[u8]= include_bytes!("../assets/client_hello_dhe.bin");
 //! // [ 0x16, 0x03, 0x01 ... ];
@@ -65,10 +62,8 @@
 //! Here is an example of two-steps parsing:
 //!
 //! ```rust
-//! # extern crate nom;
-//! # extern crate tls_parser;
-//! # use nom::{Err, IResult};
 //! # use tls_parser::{parse_tls_raw_record, parse_tls_record_with_header};
+//! # use tls_parser::nom::{Err, IResult};
 //!
 //! # let bytes : &[u8]= include_bytes!("../assets/client_hello_dhe.bin");
 //! // [ 0x16, 0x03, 0x01 ... ];
@@ -107,10 +102,8 @@
 //! it returns `Ok(new_state)`, otherwise it returns `Err(error_state)`.
 //!
 //! ```rust
-//! # extern crate nom;
-//! # extern crate tls_parser;
-//! # use nom::{Err, IResult};
 //! # use tls_parser::{tls_state_transition, TlsMessage, TlsState};
+//! # use tls_parser::nom::{Err, IResult};
 //!
 //! struct ParseContext {
 //!     state: TlsState,
@@ -140,8 +133,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::upper_case_acronyms)]
 
-pub extern crate rusticata_macros;
-
 mod certificate_transparency;
 mod dtls;
 mod tls;
@@ -169,3 +160,6 @@ pub use tls_states::*;
 mod tls_serialize;
 #[cfg(feature = "serialize")]
 pub use tls_serialize::*;
+
+pub use nom;
+pub use rusticata_macros;
