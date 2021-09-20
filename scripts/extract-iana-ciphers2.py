@@ -196,7 +196,7 @@ for value, desc, rfcs in ciphers:
     elif desc.startswith("TLS_GOST"):
         # XXX ignore special case: TLS_GOSTR341112_256_WITH_KUZNYECHIK_CTR_OMAC (draft-smyshlyaev-tls12-gost-suites)
         continue
-    elif "draft-camwinget-tls-ts13-macciphersuites" in rfcs:
+    elif "draft-camwinget-tls-ts13-macciphersuites" in rfcs or "RFC-camwinget-tls-ts13-macciphersuites-12" in rfcs:
         # "TLS_SHA256_SHA256" and similar
         full_desc = "TLS_TLS13_WITH_NULL_" + desc[4:-7]
     # print("%s %s %s" % (value, desc, rfcs))
