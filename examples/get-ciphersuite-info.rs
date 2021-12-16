@@ -13,7 +13,7 @@ fn parse_u16(s: &str) -> Result<u16, ParseIntError> {
         let s = s.trim_start_matches("0x");
         u16::from_str_radix(s, 16)
     } else {
-        u16::from_str_radix(s, 10)
+        s.parse::<u16>()
     }
 }
 

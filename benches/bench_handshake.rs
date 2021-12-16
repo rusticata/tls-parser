@@ -44,7 +44,7 @@ mod tls_handshake {
     #[bench]
     fn bench_tls_record_clienthello(b: &mut Bencher) {
         b.iter(|| {
-            let _ = parse_tls_plaintext(&CH);
+            let _ = parse_tls_plaintext(CH);
         })
     }
 
@@ -353,7 +353,7 @@ mod tls_handshake {
     fn bench_tls_record_serverhello(b: &mut Bencher) {
         let bytes = &SERVER_REPLY1[0..64];
         b.iter(|| {
-            let _ = parse_tls_plaintext(&bytes);
+            let _ = parse_tls_plaintext(bytes);
         })
     }
 
@@ -361,7 +361,7 @@ mod tls_handshake {
     fn bench_tls_record_certificate(b: &mut Bencher) {
         let bytes = &SERVER_REPLY1[64..3150];
         b.iter(|| {
-            let _ = parse_tls_plaintext(&bytes);
+            let _ = parse_tls_plaintext(bytes);
         })
     }
 
@@ -369,7 +369,7 @@ mod tls_handshake {
     fn bench_tls_record_serverkeyexchange(b: &mut Bencher) {
         let bytes = &SERVER_REPLY1[3150..3488];
         b.iter(|| {
-            let _ = parse_tls_plaintext(&bytes);
+            let _ = parse_tls_plaintext(bytes);
         })
     }
 
@@ -377,7 +377,7 @@ mod tls_handshake {
     fn bench_tls_record_serverdone(b: &mut Bencher) {
         let bytes = &SERVER_REPLY1[3488..];
         b.iter(|| {
-            let _ = parse_tls_plaintext(&bytes);
+            let _ = parse_tls_plaintext(bytes);
         })
     }
 } // mod tls_handshake

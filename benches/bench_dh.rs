@@ -3,11 +3,11 @@
 
 extern crate test;
 
-#[macro_use]
 extern crate nom;
 extern crate tls_parser;
 
 mod tls_dh {
+    use nom::sequence::pair;
     use test::Bencher;
     use tls_parser::*;
 
@@ -44,7 +44,7 @@ mod tls_dh {
     fn bench_tls_ecdhe_params(b: &mut Bencher) {
         let bytes = ECDHE_PARAMS;
         b.iter(|| {
-            let _ = pair!(bytes, parse_ecdh_params, parse_digitally_signed);
+            let _ = pair(parse_ecdh_params, parse_digitally_signed)(bytes);
         })
     }
 } // mod tls_dh

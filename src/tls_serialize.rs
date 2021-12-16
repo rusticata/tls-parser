@@ -353,7 +353,7 @@ where
     tuple((
         be_u8(p.hdr.record_type.0),
         be_u16(p.hdr.version.0),
-        length_be_u16(all(p.msg.iter().map(|m| gen_tls_message(m)))),
+        length_be_u16(all(p.msg.iter().map(gen_tls_message))),
     ))
 }
 
