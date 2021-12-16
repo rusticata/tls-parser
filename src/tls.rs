@@ -2,7 +2,7 @@
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
 
 use alloc::{vec, vec::Vec};
-use core::convert::AsRef;
+use core::convert::{AsRef, TryInto};
 use core::fmt;
 use core::ops::Deref;
 use nom::branch::alt;
@@ -220,7 +220,18 @@ impl fmt::LowerHex for TlsCipherSuiteID {
 pub trait ClientHello<'a> {
     /// TLS version of message
     fn version(&self) -> TlsVersion;
-    fn rand_data(&self) -> &'a [u8];
+    fn random(&self) -> &'a [u8];
+    // Get the first part (4 bytes) of random
+    fn rand_time(&self) -> u32 {
+        self.random()
+            .try_into()
+            .map(u32::from_be_bytes)
+            .unwrap_or(0)
+    }
+    // Get the second part (28 bytes) of random
+    fn rand_bytes(&self) -> &'a [u8] {
+        self.random().get(4..).unwrap_or(&[])
+    }
     fn session_id(&self) -> Option<&'a [u8]>;
     /// A list of ciphers supported by client
     fn ciphers(&self) -> &Vec<TlsCipherSuiteID>;
@@ -243,8 +254,7 @@ pub trait ClientHello<'a> {
 pub struct TlsClientHelloContents<'a> {
     /// TLS version of message
     pub version: TlsVersion,
-    pub rand_time: u32,
-    pub rand_data: &'a [u8],
+    pub random: &'a [u8],
     pub session_id: Option<&'a [u8]>,
     /// A list of ciphers supported by client
     pub ciphers: Vec<TlsCipherSuiteID>,
@@ -257,8 +267,7 @@ pub struct TlsClientHelloContents<'a> {
 impl<'a> TlsClientHelloContents<'a> {
     pub fn new(
         v: u16,
-        rt: u32,
-        rd: &'a [u8],
+        random: &'a [u8],
         sid: Option<&'a [u8]>,
         c: Vec<TlsCipherSuiteID>,
         co: Vec<TlsCompressionID>,
@@ -266,8 +275,7 @@ impl<'a> TlsClientHelloContents<'a> {
     ) -> Self {
         TlsClientHelloContents {
             version: TlsVersion(v),
-            rand_time: rt,
-            rand_data: rd,
+            random,
             session_id: sid,
             ciphers: c,
             comp: co,
@@ -289,8 +297,8 @@ impl<'a> ClientHello<'a> for TlsClientHelloContents<'a> {
         self.version
     }
 
-    fn rand_data(&self) -> &'a [u8] {
-        self.rand_data
+    fn random(&self) -> &'a [u8] {
+        self.random
     }
 
     fn session_id(&self) -> Option<&'a [u8]> {
@@ -314,8 +322,7 @@ impl<'a> ClientHello<'a> for TlsClientHelloContents<'a> {
 #[derive(Clone, PartialEq)]
 pub struct TlsServerHelloContents<'a> {
     pub version: TlsVersion,
-    pub rand_time: u32,
-    pub rand_data: &'a [u8],
+    pub random: &'a [u8],
     pub session_id: Option<&'a [u8]>,
     pub cipher: TlsCipherSuiteID,
     pub compression: TlsCompressionID,
@@ -345,8 +352,7 @@ pub struct TlsHelloRetryRequestContents<'a> {
 impl<'a> TlsServerHelloContents<'a> {
     pub fn new(
         v: u16,
-        rt: u32,
-        rd: &'a [u8],
+        random: &'a [u8],
         sid: Option<&'a [u8]>,
         c: u16,
         co: u8,
@@ -354,8 +360,7 @@ impl<'a> TlsServerHelloContents<'a> {
     ) -> Self {
         TlsServerHelloContents {
             version: TlsVersion(v),
-            rand_time: rt,
-            rand_data: rd,
+            random,
             session_id: sid,
             cipher: TlsCipherSuiteID(c),
             compression: TlsCompressionID(co),
@@ -613,8 +618,7 @@ fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMessageH
 
 fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     let (i, version) = be_u16(i)?;
-    let (i, rand_time) = be_u32(i)?;
-    let (i, rand_data) = take(28usize)(i)?; // 28 as 32 (aligned) - 4 (time)
+    let (i, random) = take(32usize)(i)?;
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
     let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
     let (i, ciphers_len) = be_u16(i)?;
@@ -622,8 +626,7 @@ fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
     let (i, comp_len) = be_u8(i)?;
     let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
-    let content =
-        TlsClientHelloContents::new(version, rand_time, rand_data, sid, ciphers, comp, ext);
+    let content = TlsClientHelloContents::new(version, random, sid, ciphers, comp, ext);
     Ok((i, TlsMessageHandshake::ClientHello(content)))
 }
 
@@ -636,15 +639,13 @@ fn parse_tls_handshake_msg_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsMe
 
 pub(crate) fn parse_tls_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsServerHelloContents> {
     let (i, version) = be_u16(i)?;
-    let (i, rand_time) = be_u32(i)?;
-    let (i, rand_data) = take(28usize)(i)?; // 28 as 32 (aligned) - 4 (time)
+    let (i, random) = take(32usize)(i)?;
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
     let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
     let (i, cipher) = be_u16(i)?;
     let (i, comp) = be_u8(i)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
-    let content =
-        TlsServerHelloContents::new(version, rand_time, rand_data, sid, cipher, comp, ext);
+    let content = TlsServerHelloContents::new(version, random, sid, cipher, comp, ext);
     Ok((i, content))
 }
 

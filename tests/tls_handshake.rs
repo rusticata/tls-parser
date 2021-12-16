@@ -42,8 +42,9 @@ static CH : &[u8] = &[
     fn test_tls_record_clienthello() {
         let empty = &b""[..];
         let rand_data = [
-            0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a, 0xcf, 0xb7, 0xa3, 0x82, 0x1f,
-            0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9, 0x03, 0x0a, 0x2d, 0xce, 0x38, 0x0b, 0xf4,
+            0xb2, 0x9d, 0xd7, 0x87, 0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a, 0xcf,
+            0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9, 0x03, 0x0a, 0x2d,
+            0xce, 0x38, 0x0b, 0xf4,
         ];
         let ciphers = vec![
             0xc030, 0xc02c, 0xc028, 0xc024, 0xc014, 0xc00a, 0x00a5, 0x00a3, 0x00a1, 0x009f, 0x006b,
@@ -65,8 +66,7 @@ static CH : &[u8] = &[
             msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
                 TlsClientHelloContents {
                     version: TlsVersion::Tls12,
-                    rand_time: 0xb29d_d787,
-                    rand_data: &rand_data,
+                    random: &rand_data,
                     session_id: None,
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                     comp,
@@ -392,8 +392,7 @@ static SERVER_REPLY1: &[u8] = &[
             msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ServerHello(
                 TlsServerHelloContents {
                     version: TlsVersion::Tls12,
-                    rand_time: 0x57c4_57da,
-                    rand_data: &bytes[15..43],
+                    random: &bytes[11..43],
                     session_id: None,
                     cipher: TlsCipherSuiteID(0xc02f),
                     compression: TlsCompressionID(0),

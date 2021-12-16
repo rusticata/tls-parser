@@ -15,8 +15,7 @@ impl<'a> fmt::Debug for TlsClientHelloContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsClientHelloContents")
             .field("version", &self.version)
-            .field("rand_time", &self.rand_time)
-            .field("rand_data", &HexSlice(self.rand_data))
+            .field("random", &HexSlice(self.random))
             .field("session_id", &self.session_id.map(HexSlice))
             .field("ciphers", &self.ciphers)
             .field("comp", &self.comp)
@@ -29,8 +28,7 @@ impl<'a> fmt::Debug for TlsServerHelloContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("TlsServerHelloContents")
             .field("version", &self.version)
-            .field("rand_time", &self.rand_time)
-            .field("rand_data", &HexSlice(self.rand_data))
+            .field("random", &HexSlice(self.random))
             .field("session_id", &self.session_id.map(HexSlice))
             .field("cipher", &self.cipher)
             .field("compression", &self.compression)

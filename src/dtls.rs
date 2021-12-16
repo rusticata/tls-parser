@@ -57,7 +57,7 @@ impl<'a> ClientHello<'a> for DTLSClientHello<'a> {
         self.version
     }
 
-    fn rand_data(&self) -> &'a [u8] {
+    fn random(&self) -> &'a [u8] {
         self.random
     }
 

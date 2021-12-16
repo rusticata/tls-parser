@@ -70,8 +70,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
             msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
                 TlsClientHelloContents {
                     version: TlsVersion::Tls12,
-                    rand_time: 0xce05_cfa3,
-                    rand_data: &bytes[15..15 + 28],
+                    random: &bytes[11..11 + 32],
                     session_id: None,
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                     comp: vec![TlsCompressionID(0)],

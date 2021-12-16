@@ -125,6 +125,12 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.12.0
+
+- Remove `rand_time` from `ClientHello`/`ServerHello` (this is deprecated since a long time, and makes
+  getting the entire random value difficult)
+  To access sub elements, use the `rand_time()` and `rand_bytes()` methods
+
 ### 0.11.0
 
 - Upgrade to nom 7
