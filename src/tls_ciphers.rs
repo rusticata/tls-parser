@@ -12,7 +12,7 @@ use enum_primitive::{enum_from_primitive, enum_from_primitive_impl, enum_from_pr
 
 enum_from_primitive! {
 /// Key exchange methods
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TlsCipherKx {
     Null = 0,
@@ -32,7 +32,7 @@ pub enum TlsCipherKx {
 
 enum_from_primitive! {
 /// Authentication methods
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TlsCipherAu {
     Null = 0,
@@ -52,7 +52,7 @@ pub enum TlsCipherAu {
 
 enum_from_primitive! {
 /// Encryption methods
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TlsCipherEnc {
     Null,
@@ -72,7 +72,7 @@ pub enum TlsCipherEnc {
 
 enum_from_primitive! {
 /// Encryption modes
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TlsCipherEncMode {
     Null,
@@ -84,7 +84,7 @@ pub enum TlsCipherEncMode {
 
 enum_from_primitive! {
 /// Message Authentication Code (MAC) methods
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TlsCipherMac {
     Null,
@@ -97,7 +97,7 @@ pub enum TlsCipherMac {
 }
 
 /// TLS Ciphersuite
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TlsCipherSuite {
     pub name: &'static str,
     pub id: u16,
