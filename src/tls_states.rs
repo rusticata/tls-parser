@@ -87,6 +87,8 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to
         // Hello requests must be accepted at any time (except start), but ignored [RFC5246] 7.4.1.1
         (TlsState::None,             &TlsMessageHandshake::HelloRequest, _)             => Err(StateChangeError::InvalidTransition),
         (s,                          &TlsMessageHandshake::HelloRequest, _)             => Ok(s),
+        // NewSessionTicket message (after CCS)
+        (TlsState::ClientChangeCipherSpec,    &TlsMessageHandshake::NewSessionTicket(_), false)  => Ok(TlsState::ClientChangeCipherSpec),
         // All other transitions are considered invalid
         _ => Err(StateChangeError::InvalidTransition),
     }
@@ -108,11 +110,12 @@ fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to
 pub fn tls_state_transition(state: TlsState, msg: &TlsMessage, to_server:bool) -> Result<TlsState,StateChangeError> {
     match (state,msg,to_server) {
         (TlsState::Invalid,_,_) => Ok(TlsState::Invalid),
+        (TlsState::SessionEncrypted,_, _) => Ok(TlsState::SessionEncrypted),
         (TlsState::Finished,_,_) => Ok(TlsState::Invalid),
         (_,&TlsMessage::Handshake(ref m),_) => tls_state_transition_handshake(state,m,to_server),
         // Server certificate
         (TlsState::ClientKeyExchange,     &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
-        (TlsState::ClientChangeCipherSpec,&TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::SessionEncrypted),
+        (TlsState::ClientChangeCipherSpec,&TlsMessage::ChangeCipherSpec, false) => Ok(TlsState::SessionEncrypted),
         // Server certificate, client certificate requested
         (TlsState::CRClientKeyExchange,   &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
         (TlsState::CRCertVerify,          &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
