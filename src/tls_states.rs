@@ -1,6 +1,7 @@
 use crate::tls::*;
 use crate::tls_alert::TlsAlertSeverity;
 
+#[derive(Debug, PartialEq, Eq)]
 /// Error types for the state machine
 pub enum StateChangeError {
     InvalidTransition,

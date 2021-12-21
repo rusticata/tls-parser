@@ -66,8 +66,14 @@ impl From<TlsHandshakeType> for u8 {
 ///
 /// Only the TLS version defined in the TLS message header is meaningful, the
 /// version defined in the record should be ignored or set to TLS 1.0
-#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, NomBE)]
 pub struct TlsVersion(pub u16);
+
+impl TlsVersion {
+    pub const fn to_be_bytes(&self) -> [u8; 2] {
+        self.0.to_be_bytes()
+    }
+}
 
 newtype_enum! {
 impl debug TlsVersion {
@@ -139,7 +145,7 @@ impl From<TlsRecordType> for u8 {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, NomBE)]
 pub struct TlsCompressionID(pub u8);
 
 newtype_enum! {
@@ -167,7 +173,7 @@ impl AsRef<u8> for TlsCompressionID {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, NomBE)]
 pub struct TlsCipherSuiteID(pub u16);
 
 impl TlsCipherSuiteID {
