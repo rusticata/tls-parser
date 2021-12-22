@@ -151,6 +151,7 @@ pub struct TlsCompressionID(pub u8);
 newtype_enum! {
 impl debug TlsCompressionID {
     Null = 0x00,
+    Deflate = 0x01,
 }
 }
 
