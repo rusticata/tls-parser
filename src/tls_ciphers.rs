@@ -9,19 +9,18 @@
 #![allow(clippy::unreadable_literal)]
 
 use core::convert::TryFrom;
-use enum_primitive::{enum_from_primitive, enum_from_primitive_impl, enum_from_primitive_impl_ty};
+use num_enum::TryFromPrimitive;
 
 use crate::TlsCipherSuiteID;
 
 #[derive(Debug)]
 pub struct CipherSuiteNotFound(());
 
-enum_from_primitive! {
 /// Key exchange methods
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u8)]
 pub enum TlsCipherKx {
-    Null = 0,
+    Null,
     Psk,
     Krb5,
     Srp,
@@ -34,14 +33,12 @@ pub enum TlsCipherKx {
     Eccpwd,
     Tls13,
 }
-}
 
-enum_from_primitive! {
 /// Authentication methods
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u8)]
 pub enum TlsCipherAu {
-    Null = 0,
+    Null,
     Psk,
     Krb5,
     Srp,
@@ -54,11 +51,9 @@ pub enum TlsCipherAu {
     Eccpwd,
     Tls13,
 }
-}
 
-enum_from_primitive! {
 /// Encryption methods
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u8)]
 pub enum TlsCipherEnc {
     Null,
@@ -74,11 +69,9 @@ pub enum TlsCipherEnc {
     Chacha20_Poly1305,
     Sm4,
 }
-}
 
-enum_from_primitive! {
 /// Encryption modes
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u8)]
 pub enum TlsCipherEncMode {
     Null,
@@ -86,11 +79,9 @@ pub enum TlsCipherEncMode {
     Ccm,
     Gcm,
 }
-}
 
-enum_from_primitive! {
 /// Message Authentication Code (MAC) methods
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u8)]
 pub enum TlsCipherMac {
     Null,
@@ -101,11 +92,9 @@ pub enum TlsCipherMac {
     HmacSha512,
     Aead,
 }
-}
 
-enum_from_primitive! {
 /// Pseudo-Random Function (PRF) Function
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TryFromPrimitive)]
 #[repr(u8)]
 pub enum TlsPRF {
     Default,
@@ -116,7 +105,6 @@ pub enum TlsPRF {
     Sha384,
     Sha512,
     Sm3,
-}
 }
 
 /// TLS Ciphersuite
