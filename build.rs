@@ -61,23 +61,39 @@ fn main() {
             "HMAC-SHA1" => "HmacSha1",
             "HMAC-SHA256" => "HmacSha256",
             "HMAC-SHA384" => "HmacSha384",
+            "HMAC-SHA512" => "HmacSha512",
             "AEAD" => "Aead",
             _ => panic!("Unknown mac {}", v[7]),
         });
 
+        let prf = titlecase_word(v[9]);
+
         let key = u16::from_str_radix(v[0], 16).unwrap();
-        let val =
-            format!(
-            "TlsCipherSuite{{ name:\"{}\", id:0x{}, kx:TlsCipherKx::{}, au:TlsCipherAu::{}, enc:TlsCipherEnc::{},  enc_mode:TlsCipherEncMode::{}, enc_size:{}, mac:TlsCipherMac::{}, mac_size:{},}}",
-            v[1],v[0],
+        let val = format!(
+            r#"TlsCipherSuite{{
+                name:"{}",
+                id:TlsCipherSuiteID(0x{}),
+                kx:TlsCipherKx::{},
+                au:TlsCipherAu::{},
+                enc:TlsCipherEnc::{},
+                enc_mode:TlsCipherEncMode::{},
+                enc_size:{},
+                mac:TlsCipherMac::{},
+                mac_size:{},
+                prf: TlsPRF::{},
+            }}"#,
+            v[1],
+            v[0],
             titlecase_word(v[2]), // kx
-            au, // au
-            enc, // enc
+            au,                   // au
+            enc,                  // enc
             titlecase_word(v[5]), // enc_mode
-            v[6], // enc_size
-            mac, // mac
-            v[8], // mac_size
-            ).clone();
+            v[6],                 // enc_key_size
+            mac,                  // mac
+            v[8],                 // mac_size
+            prf,                  // prf
+        )
+        .clone();
 
         map.entry(key, val.as_str());
     }

@@ -98,22 +98,53 @@ pub enum TlsCipherMac {
     HmacSha1,
     HmacSha256,
     HmacSha384,
+    HmacSha512,
     Aead,
 }
 }
 
+enum_from_primitive! {
+/// Pseudo-Random Function (PRF) Function
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum TlsPRF {
+    Default,
+    Null,
+    Md5AndSha1,
+    Sha1,
+    Sha256,
+    Sha384,
+    Sha512,
+    Sm3,
+}
+}
+
 /// TLS Ciphersuite
+///
+/// A CipherSuite is a set of algorithm and parameters used to secure
+/// a network connection.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TlsCipherSuite {
+    /// The IANA name of this ciphersuite
     pub name: &'static str,
-    pub id: u16,
+    /// The 16-bit identifier, provided by IANA, for this ciphersuite
+    pub id: TlsCipherSuiteID,
+    /// The Key Exchange method for this ciphersuite
     pub kx: TlsCipherKx,
+    /// The Authentication method for this ciphersuite
     pub au: TlsCipherAu,
+    /// Encryption cipher
     pub enc: TlsCipherEnc,
+    /// Encryption mode
     pub enc_mode: TlsCipherEncMode,
+    /// Key size of the encryption, in bits
     pub enc_size: u16,
+    /// Message Authentication Code (MAC) algorithm
     pub mac: TlsCipherMac,
+    /// Message Authentication Code (MAC) length
     pub mac_size: u16,
+    /// Pseudo-Random Function, if specific
+    pub prf: TlsPRF,
 }
 
 include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
@@ -127,6 +158,42 @@ impl TlsCipherSuite {
     /// Attempt to get reference on `TlsCipherSuite` identified by `name`.
     pub fn from_name<'a>(name: &'a str) -> Option<&'static TlsCipherSuite> {
         CIPHERS.values().find(|&v| v.name == name)
+    }
+
+    /// Get the key of this ciphersuite encryption algorithm, in bytes
+    pub const fn enc_key_size(&self) -> usize {
+        (self.enc_size / 8) as usize
+    }
+
+    /// Get the block size of this ciphersuite encryption algorithm, in bytes
+    pub const fn enc_block_size(&self) -> usize {
+        match self.enc {
+            TlsCipherEnc::Null => 0,
+            TlsCipherEnc::Des
+            | TlsCipherEnc::Idea
+            | TlsCipherEnc::Rc2
+            | TlsCipherEnc::TripleDes => 8,
+            TlsCipherEnc::Aes
+            | TlsCipherEnc::Aria
+            | TlsCipherEnc::Camellia
+            | TlsCipherEnc::Seed
+            | TlsCipherEnc::Sm4 => 16,
+            // stream ciphers
+            TlsCipherEnc::Chacha20_Poly1305 | TlsCipherEnc::Rc4 => 0,
+        }
+    }
+
+    /// Get the length of this ciphersuite MAC algorithm, in bytes
+    pub const fn mac_length(&self) -> usize {
+        match self.mac {
+            TlsCipherMac::Null => 0,
+            TlsCipherMac::Aead => 0,
+            TlsCipherMac::HmacMd5 => 16,
+            TlsCipherMac::HmacSha1 => 20,
+            TlsCipherMac::HmacSha256 => 32,
+            TlsCipherMac::HmacSha384 => 48,
+            TlsCipherMac::HmacSha512 => 64,
+        }
     }
 }
 
