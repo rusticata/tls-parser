@@ -46,7 +46,7 @@ fn main() {
         let au = match v[3] {
             "SRP+DSS" => String::from("Srp_Dss"),
             "SRP+RSA" => String::from("Srp_Rsa"),
-            _ => titlecase_word(v[3]).replace("+", "_"),
+            _ => titlecase_word(v[3]).replace('+', "_"),
         };
 
         let enc = match v[4] {
