@@ -68,16 +68,16 @@ fn find_by_name(name: &str, show_details: bool, to_json: bool) {
 
 fn main() {
     let matches = App::new("get-ciphersuite-info")
-        .arg(Arg::with_name("id").short("i").long("id").takes_value(true))
+        .arg(Arg::with_name("id").short('i').long("id").takes_value(true))
         .arg(
             Arg::with_name("name")
-                .short("n")
+                .short('n')
                 .long("name")
                 .takes_value(true),
         )
-        .arg(Arg::with_name("list").short("L").long("list"))
-        .arg(Arg::with_name("json").short("j").long("json"))
-        .arg(Arg::with_name("long").short("l").long("long"))
+        .arg(Arg::with_name("list").short('L').long("list"))
+        .arg(Arg::with_name("json").short('j').long("json"))
+        .arg(Arg::with_name("long").short('l').long("long"))
         .get_matches();
 
     let show_details = matches.is_present("long");
