@@ -45,7 +45,7 @@ phf = "0.10"
 rusticata-macros = "4.0"
 
 [dev-dependencies]
-clap = { version="3.2" }
+clap = { version="4.0" }
 hex-literal = "0.3"
 pretty_assertions = "1.0"
 
