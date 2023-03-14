@@ -48,7 +48,7 @@ pub enum TlsState {
 #[rustfmt::skip]
 fn tls_state_transition_handshake(state: TlsState, msg: &TlsMessageHandshake, to_server:bool) -> Result<TlsState,StateChangeError> {
     match (state,msg,to_server) {
-        (TlsState::None,             &TlsMessageHandshake::ClientHello(ref msg), true) => {
+        (TlsState::None,             TlsMessageHandshake::ClientHello(msg), true) => {
             match msg.session_id {
                 Some(_) => Ok(TlsState::AskResumeSession),
                 _       => Ok(TlsState::ClientHello)
@@ -112,7 +112,7 @@ pub fn tls_state_transition(state: TlsState, msg: &TlsMessage, to_server:bool) -
         (TlsState::Invalid,_,_) => Ok(TlsState::Invalid),
         (TlsState::SessionEncrypted,_, _) => Ok(TlsState::SessionEncrypted),
         (TlsState::Finished,_,_) => Ok(TlsState::Invalid),
-        (_,&TlsMessage::Handshake(ref m),_) => tls_state_transition_handshake(state,m,to_server),
+        (_,TlsMessage::Handshake(m),_) => tls_state_transition_handshake(state,m,to_server),
         // Server certificate
         (TlsState::ClientKeyExchange,     &TlsMessage::ChangeCipherSpec, _) => Ok(TlsState::ClientChangeCipherSpec),
         (TlsState::ClientChangeCipherSpec,&TlsMessage::ChangeCipherSpec, false) => Ok(TlsState::SessionEncrypted),
@@ -128,7 +128,7 @@ pub fn tls_state_transition(state: TlsState, msg: &TlsMessage, to_server:bool) -
         // 0-rtt
         (TlsState::AskResumeSession,      &TlsMessage::ChangeCipherSpec, true) => Ok(TlsState::AskResumeSession),
         // non-fatal alerts
-        (s,                               &TlsMessage::Alert(ref a), _) => {
+        (s,                     TlsMessage::Alert(a), _) => {
             if a.severity == TlsAlertSeverity::Warning { Ok(s) } else { Ok(TlsState::Finished) }
         },
         (_,_,_) => Err(StateChangeError::InvalidTransition),

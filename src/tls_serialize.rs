@@ -15,7 +15,7 @@ pub use rusticata_macros::Serialize;
 fn gen_tls_ext_sni_hostname<'a, 'b: 'a, W: Write + 'a>(
     i: &(SNIType, &'b [u8]),
 ) -> impl SerializeFn<W> + 'a {
-    tuple((be_u8((i.0).0 as u8), be_u16(i.1.len() as u16), slice(i.1)))
+    tuple((be_u8((i.0).0), be_u16(i.1.len() as u16), slice(i.1)))
 }
 
 fn length_be_u16<W, F>(f: F) -> impl SerializeFn<W>

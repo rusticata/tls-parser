@@ -566,7 +566,7 @@ pub(crate) fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<Tl
     if len % 2 == 1 || len > i.len() {
         return Err(Err::Error(make_error(i, ErrorKind::LengthValue)));
     }
-    let v = (&i[..len])
+    let v = (i[..len])
         .chunks(2)
         .map(|chunk| TlsCipherSuiteID((chunk[0] as u16) << 8 | chunk[1] as u16))
         .collect();
@@ -583,7 +583,7 @@ pub(crate) fn parse_compressions_algs(
     if len > i.len() {
         return Err(Err::Error(make_error(i, ErrorKind::LengthValue)));
     }
-    let v = (&i[..len]).iter().map(|&it| TlsCompressionID(it)).collect();
+    let v = (i[..len]).iter().map(|&it| TlsCompressionID(it)).collect();
     Ok((&i[len..], v))
 }
 
@@ -595,7 +595,7 @@ pub(crate) fn parse_tls_versions(i: &[u8]) -> IResult<&[u8], Vec<TlsVersion>> {
     if len % 2 == 1 || len > i.len() {
         return Err(Err::Error(make_error(i, ErrorKind::LengthValue)));
     }
-    let v = (&i[..len])
+    let v = (i[..len])
         .chunks(2)
         .map(|chunk| TlsVersion((chunk[0] as u16) << 8 | chunk[1] as u16))
         .collect();
@@ -914,7 +914,7 @@ pub fn parse_tls_message_heartbeat(
 /// strict protocol conformance).
 #[rustfmt::skip]
 #[allow(clippy::trivially_copy_pass_by_ref)] // TlsRecordHeader is only 6 bytes, but we prefer not breaking current API
-pub fn parse_tls_record_with_header<'i, 'hdr>(i:&'i [u8], hdr:&'hdr TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
+pub fn parse_tls_record_with_header<'i>(i:&'i [u8], hdr:&TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
     match hdr.record_type {
         TlsRecordType::ChangeCipherSpec => many1(complete(parse_tls_message_changecipherspec))(i),
         TlsRecordType::Alert            => many1(complete(parse_tls_message_alert))(i),

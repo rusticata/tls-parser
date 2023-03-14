@@ -264,9 +264,9 @@ pub fn parse_dtls_message_alert(i: &[u8]) -> IResult<&[u8], DTLSMessage> {
     Ok((i, DTLSMessage::Alert(alert)))
 }
 
-pub fn parse_dtls_record_with_header<'i, 'hdr>(
+pub fn parse_dtls_record_with_header<'i>(
     i: &'i [u8],
-    hdr: &'hdr DTLSRecordHeader,
+    hdr: &DTLSRecordHeader,
 ) -> IResult<&'i [u8], Vec<DTLSMessage<'i>>> {
     match hdr.content_type {
         TlsRecordType::ChangeCipherSpec => many1(complete(parse_dtls_message_changecipherspec))(i),

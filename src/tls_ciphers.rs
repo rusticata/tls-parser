@@ -144,7 +144,7 @@ impl TlsCipherSuite {
     }
 
     /// Attempt to get reference on `TlsCipherSuite` identified by `name`.
-    pub fn from_name<'a>(name: &'a str) -> Option<&'static TlsCipherSuite> {
+    pub fn from_name(name: &str) -> Option<&'static TlsCipherSuite> {
         CIPHERS.values().find(|&v| v.name == name)
     }
 

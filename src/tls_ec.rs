@@ -182,7 +182,7 @@ pub fn parse_named_groups(i: &[u8]) -> IResult<&[u8], Vec<NamedGroup>> {
     if len % 2 == 1 || len > i.len() {
         return Err(Err::Error(make_error(i, ErrorKind::LengthValue)));
     }
-    let v = (&i[..len])
+    let v = (i[..len])
         .chunks(2)
         .map(|chunk| NamedGroup((chunk[0] as u16) << 8 | chunk[1] as u16))
         .collect();
