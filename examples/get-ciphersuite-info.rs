@@ -4,9 +4,29 @@
  *
  */
 
-use clap::{App, Arg};
+use clap::Parser;
 use std::num::ParseIntError;
 use tls_parser::TlsCipherSuite;
+
+#[derive(Parser)]
+struct CmdOptions {
+    /// List all known ciphersuites
+    #[arg(short = 'L', long)]
+    list: bool,
+    /// Display details (algorithms, mode, ...)
+    #[arg(short, long)]
+    long: bool,
+    /// Use JSON for output
+    #[arg(short = 'j', long)]
+    to_json: bool,
+
+    /// Ciphersuite IANA identifier (decimal or hexadecimal prefix by 0x)
+    #[arg(short, long, value_name = "id")]
+    id: Option<String>,
+    /// Ciphersuite IANA name
+    #[arg(short, long, value_name = "name")]
+    name: Option<String>,
+}
 
 fn parse_u16(s: &str) -> Result<u16, ParseIntError> {
     if s.starts_with("0x") {
@@ -67,37 +87,25 @@ fn find_by_name(name: &str, show_details: bool, to_json: bool) {
 }
 
 fn main() {
-    let matches = App::new("get-ciphersuite-info")
-        .arg(Arg::with_name("id").short('i').long("id").takes_value(true))
-        .arg(
-            Arg::with_name("name")
-                .short('n')
-                .long("name")
-                .takes_value(true),
-        )
-        .arg(Arg::with_name("list").short('L').long("list"))
-        .arg(Arg::with_name("json").short('j').long("json"))
-        .arg(Arg::with_name("long").short('l').long("long"))
-        .get_matches();
+    let options = CmdOptions::parse();
 
-    let show_details = matches.is_present("long");
-    let to_json = matches.is_present("json");
+    let show_details = options.long;
 
-    if matches.is_present("list") {
+    if options.list {
         let mut id_list = tls_parser::CIPHERS.keys().collect::<Vec<_>>();
         id_list.sort();
         for &id in &id_list {
             let cipher = TlsCipherSuite::from_id(*id).expect("could not get cipher");
-            print_ciphersuite(cipher, show_details, to_json);
+            print_ciphersuite(cipher, show_details, options.to_json);
         }
         return;
     }
 
-    if let Some(str_id) = matches.value_of("id") {
-        let id = parse_u16(str_id).expect("Could not parse cipher ID");
-        find_by_id(id, show_details, to_json);
-    } else if let Some(name) = matches.value_of("name") {
-        find_by_name(name, show_details, to_json);
+    if let Some(str_id) = options.id {
+        let id = parse_u16(&str_id).expect("Could not parse cipher ID");
+        find_by_id(id, show_details, options.to_json);
+    } else if let Some(name) = options.name {
+        find_by_name(&name, show_details, options.to_json);
     } else {
         eprintln!("Missing command");
     }
