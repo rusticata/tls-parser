@@ -41,9 +41,9 @@ pub enum TlsCipherAu {
     Null,
     Psk,
     Krb5,
-    Srp,
-    Srp_Dss,
-    Srp_Rsa,
+    Sha,     // SRP
+    Sha_dss, // SRP
+    Sha_rsa, // SRP
     Dss,
     Rsa,
     Dhe,
@@ -66,7 +66,7 @@ pub enum TlsCipherEnc {
     Seed,
     Aes,
     Camellia,
-    Chacha20_Poly1305,
+    Chacha20,
     Sm4,
 }
 
@@ -76,6 +76,9 @@ pub enum TlsCipherEnc {
 pub enum TlsCipherEncMode {
     Null,
     Cbc,
+    Ede_cbc,
+    Poly1305,
+    Ccm_8,
     Ccm,
     Gcm,
 }
@@ -99,7 +102,7 @@ pub enum TlsCipherMac {
 pub enum TlsPRF {
     Default,
     Null,
-    Md5AndSha1,
+    Md5,
     Sha1,
     Sha256,
     Sha384,
@@ -167,7 +170,7 @@ impl TlsCipherSuite {
             | TlsCipherEnc::Seed
             | TlsCipherEnc::Sm4 => 16,
             // stream ciphers
-            TlsCipherEnc::Chacha20_Poly1305 | TlsCipherEnc::Rc4 => 0,
+            TlsCipherEnc::Chacha20 | TlsCipherEnc::Rc4 => 0,
         }
     }
 
