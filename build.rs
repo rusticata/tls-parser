@@ -31,7 +31,6 @@ fn main() {
     let mut csv_reader = Reader::from_path(path_txt).unwrap();
     for record in csv_reader.deserialize() {
         let v: HashMap<String, String> = record.unwrap();
-        println!("{:?}", v);
 
         if v["info.type"] != "IANATLSCipherSuite"
             || v["info.name"].contains("GOSTR")
