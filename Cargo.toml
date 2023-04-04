@@ -38,7 +38,7 @@ unstable = []
 
 [dependencies]
 cookie-factory = { version="0.3", optional=true }
-num_enum = "0.5.4"
+num_enum = "0.6.0"
 nom = "7.0"
 nom-derive = "0.10"
 phf = "0.11"
