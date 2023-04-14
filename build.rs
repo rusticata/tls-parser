@@ -1,12 +1,13 @@
-extern crate phf_codegen;
-
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
-use std::io::BufRead;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
-fn titlecase_word(word: &str) -> String {
+use csv::Reader;
+use phf_codegen;
+
+fn titlecase_word(word: &String) -> String {
     word.chars()
         .enumerate()
         .map(|(i, c)| {
@@ -21,54 +22,82 @@ fn titlecase_word(word: &str) -> String {
 
 fn main() {
     let path_txt =
-        Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("scripts/tls-ciphersuites.txt");
-    let display = path_txt.display();
-    let file = match File::open(&path_txt) {
-        // The `description` method of `io::Error` returns a string that
-        // describes the error
-        Err(why) => panic!("couldn't open {}: {}", display, why),
-        Ok(file) => file,
-    };
-    let f = BufReader::new(file);
+        Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("scripts/all_ciphersuites.csv");
 
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join("codegen.rs");
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     let mut map = phf_codegen::Map::new();
-    for line in f.lines() {
-        let l = line.unwrap();
-        let mut v: Vec<&str> = l.split(':').collect();
+    let mut csv_reader = Reader::from_path(path_txt).unwrap();
+    for record in csv_reader.deserialize() {
+        let v: HashMap<String, String> = record.unwrap();
 
-        if v[5].is_empty() {
-            v[5] = "NULL"
+        if v["info.type"] != "IANATLSCipherSuite"
+            || v["info.name"].contains("GOSTR")
+            || v["info.name"].contains("TLS_SHA256_SHA256")
+            || v["info.name"].contains("TLS_SHA384_SHA384")
+            || v["info.name"].contains("_SCSV")
+            || v["info.tls.parameters.encryption.algorithm"].contains("AEGIS")
+        {
+            continue;
         }
 
-        let au = match v[3] {
-            "SRP+DSS" => String::from("Srp_Dss"),
-            "SRP+RSA" => String::from("Srp_Rsa"),
-            _ => titlecase_word(v[3]).replace('+', "_"),
+        let au = match v["info.tls.parameters.authentication"].as_str() {
+            "" => String::from("Null"),
+            _ => {
+                titlecase_word(&v["info.tls.parameters.authentication"].replace("TLS 1.3", "TLS13"))
+            }
         };
 
-        let enc = match v[4] {
+        let enc = match v["info.tls.parameters.encryption.algorithm"].as_str() {
+            "" => String::from("Null"),
+            "DES40" => String::from("Des"),
             "3DES" => String::from("TripleDes"),
-            "CHACHA20_POLY1305" => String::from("Chacha20_Poly1305"),
-            _ => titlecase_word(v[4]),
+            "CHACHA20" => String::from("Chacha20"),
+            _ => titlecase_word(&v["info.tls.parameters.encryption.algorithm"]),
         };
 
-        let mac = String::from(match v[7] {
-            "NULL" => "Null",
-            "HMAC-MD5" => "HmacMd5",
-            "HMAC-SHA1" => "HmacSha1",
-            "HMAC-SHA256" => "HmacSha256",
-            "HMAC-SHA384" => "HmacSha384",
-            "HMAC-SHA512" => "HmacSha512",
-            "AEAD" => "Aead",
-            _ => panic!("Unknown mac {}", v[7]),
-        });
+        let mac = String::from(
+            match v["info.tls.parameters.integrity.message_authentication_code"].as_str() {
+                "" => "Null",
+                "AEAD" => "Aead",
+                "HMAC" => match v["info.tls.parameters.integrity.pseudorandom_function"].as_str() {
+                    "MD5" => "HmacMd5",
+                    "SHA1" => "HmacSha1",
+                    "SHA256" => "HmacSha256",
+                    "SHA384" => "HmacSha384",
+                    "SHA512" => "HmacSha512",
+                    _ => continue,
+                },
+                _ => continue,
+            },
+        );
+        let mac_size = v["info.tls.parameters.integrity.message_authentication_code_size"].clone();
 
-        let prf = titlecase_word(v[9]);
+        let mode = match v["info.tls.parameters.encryption.mode"].as_str() {
+            "" => String::from("Null"),
+            "L" => String::from("Null"),
+            _ => titlecase_word(&v["info.tls.parameters.encryption.mode"]),
+        };
 
-        let key = u16::from_str_radix(v[0], 16).unwrap();
+        let key_exchange = match v["info.tls.parameters.key_exchange"].as_str() {
+            "" => String::from("Null"),
+            _ => titlecase_word(&v["info.tls.parameters.key_exchange"].replace("TLS 1.3", "TLS13")),
+        };
+
+        let prf = match v["info.tls.parameters.integrity.pseudorandom_function"].as_str() {
+            "" => String::from("Null"),
+            _ => titlecase_word(
+                &v["info.tls.parameters.integrity.pseudorandom_function"]
+                    .replace(" ", "")
+                    .replace(".", "")
+                    .replace("-", ""),
+            ),
+        };
+        let prf_size = v["info.tls.parameters.integrity.pseudorandom_function_size"].clone();
+
+        let key_string = format!("{}{}", v["byte_1"], v["byte_2"]);
+        let key = u16::from_str_radix(key_string.as_str(), 16).unwrap();
         let val = format!(
             r#"TlsCipherSuite{{
                 name:"{}",
@@ -80,18 +109,26 @@ fn main() {
                 enc_size:{},
                 mac:TlsCipherMac::{},
                 mac_size:{},
-                prf: TlsPRF::{},
+                prf:TlsPRF::{},
             }}"#,
-            v[1],
-            v[0],
-            titlecase_word(v[2]), // kx
-            au,                   // au
-            enc,                  // enc
-            titlecase_word(v[5]), // enc_mode
-            v[6],                 // enc_key_size
-            mac,                  // mac
-            v[8],                 // mac_size
-            prf,                  // prf
+            v["info.name"],
+            key_string,
+            key_exchange,
+            au,
+            enc,
+            mode,
+            if prf_size.is_empty() {
+                String::from("0")
+            } else {
+                prf_size
+            },
+            mac,
+            if mac_size.is_empty() {
+                String::from("0")
+            } else {
+                mac_size
+            },
+            prf, // prf
         )
         .clone();
 
