@@ -13,7 +13,7 @@ help()
   echo "V     Print software version and exit."
   echo
   echo "Example:"
-  echo "$ tls-scraper export --format SQL --output ciphersuites.sqlite"
+  echo "$ tls-scraper suites export --format SQL --output ciphersuites.sqlite"
   echo "$ sh query.sh ciphersuites.sqlite all_ciphersuites.sql all_ciphersuites.csv"
   echo
 }
