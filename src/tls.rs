@@ -637,21 +637,25 @@ fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
     Ok((i, TlsMessageHandshake::ClientHello(content)))
 }
 
-fn parse_tls_handshake_msg_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_tls_handshake_msg_server_hello_tlsv12<const HAS_EXT: bool>(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     map(
-        parse_tls_server_hello_tlsv12,
+        parse_tls_server_hello_tlsv12::<HAS_EXT>,
         TlsMessageHandshake::ServerHello,
     )(i)
 }
 
-pub(crate) fn parse_tls_server_hello_tlsv12(i: &[u8]) -> IResult<&[u8], TlsServerHelloContents> {
+pub(crate) fn parse_tls_server_hello_tlsv12<const HAS_EXT: bool>(i: &[u8]) -> IResult<&[u8], TlsServerHelloContents> {
     let (i, version) = be_u16(i)?;
     let (i, random) = take(32usize)(i)?;
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
     let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
     let (i, cipher) = be_u16(i)?;
     let (i, comp) = be_u8(i)?;
-    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let (i, ext) = if HAS_EXT {
+        opt(complete(length_data(be_u16)))(i)?
+    } else {
+        (i, None)
+    };
     let content = TlsServerHelloContents::new(version, random, sid, cipher, comp, ext);
     Ok((i, content))
 }
@@ -676,10 +680,10 @@ fn parse_tls_handshake_msg_server_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
     let (_, version) = be_u16(i)?;
     match version {
         0x7f12 => parse_tls_handshake_msg_server_hello_tlsv13draft18(i),
-        0x0303 => parse_tls_handshake_msg_server_hello_tlsv12(i),
-        0x0302 => parse_tls_handshake_msg_server_hello_tlsv12(i),
-        0x0301 => parse_tls_handshake_msg_server_hello_tlsv12(i),
-        // 0x0300 => call!(parse_tls_handshake_msg_server_hello_sslv3(i),
+        0x0303 => parse_tls_handshake_msg_server_hello_tlsv12::<true>(i),
+        0x0302 => parse_tls_handshake_msg_server_hello_tlsv12::<true>(i),
+        0x0301 => parse_tls_handshake_msg_server_hello_tlsv12::<true>(i),
+        0x0300 => parse_tls_handshake_msg_server_hello_tlsv12::<false>(i),
         _ => Err(Err::Error(make_error(i, ErrorKind::Tag))),
     }
 }

@@ -189,7 +189,7 @@ fn parse_dtls_handshake_msg_server_hello_tlsv12(
     i: &[u8],
 ) -> IResult<&[u8], DTLSMessageHandshakeBody> {
     map(
-        parse_tls_server_hello_tlsv12,
+        parse_tls_server_hello_tlsv12::<true>,
         DTLSMessageHandshakeBody::ServerHello,
     )(i)
 }
