@@ -68,6 +68,7 @@ pub enum TlsCipherEnc {
     Camellia,
     Chacha20_Poly1305,
     Sm4,
+    Aegis,
 }
 
 /// Encryption modes
@@ -167,7 +168,7 @@ impl TlsCipherSuite {
             | TlsCipherEnc::Seed
             | TlsCipherEnc::Sm4 => 16,
             // stream ciphers
-            TlsCipherEnc::Chacha20_Poly1305 | TlsCipherEnc::Rc4 => 0,
+            TlsCipherEnc::Chacha20_Poly1305 | TlsCipherEnc::Rc4 | TlsCipherEnc::Aegis => 0,
         }
     }
 

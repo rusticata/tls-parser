@@ -32,6 +32,17 @@ def getCiphers():
             val = "%02x%02x" % (rv1, rv2)
             ciphers.append((val, desc, rfcs))
 
+    # Manually adding ciphers from https://datatracker.ietf.org/doc/html/draft-ietf-tls-56-bit-ciphersuites-01
+    ciphers.append(("0062", "TLS_RSA_EXPORT1024_WITH_DES_CBC_SHA", "draft-ietf-tls-56-bit-ciphersuites-01"))
+    ciphers.append(("0064", "TLS_RSA_EXPORT1024_WITH_RC4_56_SHA", "draft-ietf-tls-56-bit-ciphersuites-01"))
+    ciphers.append(("0063", "TLS_DHE_DSS_EXPORT1024_WITH_DES_CBC_SHA", "draft-ietf-tls-56-bit-ciphersuites-01"))
+    ciphers.append(("0065", "TLS_DHE_DSS_EXPORT1024_WITH_RC4_56_SHA", "draft-ietf-tls-56-bit-ciphersuites-01"))
+    ciphers.append(("0066", "TLS_DHE_DSS_WITH_RC4_128_SHA", "draft-ietf-tls-56-bit-ciphersuites-01"))
+
+    # Unsure which RFC these are coming from
+    ciphers.append(("0060", "TLS_RSA_EXPORT1024_WITH_RC4_56_MD5", "unknown"))
+    ciphers.append(("0061", "TLS_RSA_EXPORT1024_WITH_RC2_CBC_56_MD5", "unknown"))
+
     return ciphers
 
 re_tls_with = re.compile('^TLS_(\w+)_WITH_(\w+)_(\w+)$')
@@ -44,7 +55,9 @@ MAP_KX = {
         'DH_DSS_EXPORT': ['DH', 'DSS'],
         'DHE_DSS': ['DHE', 'DSS'],
         'DHE_DSS_EXPORT': ['DHE', 'DSS'],
+        'DHE_DSS_EXPORT1024': ['DHE', 'DSS'],
         'RSA': ['RSA', 'RSA'],
+        'RSA_EXPORT1024': ['RSA', 'RSA'],
         'DH_RSA': ['DH', 'RSA'],
         'DH_RSA_EXPORT': ['DH', 'RSA'],
         'DHE_PSK': ['DHE', 'PSK'],
@@ -73,6 +86,10 @@ MAP_ENC = {
         'NULL': ['NULL', '', 0],
         'NULL_SHA256': ['NULL', '', 0],
         '3DES_EDE_CBC': ['3DES', 'CBC', 168],
+        'AEGIS_128L': ['AEGIS', 'NULL', 128],
+        'AEGIS_128X2': ['AEGIS', 'NULL', 128],
+        'AEGIS_256': ['AEGIS', 'NULL', 256],
+        'AEGIS_256X2': ['AEGIS', 'NULL', 256],
         'AES_128_CBC': ['AES', 'CBC', 128],
         'AES_256_CBC': ['AES', 'CBC', 256],
         'AES_128_CCM': ['AES', 'CCM', 128],
@@ -95,7 +112,9 @@ MAP_ENC = {
         'DES40_CBC': ['DES', 'CBC', 40],
         'IDEA_CBC': ['IDEA', 'CBC', 128],
         'RC2_CBC_40': ['RC2', 'CBC', 40],
+        'RC2_CBC_56': ['RC2', 'CBC', 56],
         'RC4_40': ['RC4', '', 40],
+        'RC4_56': ['RC4', '', 56],
         'RC4_128': ['RC4', '', 128],
         'SEED_CBC': ['SEED', 'CBC', 128],
         'SM4_CCM': ['SM4', 'CCM', 128],
@@ -114,8 +133,12 @@ MAP_MAC = {
 
 def extract_ciphersuite_info(desc, rfcs):
     params = dict()
+    if desc == "TLS_SHA256_SHA256":
+        desc = "TLS_TLS13_WITH_NULL_SHA256"
+    if desc == "TLS_SHA384_SHA384":
+        desc = "TLS_TLS13_WITH_NULL_SHA384"
     if not "_WITH_" in desc:
-        if desc.startswith("TLS_AES") or desc.startswith("TLS_CHACHA20"):
+        if desc.startswith("TLS_AES") or desc.startswith("TLS_CHACHA20") or desc.startswith("TLS_AEGIS"):
             # XXX special case: TLS 1.3: TLS_AES_128_GCM_SHA256 etc.
             desc = "TLS_TLS13_WITH_" + desc[4:]
         else:
@@ -175,11 +198,7 @@ def extract_ciphersuite_info(desc, rfcs):
     # print("Found {}".format(params))
     return params
 
-
-
-
 ciphers = getCiphers()
-
 out = open(sys.argv[1], 'w')
 
 for value, desc, rfcs in ciphers:
