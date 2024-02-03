@@ -95,6 +95,12 @@ pub struct DTLSMessageHandshake<'a> {
     pub body: DTLSMessageHandshakeBody<'a>,
 }
 
+impl<'a> DTLSMessageHandshake<'a> {
+    pub fn is_fragment(&self) -> bool {
+        matches!(self.body, DTLSMessageHandshakeBody::Fragment(_))
+    }
+}
+
 /// DTLS Generic handshake message
 #[derive(Debug, PartialEq)]
 pub enum DTLSMessageHandshakeBody<'a> {
@@ -133,7 +139,7 @@ impl<'a> DTLSMessage<'a> {
     /// fragments to be a complete message.
     pub fn is_fragment(&self) -> bool {
         match self {
-            DTLSMessage::Handshake(h) => matches!(h.body, DTLSMessageHandshakeBody::Fragment(_)),
+            DTLSMessage::Handshake(h) => h.is_fragment(),
             _ => false,
         }
     }
