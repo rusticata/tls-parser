@@ -2,7 +2,7 @@
 
 import urllib2
 from BeautifulSoup import BeautifulSoup, ResultSet
-file = urllib2.urlopen('http://www.iana.org/assignments/tls-parameters/tls-parameters.xml')
+file = urllib2.urlopen('https://www.iana.org/assignments/tls-parameters/tls-parameters.xml')
 data = file.read()
 with open('tls-parameters.xml', 'wb') as myFile:
     myFile.write(data)
