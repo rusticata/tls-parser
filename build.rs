@@ -32,7 +32,7 @@ fn main() {
     let f = BufReader::new(file);
 
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join("codegen.rs");
-    let mut file = BufWriter::new(File::create(&path).unwrap());
+    let mut file = BufWriter::new(File::create(path).unwrap());
 
     let mut map = phf_codegen::Map::new();
     for line in f.lines() {

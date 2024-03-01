@@ -25,7 +25,7 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
         let bytes = CLIENT_EXTENSIONS1;
         let ec_point_formats = &[0, 1, 2];
         let ext1 = &[0, 0, 0, 0];
-        let ecc: Vec<_> = vec![23, 25, 28, 27, 24, 26, 22, 14, 13, 11, 12, 9, 10]
+        let ecc: Vec<_> = [23, 25, 28, 27, 24, 26, 22, 14, 13, 11, 12, 9, 10]
             .iter()
             .map(|&x| NamedGroup(x))
             .collect();
