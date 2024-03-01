@@ -142,6 +142,7 @@ extern crate alloc;
 
 mod certificate_transparency;
 mod dtls;
+mod dtls_combine;
 mod tls;
 mod tls_alert;
 mod tls_ciphers;
@@ -154,6 +155,7 @@ mod tls_states;
 
 pub use certificate_transparency::*;
 pub use dtls::*;
+pub use dtls_combine::*;
 pub use tls::*;
 pub use tls_alert::*;
 pub use tls_ciphers::*;
