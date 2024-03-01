@@ -637,14 +637,18 @@ fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
     Ok((i, TlsMessageHandshake::ClientHello(content)))
 }
 
-fn parse_tls_handshake_msg_server_hello_tlsv12<const HAS_EXT: bool>(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_tls_handshake_msg_server_hello_tlsv12<const HAS_EXT: bool>(
+    i: &[u8],
+) -> IResult<&[u8], TlsMessageHandshake> {
     map(
         parse_tls_server_hello_tlsv12::<HAS_EXT>,
         TlsMessageHandshake::ServerHello,
     )(i)
 }
 
-pub(crate) fn parse_tls_server_hello_tlsv12<const HAS_EXT: bool>(i: &[u8]) -> IResult<&[u8], TlsServerHelloContents> {
+pub(crate) fn parse_tls_server_hello_tlsv12<const HAS_EXT: bool>(
+    i: &[u8],
+) -> IResult<&[u8], TlsServerHelloContents> {
     let (i, version) = be_u16(i)?;
     let (i, random) = take(32usize)(i)?;
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
