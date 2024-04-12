@@ -2,7 +2,7 @@
 //! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
 
 use alloc::{vec, vec::Vec};
-use core::convert::{AsRef, TryInto};
+use core::convert::TryInto;
 use core::fmt;
 use core::ops::Deref;
 use nom::branch::alt;

@@ -9,7 +9,6 @@
 use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
 use crate::tls_ec::{parse_named_groups, NamedGroup};
 use alloc::{vec, vec::Vec};
-use core::convert::From;
 use nom::bytes::streaming::{tag, take};
 use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
