@@ -26,13 +26,21 @@ jobs:
         run: cargo update
       - run: RUSTFLAGS="-D warnings" cargo check
 
-  test:
-    name: Test Suite
+  test_features:
+    name: Test suite (with features)
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - --features=default
+          - --all-features
+          - --features=serialize
+          - --features=unstable
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - run: cargo test ${{ matrix.features }}
 
   no_std:
     name: no-std
