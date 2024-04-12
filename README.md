@@ -3,8 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE-MIT)
 [![Apache License 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE-APACHE)
 [![Crates.io Version](https://img.shields.io/crates/v/tls-parser.svg)](https://crates.io/crates/tls-parser)
-[![Github CI](https://github.com/rusticata/der-parser/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/der-parser/actions)
-[![Minimum rustc version](https://img.shields.io/badge/rustc-1.60.0+-lightgray.svg)](#rust-version-requirements)
+[![GitHub CI](https://github.com/cpu/tls-parser/actions/workflows/rust.yml/badge.svg)](https://github.com/cpu/tls-parser/actions/workflows/rust.yml)
+[![Minimum rustc version](https://img.shields.io/badge/rustc-1.63.0+-lightgray.svg)](#rust-version-requirements)
 
 # TLS Parser
 

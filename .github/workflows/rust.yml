@@ -15,16 +15,14 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.60.0
+          - 1.63.0
           - nightly
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
-      - name: Cargo update
-        run: cargo update
-      - run: RUSTFLAGS="-D warnings" cargo check
+      - run: RUSTFLAGS="-D warnings" cargo check --locked
 
   test_features:
     name: Test suite (with features)
@@ -40,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
-      - run: cargo test ${{ matrix.features }}
+      - run: cargo test --locked ${{ matrix.features }}
 
   no_std:
     name: no-std
@@ -48,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: RUSTFLAGS="-D warnings" cargo check --no-default-features
+      - run: RUSTFLAGS="-D warnings" cargo check --locked --no-default-features
 
   fmt:
     name: Rustfmt
@@ -68,7 +66,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy
-      - run: cargo clippy -- -D warnings
+      - run: cargo clippy --locked -- -D warnings
 
   doc:
     name: Build documentation
@@ -78,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo doc --workspace --no-deps --all-features
+      - run: cargo doc --workspace --no-deps --locked --all-features
 
   semver:
     name: Check semver compatibility
