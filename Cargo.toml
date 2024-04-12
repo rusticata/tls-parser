@@ -54,3 +54,11 @@ phf_codegen = "0.11"
 
 [badges]
 travis-ci = { repository = "rusticata/tls-parser" }
+
+[package.metadata.cargo_check_external_types]
+allowed_external_types = [
+  "nom",
+  "nom::*",
+  "phf::map::Map",
+  "rusticata_macros",
+]
