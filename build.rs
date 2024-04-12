@@ -100,7 +100,7 @@ fn main() {
 
     writeln!(
         &mut file,
-        "pub static CIPHERS: phf::Map<u16, TlsCipherSuite> = {};",
+        "#[allow(unused_qualifications)]\npub static CIPHERS: phf::Map<u16, TlsCipherSuite> = {};",
         map.build()
     )
     .unwrap();
