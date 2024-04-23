@@ -65,6 +65,7 @@ pub fn combine_dtls_fragments<'a>(
     let message_seq = first_handshake.message_seq;
     let length = first_handshake.length;
 
+    #[allow(clippy::comparison_chain)]
     if max > length {
         // Error case 4
         return Err(Err::Error(make_error(&*out, ErrorKind::Fail)));
@@ -76,10 +77,10 @@ pub fn combine_dtls_fragments<'a>(
     // Write the header into output.
     {
         out[0] = msg_type.into(); // The type.
-        (&mut out[1..4]).copy_from_slice(&length.to_be_bytes()[1..]); // 24 bit length
-        (&mut out[4..6]).copy_from_slice(&message_seq.to_be_bytes()); // 16 bit message sequence
-        (&mut out[6..9]).copy_from_slice(&[0, 0, 0]); // 24 bit fragment_offset, which is 0 for the entire message.
-        (&mut out[9..12]).copy_from_slice(&length.to_be_bytes()[1..]); // 24 bit fragment_length, which is entire length.
+        out[1..4].copy_from_slice(&length.to_be_bytes()[1..]); // 24 bit length
+        out[4..6].copy_from_slice(&message_seq.to_be_bytes()); // 16 bit message sequence
+        out[6..9].copy_from_slice(&[0, 0, 0]); // 24 bit fragment_offset, which is 0 for the entire message.
+        out[9..12].copy_from_slice(&length.to_be_bytes()[1..]); // 24 bit fragment_length, which is entire length.
     }
 
     let data = &mut out[MESSAGE_HEADER_OFFSET..];
@@ -118,7 +119,7 @@ pub fn combine_dtls_fragments<'a>(
         };
 
         // Copy into output.
-        (&mut data[from..to]).copy_from_slice(&body[..]);
+        data[from..to].copy_from_slice(&body[..]);
     }
 
     // This parse should succeed now and produce a complete message.
