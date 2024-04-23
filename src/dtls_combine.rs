@@ -33,7 +33,7 @@ pub fn combine_dtls_fragments<'a>(
     }
 
     if fragments.len() > MAX_FRAGMENTS {
-        panic!("More than max fragments");
+        return Err(Err::Error(make_error(&*out, ErrorKind::TooLarge)));
     }
 
     const MESSAGE_HEADER_OFFSET: usize = 12;
