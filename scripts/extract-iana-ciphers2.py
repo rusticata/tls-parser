@@ -131,6 +131,11 @@ MAP_MAC = {
         'SM3': ['SM3', 256, 'SM3', 256],
         }
 
+def extract_rfcs(rfcs):
+    p = re.compile("\[|\]")
+    m = p.split(rfcs)
+    return [s.lower() for s in filter(lambda s: len(s) > 0, m)]
+
 def extract_ciphersuite_info(desc, rfcs):
     params = dict()
     if desc == "TLS_SHA256_SHA256":
@@ -160,9 +165,7 @@ def extract_ciphersuite_info(desc, rfcs):
         # special case: TLS_RSA_WITH_AES_128_CCM (RFC6655)
         orig_enc = orig_enc + "_" + orig_mac
         orig_mac = 'NULL'
-    p = re.compile("\[|\]")
-    m = p.split(rfcs)
-    rfcs = [s.lower() for s in filter(lambda s: len(s) > 0, m)]
+    rfcs = extract_rfcs(rfcs)
     #
     # get parameters
     #
@@ -205,8 +208,9 @@ for value, desc, rfcs in ciphers:
     # filter special values
     full_desc = desc
     if desc == "TLS_EMPTY_RENEGOTIATION_INFO_SCSV" or desc == "TLS_FALLBACK_SCSV":
+        rfcs = extract_rfcs(rfcs)
         out.write("%s:%s:NULL:NULL:NULL::0:NULL:0:NULL:0:%s:0:0:0\n" %
-                (value,desc,rfcs,)
+                (value,desc,",".join(rfcs),)
                 )
         continue
     elif desc.startswith("TLS_SM4"):
