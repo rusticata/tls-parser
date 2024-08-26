@@ -164,7 +164,7 @@ pub use tls_sign_hash::*;
 pub use tls_states::*;
 
 #[cfg(all(feature = "serialize", not(feature = "std")))]
-compile_error!("features `serialize` cannot be enable when using `no_std`");
+compile_error!("features `serialize` cannot be enabled when using `no_std`");
 
 #[cfg(all(feature = "serialize", feature = "std"))]
 mod tls_serialize;
