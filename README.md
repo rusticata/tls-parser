@@ -127,9 +127,19 @@ values than to get a generic parse error).
 
 ### 0.12.0
 
+- Set MSRV to 1.70 (required by num_enum)
+- Make functions to parse handshake messages public (#66)
+- Cargo: use phf without std if no_std was specified (#56)
+- Fix parsing and export of RFCs for SCSV
+- DTLS fragments as DTLSMessageHandshakeBody::Fragment
+- Update ciphersuites with old drafts + new AEGIS
+- Support SSLv3 ServerHello
+- Improve TlsCipherSuite: add PRF and methods to get parameters
 - Remove `rand_time` from `ClientHello`/`ServerHello` (this is deprecated since a long time, and makes
   getting the entire random value difficult)
   To access sub elements, use the `rand_time()` and `rand_bytes()` methods
+
+Thanks: Daniel McCarney, Lucas Kent, Andrew Finn, Adrien Guinet, Martin Algesten, Benoit Lemarchand
 
 ### 0.11.0
 
