@@ -21,6 +21,7 @@ include = [
   "Cargo.toml",
   "benches/*.rs",
   "build.rs",
+  "examples/*.rs",
   "src/*.rs",
   "tests/*.rs",
   "scripts/tls-ciphersuites.txt",
