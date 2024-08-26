@@ -15,8 +15,7 @@ use rusticata_macros::newtype_enum;
 
 use crate::{parse_digitally_signed, DigitallySigned};
 
-/// Certificate Transparency Version as defined in [RFC6962 Section 3.2]
-/// (https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
+/// Certificate Transparency Version as defined in [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Nom)]
 pub struct CtVersion(pub u8);
 
@@ -26,20 +25,17 @@ impl display CtVersion {
 }
 }
 
-/// LogID as defined in [RFC6962 Section 3.2]
-/// (https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
+/// LogID as defined in [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
 #[derive(Clone, Debug, PartialEq)]
 pub struct CtLogID<'a> {
     pub key_id: &'a [u8; 32],
 }
 
-/// CtExtensions as defined in [RFC6962 Section 3.2]
-/// (https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
+/// CtExtensions as defined in [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
 #[derive(Clone, Debug, PartialEq)]
 pub struct CtExtensions<'a>(pub &'a [u8]);
 
-/// Signed Certificate Timestamp as defined in [RFC6962 Section 3.2]
-/// (https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
+/// Signed Certificate Timestamp as defined in [RFC6962 Section 3.2](https://datatracker.ietf.org/doc/html/rfc6962#section-3.2)
 #[derive(Clone, Debug, PartialEq)]
 pub struct SignedCertificateTimestamp<'a> {
     pub version: CtVersion,

@@ -6,6 +6,8 @@ use nom::{Err, IResult};
 use nom_derive::*;
 use rusticata_macros::newtype_enum;
 
+/// Named elliptic curves
+///
 /// Named curves, as defined in [RFC4492](https://tools.ietf.org/html/rfc4492), [RFC7027](https://tools.ietf.org/html/rfc7027), [RFC7919](https://tools.ietf.org/html/rfc7919) and
 /// [IANA Supported Groups
 /// Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8)

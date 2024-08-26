@@ -253,12 +253,12 @@ pub fn parse_tls_extension_sni(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     map_parser(length_data(be_u16), parse_tls_extension_sni_content)(i)
 }
 
-/// Max fragment length [RFC6066]
+/// Max fragment length \[RFC6066\]
 pub fn parse_tls_extension_max_fragment_length_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     map(be_u8, TlsExtension::MaxFragmentLength)(i)
 }
 
-/// Max fragment length [RFC6066]
+/// Max fragment length \[RFC6066\]
 pub fn parse_tls_extension_max_fragment_length(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, _) = tag([0x00, 0x01])(i)?;
     map_parser(
@@ -267,7 +267,7 @@ pub fn parse_tls_extension_max_fragment_length(i: &[u8]) -> IResult<&[u8], TlsEx
     )(i)
 }
 
-/// Status Request [RFC6066]
+/// Status Request \[RFC6066\]
 fn parse_tls_extension_status_request_content(
     i: &[u8],
     ext_len: u16,
@@ -350,18 +350,18 @@ fn parse_protocol_name(i: &[u8]) -> IResult<&[u8], &[u8]> {
     length_data(be_u8)(i)
 }
 
-/// Defined in [RFC7301]
+/// Defined in \[RFC7301\]
 pub fn parse_tls_extension_alpn_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, v) = map_parser(length_data(be_u16), many0(complete(parse_protocol_name)))(i)?;
     Ok((i, TlsExtension::ALPN(v)))
 }
 
-/// Defined in [RFC7685]
+/// Defined in \[RFC7685\]
 fn parse_tls_extension_padding_content(i: &[u8], ext_len: u16) -> IResult<&[u8], TlsExtension> {
     map(take(ext_len), TlsExtension::Padding)(i)
 }
 
-/// Defined in [RFC6962]
+/// Defined in \[RFC6962\]
 pub fn parse_tls_extension_signed_certificate_timestamp_content(
     i: &[u8],
 ) -> IResult<&[u8], TlsExtension> {
@@ -371,7 +371,7 @@ pub fn parse_tls_extension_signed_certificate_timestamp_content(
     )(i)
 }
 
-/// Encrypt-then-MAC is defined in [RFC7366]
+/// Encrypt-then-MAC is defined in \[RFC7366\]
 fn parse_tls_extension_encrypt_then_mac_content(
     i: &[u8],
     ext_len: u16,
@@ -382,7 +382,7 @@ fn parse_tls_extension_encrypt_then_mac_content(
     Ok((i, TlsExtension::EncryptThenMac))
 }
 
-/// Encrypt-then-MAC is defined in [RFC7366]
+/// Encrypt-then-MAC is defined in \[RFC7366\]
 pub fn parse_tls_extension_encrypt_then_mac(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, _) = tag([0x00, 0x16])(i)?;
     let (i, ext_len) = be_u16(i)?;
@@ -391,7 +391,7 @@ pub fn parse_tls_extension_encrypt_then_mac(i: &[u8]) -> IResult<&[u8], TlsExten
     })(i)
 }
 
-/// Extended Master Secret is defined in [RFC7627]
+/// Extended Master Secret is defined in \[RFC7627\]
 fn parse_tls_extension_extended_master_secret_content(
     i: &[u8],
     ext_len: u16,
@@ -402,7 +402,7 @@ fn parse_tls_extension_extended_master_secret_content(
     Ok((i, TlsExtension::ExtendedMasterSecret))
 }
 
-/// Extended Master Secret is defined in [RFC7627]
+/// Extended Master Secret is defined in \[RFC7627\]
 pub fn parse_tls_extension_extended_master_secret(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, _) = tag([0x00, 0x17])(i)?;
     let (i, ext_len) = be_u16(i)?;
@@ -411,7 +411,7 @@ pub fn parse_tls_extension_extended_master_secret(i: &[u8]) -> IResult<&[u8], Tl
     })(i)
 }
 
-/// Extended Record Size Limit is defined in [RFC7627]
+/// Extended Record Size Limit is defined in \[RFC7627\]
 fn parse_tls_extension_record_size_limit(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     map(be_u16, TlsExtension::RecordSizeLimit)(i)
 }
@@ -551,12 +551,12 @@ fn parse_tls_extension_npn_content(i: &[u8], ext_len: u16) -> IResult<&[u8], Tls
     Ok((i, TlsExtension::NextProtocolNegotiation))
 }
 
-/// Renegotiation Info, defined in [RFC5746]
+/// Renegotiation Info, defined in \[RFC5746\]
 pub fn parse_tls_extension_renegotiation_info_content(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     map(length_data(be_u8), TlsExtension::RenegotiationInfo)(i)
 }
 
-/// Encrypted Server Name, defined in [draft-ietf-tls-esni]
+/// Encrypted Server Name, defined in \[draft-ietf-tls-esni\]
 pub fn parse_tls_extension_encrypted_server_name(i: &[u8]) -> IResult<&[u8], TlsExtension> {
     let (i, ciphersuite) = map(be_u16, TlsCipherSuiteID)(i)?;
     let (i, group) = NamedGroup::parse(i)?;

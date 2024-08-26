@@ -972,6 +972,7 @@ pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
 }
 
 /// Parse one packet only, as plaintext
+///
 /// This function is deprecated. Use `parse_tls_plaintext` instead.
 ///
 /// This function will be removed from API, as the name is not correct: it is
@@ -983,6 +984,7 @@ pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
 }
 
 /// Parse one chunk of data, possibly containing multiple TLS plaintext records
+///
 /// This function is deprecated. Use `parse_tls_plaintext` instead, checking if
 /// there are remaining bytes, and calling `parse_tls_plaintext` recursively.
 ///
