@@ -230,7 +230,7 @@ pub trait ClientHello<'a> {
 /// TLS Client Hello (from TLS 1.0 to TLS 1.2)
 ///
 /// Some fields are unparsed (for performance reasons), for ex to parse `ext`,
-/// call the `parse_tls_extensions` function.
+/// call the [parse_tls_client_hello_extension](crate::parse_tls_client_hello_extension) function.
 #[derive(Clone, PartialEq)]
 pub struct TlsClientHelloContents<'a> {
     /// TLS version of message
