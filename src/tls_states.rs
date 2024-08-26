@@ -1,5 +1,6 @@
-use crate::tls::*;
 use crate::tls_alert::TlsAlertSeverity;
+use crate::tls_handshake::*;
+use crate::tls_message::*;
 
 #[derive(Debug, PartialEq, Eq)]
 /// Error types for the state machine

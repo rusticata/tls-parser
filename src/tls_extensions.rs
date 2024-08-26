@@ -6,8 +6,8 @@
 //! - [RFC7366](https://tools.ietf.org/html/rfc7366)
 //! - [RFC7627](https://tools.ietf.org/html/rfc7627)
 
-use crate::tls::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
 use crate::tls_ec::{parse_named_groups, NamedGroup};
+use crate::tls_handshake::{parse_tls_versions, TlsCipherSuiteID, TlsVersion};
 use alloc::{vec, vec::Vec};
 use nom::bytes::streaming::{tag, take};
 use nom::combinator::{complete, cond, map, map_parser, opt, verify};

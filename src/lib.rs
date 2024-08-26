@@ -142,24 +142,28 @@ extern crate alloc;
 
 mod certificate_transparency;
 mod dtls;
-mod tls;
 mod tls_alert;
 mod tls_ciphers;
 mod tls_debug;
 mod tls_dh;
 mod tls_ec;
 mod tls_extensions;
+mod tls_handshake;
+mod tls_message;
+mod tls_record;
 mod tls_sign_hash;
 mod tls_states;
 
 pub use certificate_transparency::*;
 pub use dtls::*;
-pub use tls::*;
 pub use tls_alert::*;
 pub use tls_ciphers::*;
 pub use tls_dh::*;
 pub use tls_ec::*;
 pub use tls_extensions::*;
+pub use tls_handshake::*;
+pub use tls_message::*;
+pub use tls_record::*;
 pub use tls_sign_hash::*;
 pub use tls_states::*;
 
@@ -172,4 +176,5 @@ mod tls_serialize;
 pub use tls_serialize::*;
 
 pub use nom;
+pub use nom::{Err, IResult};
 pub use rusticata_macros;

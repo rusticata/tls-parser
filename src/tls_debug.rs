@@ -1,14 +1,16 @@
-use crate::tls::*;
-use crate::tls_alert::*;
-use crate::tls_dh::*;
-use crate::tls_ec::*;
-use crate::tls_extensions::*;
-use crate::tls_sign_hash::*;
 use alloc::format;
 use alloc::vec::Vec;
 use core::fmt;
 use core::str::from_utf8;
 use rusticata_macros::debug::HexSlice;
+
+use crate::tls_alert::*;
+use crate::tls_dh::*;
+use crate::tls_ec::*;
+use crate::tls_extensions::*;
+use crate::tls_handshake::*;
+use crate::tls_record::*;
+use crate::tls_sign_hash::*;
 
 // ------------------------- tls.rs ------------------------------
 impl<'a> fmt::Debug for TlsClientHelloContents<'a> {

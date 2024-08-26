@@ -1,7 +1,4 @@
-//! # TLS parser
-//! Parsing functions for the TLS protocol, supporting versions 1.0 to 1.3
-
-use alloc::{vec, vec::Vec};
+use alloc::vec::Vec;
 use core::convert::TryInto;
 use core::fmt;
 use core::ops::Deref;
@@ -9,19 +6,16 @@ use nom::branch::alt;
 use nom::bytes::streaming::take;
 use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
-use nom::multi::{length_count, length_data, many0, many1};
+use nom::multi::{length_count, length_data, many0};
 use nom::number::streaming::{be_u16, be_u24, be_u32, be_u8};
-use nom_derive::*;
+use nom::{Err, IResult};
+use nom_derive::{NomBE, Parse};
 use rusticata_macros::newtype_enum;
 
-use crate::tls_alert::*;
 use crate::tls_ciphers::*;
-use crate::tls_ec::ECPoint;
-
-pub use nom::{Err, IResult};
-
-/// Max record size (RFC8446 5.1)
-pub const MAX_RECORD_LEN: u16 = 1 << 14;
+// use crate::tls_debug::*;
+use crate::tls_ec::*;
+use crate::tls_message::TlsMessage;
 
 /// Handshake type
 ///
@@ -121,26 +115,6 @@ impl debug TlsHeartbeatMessageType {
 
 impl From<TlsHeartbeatMessageType> for u8 {
     fn from(v: TlsHeartbeatMessageType) -> u8 {
-        v.0
-    }
-}
-
-/// Content type, as defined in IANA TLS ContentType registry
-#[derive(Clone, Copy, PartialEq, Eq, NomBE)]
-pub struct TlsRecordType(pub u8);
-
-newtype_enum! {
-impl debug TlsRecordType {
-    ChangeCipherSpec = 0x14,
-    Alert            = 0x15,
-    Handshake        = 0x16,
-    ApplicationData  = 0x17,
-    Heartbeat        = 0x18,
-}
-}
-
-impl From<TlsRecordType> for u8 {
-    fn from(v: TlsRecordType) -> u8 {
         v.0
     }
 }
@@ -485,78 +459,23 @@ pub enum TlsMessageHandshake<'a> {
     KeyUpdate(u8),
 }
 
-/// TLS application data
-///
-/// Since this message can only be sent after the handshake, data is
-/// stored as opaque.
-#[derive(Clone, Debug, PartialEq)]
-pub struct TlsMessageApplicationData<'a> {
-    pub blob: &'a [u8],
+#[allow(clippy::unnecessary_wraps)]
+fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    Ok((i, TlsMessageHandshake::HelloRequest))
 }
 
-/// TLS heartbeat message, as defined in [RFC6520](https://tools.ietf.org/html/rfc6520)
-///
-/// Heartbeat messages should not be sent during handshake, but in practise
-/// they can (and this caused heartbleed).
-#[derive(Clone, Debug, PartialEq)]
-pub struct TlsMessageHeartbeat<'a> {
-    pub heartbeat_type: TlsHeartbeatMessageType,
-    pub payload_len: u16,
-    pub payload: &'a [u8],
-}
-
-/// TLS record header
-#[derive(Clone, Copy, PartialEq, NomBE)]
-pub struct TlsRecordHeader {
-    pub record_type: TlsRecordType,
-    pub version: TlsVersion,
-    pub len: u16,
-}
-
-/// TLS plaintext message
-///
-/// Plaintext records can only be found during the handshake.
-#[derive(Clone, Debug, PartialEq)]
-pub enum TlsMessage<'a> {
-    Handshake(TlsMessageHandshake<'a>),
-    ChangeCipherSpec,
-    Alert(TlsMessageAlert),
-    ApplicationData(TlsMessageApplicationData<'a>),
-    Heartbeat(TlsMessageHeartbeat<'a>),
-}
-
-/// TLS plaintext record
-///
-/// A TLS record can contain multiple messages (sharing the same record type).
-/// Plaintext records can only be found during the handshake.
-#[derive(Clone, Debug, PartialEq)]
-pub struct TlsPlaintext<'a> {
-    pub hdr: TlsRecordHeader,
-    pub msg: Vec<TlsMessage<'a>>,
-}
-
-/// TLS encrypted data
-///
-/// This struct only contains an opaque pointer (data are encrypted).
-#[derive(Clone, Debug, PartialEq)]
-pub struct TlsEncryptedContent<'a> {
-    pub blob: &'a [u8],
-}
-
-/// Encrypted TLS record (containing opaque data)
-#[derive(Clone, Debug, PartialEq)]
-pub struct TlsEncrypted<'a> {
-    pub hdr: TlsRecordHeader,
-    pub msg: TlsEncryptedContent<'a>,
-}
-
-/// Tls Record with raw (unparsed) data
-///
-/// Use `parse_tls_raw_record` to parse content
-#[derive(Clone, Debug, PartialEq)]
-pub struct TlsRawRecord<'a> {
-    pub hdr: TlsRecordHeader,
-    pub data: &'a [u8],
+fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    let (i, version) = be_u16(i)?;
+    let (i, random) = take(32usize)(i)?;
+    let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
+    let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
+    let (i, ciphers_len) = be_u16(i)?;
+    let (i, ciphers) = parse_cipher_suites(i, ciphers_len as usize)?;
+    let (i, comp_len) = be_u8(i)?;
+    let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
+    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let content = TlsClientHelloContents::new(version, random, sid, ciphers, comp, ext);
+    Ok((i, TlsMessageHandshake::ClientHello(content)))
 }
 
 pub(crate) fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCipherSuiteID>> {
@@ -606,35 +525,6 @@ fn parse_certs(i: &[u8]) -> IResult<&[u8], Vec<RawCertificate>> {
     many0(complete(map(length_data(be_u24), |data| RawCertificate {
         data,
     })))(i)
-}
-
-/// Read TLS record header
-///
-/// This function is used to get the record header.
-/// After calling this function, caller can read the expected number of bytes and use
-/// `parse_tls_record_with_header` to parse content.
-#[inline]
-pub fn parse_tls_record_header(i: &[u8]) -> IResult<&[u8], TlsRecordHeader> {
-    TlsRecordHeader::parse(i)
-}
-
-#[allow(clippy::unnecessary_wraps)]
-fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
-    Ok((i, TlsMessageHandshake::HelloRequest))
-}
-
-fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
-    let (i, version) = be_u16(i)?;
-    let (i, random) = take(32usize)(i)?;
-    let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
-    let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
-    let (i, ciphers_len) = be_u16(i)?;
-    let (i, ciphers) = parse_cipher_suites(i, ciphers_len as usize)?;
-    let (i, comp_len) = be_u8(i)?;
-    let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
-    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
-    let content = TlsClientHelloContents::new(version, random, sid, ciphers, comp, ext);
-    Ok((i, TlsMessageHandshake::ClientHello(content)))
 }
 
 fn parse_tls_handshake_msg_server_hello_tlsv12<const HAS_EXT: bool>(
@@ -871,125 +761,4 @@ pub fn parse_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage> {
         _ => Err(Err::Error(make_error(i, ErrorKind::Switch))),
     }?;
     Ok((i, TlsMessage::Handshake(msg)))
-}
-
-/// Parse a TLS changecipherspec message
-// XXX add extra verification hdr.len == 1
-pub fn parse_tls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], TlsMessage> {
-    let (i, _) = verify(be_u8, |&tag| tag == 0x01)(i)?;
-    Ok((i, TlsMessage::ChangeCipherSpec))
-}
-
-/// Parse a TLS alert message
-// XXX add extra verification hdr.len == 2
-pub fn parse_tls_message_alert(i: &[u8]) -> IResult<&[u8], TlsMessage> {
-    let (i, alert) = TlsMessageAlert::parse(i)?;
-    Ok((i, TlsMessage::Alert(alert)))
-}
-
-/// Parse a TLS applicationdata message
-///
-/// Read the entire input as applicationdata
-pub fn parse_tls_message_applicationdata(i: &[u8]) -> IResult<&[u8], TlsMessage> {
-    let msg = TlsMessage::ApplicationData(TlsMessageApplicationData { blob: i });
-    Ok((&[], msg))
-}
-
-/// Parse a TLS heartbeat message
-pub fn parse_tls_message_heartbeat(
-    i: &[u8],
-    tls_plaintext_len: u16,
-) -> IResult<&[u8], Vec<TlsMessage>> {
-    let (i, heartbeat_type) = TlsHeartbeatMessageType::parse(i)?;
-    let (i, payload_len) = be_u16(i)?;
-    if tls_plaintext_len < 3 {
-        return Err(Err::Error(make_error(i, ErrorKind::Verify)));
-    }
-    let (i, payload) = take(payload_len as usize)(i)?;
-    let v = vec![TlsMessage::Heartbeat(TlsMessageHeartbeat {
-        heartbeat_type,
-        payload_len,
-        payload,
-    })];
-    Ok((i, v))
-}
-
-/// Given data and a TLS record header, parse content.
-///
-/// A record can contain multiple messages (with the same type).
-///
-/// Note that message length is checked (not required for parser safety, but for
-/// strict protocol conformance).
-#[rustfmt::skip]
-#[allow(clippy::trivially_copy_pass_by_ref)] // TlsRecordHeader is only 6 bytes, but we prefer not breaking current API
-pub fn parse_tls_record_with_header<'i>(i:&'i [u8], hdr:&TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
-    match hdr.record_type {
-        TlsRecordType::ChangeCipherSpec => many1(complete(parse_tls_message_changecipherspec))(i),
-        TlsRecordType::Alert            => many1(complete(parse_tls_message_alert))(i),
-        TlsRecordType::Handshake        => many1(complete(parse_tls_message_handshake))(i),
-        TlsRecordType::ApplicationData  => many1(complete(parse_tls_message_applicationdata))(i),
-        TlsRecordType::Heartbeat        => parse_tls_message_heartbeat(i, hdr.len),
-        _                               => Err(Err::Error(make_error(i, ErrorKind::Switch)))
-    }
-}
-
-/// Parse one packet only, as plaintext
-/// A single record can contain multiple messages, they must share the same record type
-pub fn parse_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
-    let (i, hdr) = parse_tls_record_header(i)?;
-    if hdr.len > MAX_RECORD_LEN {
-        return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
-    }
-    let (i, msg) = map_parser(take(hdr.len as usize), |i| {
-        parse_tls_record_with_header(i, &hdr)
-    })(i)?;
-    Ok((i, TlsPlaintext { hdr, msg }))
-}
-
-/// Parse one packet only, as encrypted content
-pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted> {
-    let (i, hdr) = parse_tls_record_header(i)?;
-    if hdr.len > MAX_RECORD_LEN {
-        return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
-    }
-    let (i, blob) = take(hdr.len as usize)(i)?;
-    let msg = TlsEncryptedContent { blob };
-    Ok((i, TlsEncrypted { hdr, msg }))
-}
-
-/// Read TLS record envelope, but do not decode data
-///
-/// This function is used to get the record type, and to make sure the record is
-/// complete (not fragmented).
-/// After calling this function, use `parse_tls_record_with_header` to parse content.
-pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
-    let (i, hdr) = parse_tls_record_header(i)?;
-    if hdr.len > MAX_RECORD_LEN {
-        return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
-    }
-    let (i, data) = take(hdr.len as usize)(i)?;
-    Ok((i, TlsRawRecord { hdr, data }))
-}
-
-/// Parse one packet only, as plaintext
-///
-/// This function is deprecated. Use `parse_tls_plaintext` instead.
-///
-/// This function will be removed from API, as the name is not correct: it is
-/// not possible to parse TLS packets without knowing the TLS state.
-#[deprecated(since = "0.5.0", note = "Use parse_tls_plaintext")]
-#[inline]
-pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
-    parse_tls_plaintext(i)
-}
-
-/// Parse one chunk of data, possibly containing multiple TLS plaintext records
-///
-/// This function is deprecated. Use `parse_tls_plaintext` instead, checking if
-/// there are remaining bytes, and calling `parse_tls_plaintext` recursively.
-///
-/// This function will be removed from API, as it should be replaced by a more
-/// useful one to handle fragmentation.
-pub fn tls_parser_many(i: &[u8]) -> IResult<&[u8], Vec<TlsPlaintext>> {
-    many1(complete(parse_tls_plaintext))(i)
 }
