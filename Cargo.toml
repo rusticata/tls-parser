@@ -33,7 +33,7 @@ name = "tls_parser"
 [features]
 default = ["std"]
 serialize = ["cookie-factory"]
-std = []
+std = ["phf/std"]
 unstable = []
 
 [dependencies]
@@ -41,7 +41,7 @@ cookie-factory = { version="0.3", optional=true }
 num_enum = "0.7.2"
 nom = "7.0"
 nom-derive = "0.10"
-phf = "0.11"
+phf = { version="0.11", default-features=false }
 rusticata-macros = "4.0"
 
 [dev-dependencies]
