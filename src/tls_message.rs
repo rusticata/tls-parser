@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use nom::bytes::streaming::take;
 use nom::combinator::verify;
 use nom::error::{make_error, ErrorKind};
