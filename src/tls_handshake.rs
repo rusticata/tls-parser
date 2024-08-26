@@ -459,12 +459,24 @@ pub enum TlsMessageHandshake<'a> {
     KeyUpdate(u8),
 }
 
-#[allow(clippy::unnecessary_wraps)]
-fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse a HelloRequest handshake message
+pub fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     Ok((i, TlsMessageHandshake::HelloRequest))
 }
 
-fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse handshake message contents for ClientHello
+///
+/// ```rust
+/// use tls_parser::*;
+///
+/// # pub fn do_stuff(bytes: &[u8]) {
+/// if let Ok((_, ch)) = parse_tls_handshake_client_hello(bytes) {
+///     println!("ClientHello TLS version: {}", ch.version);
+///     println!("  number of proposed ciphersuites: {}", ch.ciphers.len());
+/// }
+/// # }
+/// ```
+pub fn parse_tls_handshake_client_hello(i: &[u8]) -> IResult<&[u8], TlsClientHelloContents> {
     let (i, version) = be_u16(i)?;
     let (i, random) = take(32usize)(i)?;
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
@@ -475,7 +487,30 @@ fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
     let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
     let content = TlsClientHelloContents::new(version, random, sid, ciphers, comp, ext);
-    Ok((i, TlsMessageHandshake::ClientHello(content)))
+    Ok((i, content))
+}
+
+/// Parse a ClientHello handshake message
+///
+/// This function returns a [TlsMessageHandshake]. To get only the `ClientHello` contents, use the
+/// [parse_tls_handshake_client_hello] function.
+///
+/// ```rust
+/// use tls_parser::*;
+///
+/// # pub fn do_stuff(bytes: &[u8]) {
+/// if let Ok((_, TlsMessageHandshake::ClientHello(ch))) =
+///         parse_tls_handshake_msg_client_hello(bytes) {
+///     println!("ClientHello TLS version: {}", ch.version);
+///     println!("  number of proposed ciphersuites: {}", ch.ciphers.len());
+/// }
+/// # }
+/// ```
+pub fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    map(
+        parse_tls_handshake_client_hello,
+        TlsMessageHandshake::ClientHello,
+    )(i)
 }
 
 pub(crate) fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCipherSuiteID>> {
@@ -570,7 +605,55 @@ fn parse_tls_handshake_msg_server_hello_tlsv13draft18(
     Ok((i, TlsMessageHandshake::ServerHelloV13Draft18(content)))
 }
 
-fn parse_tls_handshake_msg_server_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse handshake message contents for ServerHello (all TLS versions except 1.3 draft 18)
+///
+/// ```rust
+/// use tls_parser::*;
+///
+/// # pub fn do_stuff(bytes: &[u8]) {
+/// if let Ok((_, sh)) = parse_tls_handshake_server_hello(bytes) {
+///     println!("ServerHello TLS version: {}", sh.version);
+///     println!("  server chosen ciphersuites: {}", sh.cipher);
+/// }
+/// # }
+/// ```
+pub fn parse_tls_handshake_server_hello(i: &[u8]) -> IResult<&[u8], TlsServerHelloContents> {
+    let (_, version) = be_u16(i)?;
+    match version {
+        0x0303 => parse_tls_server_hello_tlsv12::<true>(i),
+        0x0302 => parse_tls_server_hello_tlsv12::<true>(i),
+        0x0301 => parse_tls_server_hello_tlsv12::<true>(i),
+        0x0300 => parse_tls_server_hello_tlsv12::<false>(i),
+        _ => Err(Err::Error(make_error(i, ErrorKind::Tag))),
+    }
+}
+
+/// Parse a ServerHello handshake message (all TLS versions)
+///
+/// This function returns a [TlsMessageHandshake]. To get only the `ServerHello` contents, use the
+/// [parse_tls_handshake_server_hello] function.
+///
+/// ```rust
+/// use tls_parser::*;
+///
+/// # pub fn do_stuff(bytes: &[u8]) {
+/// if let Ok((_, msg)) = parse_tls_handshake_msg_server_hello(bytes) {
+///     match msg {
+///         TlsMessageHandshake::ServerHello(sh) => {
+///             println!("ServerHello TLS version: {}", sh.version);
+///             println!("  server chosen ciphersuites: {}", sh.cipher);
+///         }
+///         TlsMessageHandshake::ServerHelloV13Draft18(sh) => {
+///             println!("ServerHello v1.3 draft 18 TLS version: {}", sh.version);
+///         }
+///         _ => {
+///             println!("Not a ServerHello");
+///         }
+///     }
+/// }
+/// # }
+/// ```
+pub fn parse_tls_handshake_msg_server_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     let (_, version) = be_u16(i)?;
     match version {
         0x7f12 => parse_tls_handshake_msg_server_hello_tlsv13draft18(i),
@@ -582,8 +665,9 @@ fn parse_tls_handshake_msg_server_hello(i: &[u8]) -> IResult<&[u8], TlsMessageHa
     }
 }
 
+/// Parse a NewSessionTicket handshake message
 // RFC 5077   Stateless TLS Session Resumption
-fn parse_tls_handshake_msg_newsessionticket(
+pub fn parse_tls_handshake_msg_newsessionticket(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
@@ -599,7 +683,10 @@ fn parse_tls_handshake_msg_newsessionticket(
     Ok((i, TlsMessageHandshake::NewSessionTicket(content)))
 }
 
-fn parse_tls_handshake_msg_hello_retry_request(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse a HelloRetryRequest handshake message
+pub fn parse_tls_handshake_msg_hello_retry_request(
+    i: &[u8],
+) -> IResult<&[u8], TlsMessageHandshake> {
     let (i, version) = TlsVersion::parse(i)?;
     let (i, cipher) = map(be_u16, TlsCipherSuiteID)(i)?;
     let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
@@ -618,11 +705,13 @@ pub(crate) fn parse_tls_certificate(i: &[u8]) -> IResult<&[u8], TlsCertificateCo
     Ok((i, content))
 }
 
-fn parse_tls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse a Certificate handshake message
+pub fn parse_tls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     map(parse_tls_certificate, TlsMessageHandshake::Certificate)(i)
 }
 
-fn parse_tls_handshake_msg_serverkeyexchange(
+/// Parse a ServerKeyExchange handshake message
+pub fn parse_tls_handshake_msg_serverkeyexchange(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
@@ -631,11 +720,16 @@ fn parse_tls_handshake_msg_serverkeyexchange(
     })(i)
 }
 
-fn parse_tls_handshake_msg_serverdone(i: &[u8], len: usize) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse a ServerDone handshake message
+pub fn parse_tls_handshake_msg_serverdone(
+    i: &[u8],
+    len: usize,
+) -> IResult<&[u8], TlsMessageHandshake> {
     map(take(len), TlsMessageHandshake::ServerDone)(i)
 }
 
-fn parse_tls_handshake_msg_certificateverify(
+/// Parse a CertificateVerify handshake message
+pub fn parse_tls_handshake_msg_certificateverify(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
@@ -648,7 +742,11 @@ pub(crate) fn parse_tls_clientkeyexchange(
     move |i| map(take(len), TlsClientKeyExchangeContents::Unknown)(i)
 }
 
-fn parse_tls_handshake_msg_clientkeyexchange(
+/// Parse a ClientKeyExchange handshake message
+///
+/// This function does not known the data structure, so it will always return
+/// [TlsClientKeyExchangeContents::Unknown] with the raw data
+pub fn parse_tls_handshake_msg_clientkeyexchange(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake> {
@@ -658,7 +756,7 @@ fn parse_tls_handshake_msg_clientkeyexchange(
     )(i)
 }
 
-fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsCertificateRequestContents> {
     let (i, cert_types) = length_count(be_u8, be_u8)(i)?;
     let (i, ca_len) = be_u16(i)?;
     let (i, unparsed_ca) =
@@ -669,10 +767,10 @@ fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
         sig_hash_algs: None,
         unparsed_ca,
     };
-    Ok((i, TlsMessageHandshake::CertificateRequest(content)))
+    Ok((i, content))
 }
 
-fn parse_certrequest_full(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+fn parse_certrequest_full(i: &[u8]) -> IResult<&[u8], TlsCertificateRequestContents> {
     let (i, cert_types) = length_count(be_u8, be_u8)(i)?;
     let (i, sig_hash_algs_len) = be_u16(i)?;
     let (i, sig_hash_algs) =
@@ -685,45 +783,90 @@ fn parse_certrequest_full(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
         sig_hash_algs: Some(sig_hash_algs),
         unparsed_ca,
     };
-    Ok((i, TlsMessageHandshake::CertificateRequest(content)))
+    Ok((i, content))
 }
 
-#[inline]
-fn parse_tls_handshake_msg_certificaterequest(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse a CertificateRequest handshake message
+pub fn parse_tls_handshake_certificaterequest(
+    i: &[u8],
+) -> IResult<&[u8], TlsCertificateRequestContents> {
     alt((
         complete(parse_certrequest_full),
         complete(parse_certrequest_nosigalg),
     ))(i)
 }
 
-fn parse_tls_handshake_msg_finished(i: &[u8], len: usize) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse a CertificateRequest handshake message
+pub fn parse_tls_handshake_msg_certificaterequest(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    map(
+        parse_tls_handshake_certificaterequest,
+        TlsMessageHandshake::CertificateRequest,
+    )(i)
+}
+
+/// Parse a Finished handshake message
+pub fn parse_tls_handshake_msg_finished(
+    i: &[u8],
+    len: usize,
+) -> IResult<&[u8], TlsMessageHandshake> {
     map(take(len), TlsMessageHandshake::Finished)(i)
 }
 
-// Defined in [RFC6066]
-// if status_type == 0, blob is a OCSPResponse, as defined in [RFC2560](https://tools.ietf.org/html/rfc2560)
-// Note that the OCSPResponse object is DER-encoded.
-fn parse_tls_handshake_msg_certificatestatus(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse handshake message contents for CertificateStatus (\[RFC6066\])
+///
+/// If status_type == 0, blob is a OCSPResponse, as defined in [RFC2560](https://tools.ietf.org/html/rfc2560)
+///
+/// Note that the OCSPResponse object is DER-encoded.
+pub fn parse_tls_handshake_certificatestatus(
+    i: &[u8],
+) -> IResult<&[u8], TlsCertificateStatusContents> {
     let (i, status_type) = be_u8(i)?;
     let (i, blob) = length_data(be_u24)(i)?;
     let content = TlsCertificateStatusContents { status_type, blob };
-    Ok((i, TlsMessageHandshake::CertificateStatus(content)))
+    Ok((i, content))
 }
 
+/// Parse a CertificateStatus handshake message (\[RFC6066\])
+///
+/// If status_type == 0, blob is a OCSPResponse, as defined in [RFC2560](https://tools.ietf.org/html/rfc2560)
+///
+/// Note that the OCSPResponse object is DER-encoded.
+pub fn parse_tls_handshake_msg_certificatestatus(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    map(
+        parse_tls_handshake_certificatestatus,
+        TlsMessageHandshake::CertificateStatus,
+    )(i)
+}
+
+/// Parse handshake message contents for NextProtocol
+///
 /// NextProtocol handshake message, as defined in
 /// [draft-agl-tls-nextprotoneg-03](https://tools.ietf.org/html/draft-agl-tls-nextprotoneg-03)
 /// Deprecated in favour of ALPN.
-fn parse_tls_handshake_msg_next_protocol(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+pub fn parse_tls_handshake_next_protocol(i: &[u8]) -> IResult<&[u8], TlsNextProtocolContent> {
     let (i, selected_protocol) = length_data(be_u8)(i)?;
     let (i, padding) = length_data(be_u8)(i)?;
     let next_proto = TlsNextProtocolContent {
         selected_protocol,
         padding,
     };
-    Ok((i, TlsMessageHandshake::NextProtocol(next_proto)))
+    Ok((i, next_proto))
 }
 
-fn parse_tls_handshake_msg_key_update(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+/// Parse a NextProtocol handshake message
+///
+/// NextProtocol handshake message, as defined in
+/// [draft-agl-tls-nextprotoneg-03](https://tools.ietf.org/html/draft-agl-tls-nextprotoneg-03)
+/// Deprecated in favour of ALPN.
+pub fn parse_tls_handshake_msg_next_protocol(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
+    map(
+        parse_tls_handshake_next_protocol,
+        TlsMessageHandshake::NextProtocol,
+    )(i)
+}
+
+/// Parse a KeyUpdate handshake message
+pub fn parse_tls_handshake_msg_key_update(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake> {
     map(be_u8, TlsMessageHandshake::KeyUpdate)(i)
 }
 
