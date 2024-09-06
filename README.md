@@ -125,6 +125,11 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.12.1
+
+- Set MAX_RECORD_LEN to 2^14 + 256 for TLSCipherText (#72)
+- Change parse_content_and_signature definition to elide useless lifetimes
+
 ### 0.12.0
 
 - Set MSRV to 1.70 (required by num_enum)
