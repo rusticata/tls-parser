@@ -69,7 +69,7 @@ pub struct TlsEncrypted<'a> {
 
 /// Tls Record with raw (unparsed) data
 ///
-/// Use `parse_tls_raw_record` to parse content
+/// Use [`parse_tls_raw_record`] to parse content
 #[derive(Clone, Debug, PartialEq)]
 pub struct TlsRawRecord<'a> {
     pub hdr: TlsRecordHeader,
@@ -80,7 +80,7 @@ pub struct TlsRawRecord<'a> {
 ///
 /// This function is used to get the record header.
 /// After calling this function, caller can read the expected number of bytes and use
-/// `parse_tls_record_with_header` to parse content.
+/// [`parse_tls_record_with_header`] to parse content.
 #[inline]
 pub fn parse_tls_record_header(i: &[u8]) -> IResult<&[u8], TlsRecordHeader> {
     TlsRecordHeader::parse(i)
@@ -133,7 +133,7 @@ pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted> {
 ///
 /// This function is used to get the record type, and to make sure the record is
 /// complete (not fragmented).
-/// After calling this function, use `parse_tls_record_with_header` to parse content.
+/// After calling this function, use [`parse_tls_record_with_header`] to parse content.
 pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
     let (i, hdr) = parse_tls_record_header(i)?;
     if hdr.len > MAX_RECORD_LEN {
@@ -145,7 +145,7 @@ pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
 
 /// Parse one packet only, as plaintext
 ///
-/// This function is deprecated. Use `parse_tls_plaintext` instead.
+/// This function is deprecated. Use [`parse_tls_plaintext`] instead.
 ///
 /// This function will be removed from API, as the name is not correct: it is
 /// not possible to parse TLS packets without knowing the TLS state.
@@ -157,8 +157,8 @@ pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
 
 /// Parse one chunk of data, possibly containing multiple TLS plaintext records
 ///
-/// This function is deprecated. Use `parse_tls_plaintext` instead, checking if
-/// there are remaining bytes, and calling `parse_tls_plaintext` recursively.
+/// This function is deprecated. Use [`parse_tls_plaintext`] instead, checking if
+/// there are remaining bytes, and calling [`parse_tls_plaintext`] recursively.
 ///
 /// This function will be removed from API, as it should be replaced by a more
 /// useful one to handle fragmentation.
