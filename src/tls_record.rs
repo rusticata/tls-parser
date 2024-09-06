@@ -11,8 +11,8 @@ use crate::tls_handshake::*;
 use crate::tls_message::*;
 use crate::TlsVersion;
 
-/// Max record size (RFC8446 5.1)
-pub const MAX_RECORD_LEN: u16 = 1 << 14;
+/// Max record size for TLSCipherText (RFC8446 5.2)
+pub const MAX_RECORD_LEN: u16 = (1 << 14) + 256;
 
 /// Content type, as defined in IANA TLS ContentType registry
 #[derive(Clone, Copy, PartialEq, Eq, NomBE)]
