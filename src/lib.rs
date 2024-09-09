@@ -151,6 +151,7 @@ mod tls_extensions;
 mod tls_handshake;
 mod tls_message;
 mod tls_record;
+mod tls_records_parser;
 mod tls_sign_hash;
 mod tls_states;
 
@@ -164,6 +165,7 @@ pub use tls_extensions::*;
 pub use tls_handshake::*;
 pub use tls_message::*;
 pub use tls_record::*;
+pub use tls_records_parser::*;
 pub use tls_sign_hash::*;
 pub use tls_states::*;
 
