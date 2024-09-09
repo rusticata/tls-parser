@@ -135,13 +135,13 @@ pub fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned> {
 
 /// Parse DigitallySigned object, depending on the `ext` parameter which should
 /// be true if the TLS client has sent the `signature_algorithms` extension
-pub fn parse_content_and_signature<F, T>(
-    i: &[u8],
+pub fn parse_content_and_signature<'a, F, T>(
+    i: &'a [u8],
     fun: F,
     ext: bool,
-) -> IResult<&[u8], (T, DigitallySigned)>
+) -> IResult<&'a [u8], (T, DigitallySigned<'a>)>
 where
-    F: Fn(&[u8]) -> IResult<&[u8], T>,
+    F: Fn(&'a [u8]) -> IResult<&'a [u8], T>,
 {
     if ext {
         pair(fun, parse_digitally_signed)(i)
