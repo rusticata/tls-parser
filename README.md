@@ -125,6 +125,11 @@ values than to get a generic parse error).
 
 ## Changes
 
+### 0.12.2
+
+- Reintroduce lifetime in `parse_content_and_signature`, compiler infers a wrong lifetime
+  when elided.
+
 ### 0.12.1
 
 - Set MAX_RECORD_LEN to 2^14 + 256 for TLSCipherText (#72)
