@@ -92,6 +92,9 @@ pub fn parse_tls_record_header(i: &[u8]) -> IResult<&[u8], TlsRecordHeader> {
 ///
 /// Note that message length is checked (not required for parser safety, but for
 /// strict protocol conformance).
+///
+/// This function will fail on fragmented records. To support fragmented records, use
+/// [crate::TlsRecordsParser]].
 #[rustfmt::skip]
 #[allow(clippy::trivially_copy_pass_by_ref)] // TlsRecordHeader is only 6 bytes, but we prefer not breaking current API
 pub fn parse_tls_record_with_header<'i>(i:&'i [u8], hdr:&TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
@@ -133,7 +136,7 @@ pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted> {
 ///
 /// This function is used to get the record type, and to make sure the record is
 /// complete (not fragmented).
-/// After calling this function, use [`parse_tls_record_with_header`] to parse content.
+/// After calling this function, use [`parse_tls_record_with_header`] or [crate::TlsRecordsParser] to parse content.
 pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
     let (i, hdr) = parse_tls_record_header(i)?;
     if hdr.len > MAX_RECORD_LEN {
