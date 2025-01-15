@@ -71,7 +71,7 @@ MAP_KX = {
         'ECDHE_PSK': ['ECDHE', 'PSK'],
         'ECDHE_RSA': ['ECDHE', 'RSA'],
         'PSK': ['PSK', 'PSK'],
-        'PSK_DHE': ['PSK', 'DHE'],
+        'PSK_DHE': ['DHE', 'PSK'],
         'KRB5': ['KRB5', 'KRB5'],
         'KRB5_EXPORT': ['KRB5', 'KRB5'],
         'RSA_EXPORT': ['RSA', 'RSA'],
