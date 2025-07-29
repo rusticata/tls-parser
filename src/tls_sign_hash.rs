@@ -115,14 +115,14 @@ pub struct DigitallySigned<'a> {
     pub data: &'a [u8],
 }
 
-pub fn parse_digitally_signed_old(i: &[u8]) -> IResult<&[u8], DigitallySigned> {
+pub fn parse_digitally_signed_old(i: &[u8]) -> IResult<&[u8], DigitallySigned<'_>> {
     map(length_data(be_u16), |data| DigitallySigned {
         alg: None,
         data,
     })(i)
 }
 
-pub fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned> {
+pub fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned<'_>> {
     let (i, hash) = HashAlgorithm::parse(i)?;
     let (i, sign) = SignAlgorithm::parse(i)?;
     let (i, data) = length_data(be_u16)(i)?;

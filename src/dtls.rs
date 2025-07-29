@@ -165,13 +165,13 @@ pub fn parse_dtls_record_header(i: &[u8]) -> IResult<&[u8], DTLSRecordHeader> {
 }
 
 /// Treat the entire input as an opaque fragment.
-fn parse_dtls_fragment(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody> {
+fn parse_dtls_fragment(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody<'_>> {
     Ok((&[], DTLSMessageHandshakeBody::Fragment(i)))
 }
 
 /// DTLS Client Hello
 // Section 4.2 of RFC6347
-fn parse_dtls_client_hello(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody> {
+fn parse_dtls_client_hello(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody<'_>> {
     let (i, version) = TlsVersion::parse(i)?;
     let (i, random) = take(32usize)(i)?;
     let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
@@ -196,7 +196,7 @@ fn parse_dtls_client_hello(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody>
 
 /// DTLS Client Hello
 // Section 4.2 of RFC6347
-fn parse_dtls_hello_verify_request(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody> {
+fn parse_dtls_hello_verify_request(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody<'_>> {
     let (i, server_version) = TlsVersion::parse(i)?;
     let (i, cookie) = length_data(be_u8)(i)?;
     let content = DTLSHelloVerifyRequest {
@@ -208,7 +208,7 @@ fn parse_dtls_hello_verify_request(i: &[u8]) -> IResult<&[u8], DTLSMessageHandsh
 
 fn parse_dtls_handshake_msg_server_hello_tlsv12(
     i: &[u8],
-) -> IResult<&[u8], DTLSMessageHandshakeBody> {
+) -> IResult<&[u8], DTLSMessageHandshakeBody<'_>> {
     map(
         parse_tls_server_hello_tlsv12::<true>,
         DTLSMessageHandshakeBody::ServerHello,
@@ -218,26 +218,26 @@ fn parse_dtls_handshake_msg_server_hello_tlsv12(
 fn parse_dtls_handshake_msg_serverdone(
     i: &[u8],
     len: usize,
-) -> IResult<&[u8], DTLSMessageHandshakeBody> {
+) -> IResult<&[u8], DTLSMessageHandshakeBody<'_>> {
     map(take(len), DTLSMessageHandshakeBody::ServerDone)(i)
 }
 
 fn parse_dtls_handshake_msg_clientkeyexchange(
     i: &[u8],
     len: usize,
-) -> IResult<&[u8], DTLSMessageHandshakeBody> {
+) -> IResult<&[u8], DTLSMessageHandshakeBody<'_>> {
     map(
         parse_tls_clientkeyexchange(len),
         DTLSMessageHandshakeBody::ClientKeyExchange,
     )(i)
 }
 
-fn parse_dtls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody> {
+fn parse_dtls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], DTLSMessageHandshakeBody<'_>> {
     map(parse_tls_certificate, DTLSMessageHandshakeBody::Certificate)(i)
 }
 
 /// Parse a DTLS handshake message
-pub fn parse_dtls_message_handshake(i: &[u8]) -> IResult<&[u8], DTLSMessage> {
+pub fn parse_dtls_message_handshake(i: &[u8]) -> IResult<&[u8], DTLSMessage<'_>> {
     let (i, msg_type) = map(be_u8, TlsHandshakeType)(i)?;
     let (i, length) = be_u24(i)?;
     let (i, message_seq) = be_u16(i)?;
@@ -281,14 +281,14 @@ pub fn parse_dtls_message_handshake(i: &[u8]) -> IResult<&[u8], DTLSMessage> {
 
 /// Parse a DTLS changecipherspec message
 // XXX add extra verification hdr.len == 1
-pub fn parse_dtls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], DTLSMessage> {
+pub fn parse_dtls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], DTLSMessage<'_>> {
     let (i, _) = verify(be_u8, |&tag| tag == 0x01)(i)?;
     Ok((i, DTLSMessage::ChangeCipherSpec))
 }
 
 /// Parse a DTLS alert message
 // XXX add extra verification hdr.len == 2
-pub fn parse_dtls_message_alert(i: &[u8]) -> IResult<&[u8], DTLSMessage> {
+pub fn parse_dtls_message_alert(i: &[u8]) -> IResult<&[u8], DTLSMessage<'_>> {
     let (i, alert) = TlsMessageAlert::parse(i)?;
     Ok((i, DTLSMessage::Alert(alert)))
 }
@@ -312,7 +312,7 @@ pub fn parse_dtls_record_with_header<'i>(
 
 /// Parse one DTLS plaintext record
 // Section 4.1 of RFC6347
-pub fn parse_dtls_plaintext_record(i: &[u8]) -> IResult<&[u8], DTLSPlaintext> {
+pub fn parse_dtls_plaintext_record(i: &[u8]) -> IResult<&[u8], DTLSPlaintext<'_>> {
     let (i, header) = parse_dtls_record_header(i)?;
     // As in TLS 1.2, the length should not exceed 2^14.
     if header.length > MAX_RECORD_LEN {
@@ -326,6 +326,6 @@ pub fn parse_dtls_plaintext_record(i: &[u8]) -> IResult<&[u8], DTLSPlaintext> {
 
 /// Parse multiple DTLS plaintext record
 // Section 4.1 of RFC6347
-pub fn parse_dtls_plaintext_records(i: &[u8]) -> IResult<&[u8], Vec<DTLSPlaintext>> {
+pub fn parse_dtls_plaintext_records(i: &[u8]) -> IResult<&[u8], Vec<DTLSPlaintext<'_>>> {
     many1(complete(parse_dtls_plaintext_record))(i)
 }

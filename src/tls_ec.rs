@@ -192,11 +192,11 @@ pub fn parse_named_groups(i: &[u8]) -> IResult<&[u8], Vec<NamedGroup>> {
 }
 
 #[inline]
-pub fn parse_ec_parameters(i: &[u8]) -> IResult<&[u8], ECParameters> {
+pub fn parse_ec_parameters(i: &[u8]) -> IResult<&[u8], ECParameters<'_>> {
     ECParameters::parse(i)
 }
 
 #[inline]
-pub fn parse_ecdh_params(i: &[u8]) -> IResult<&[u8], ServerECDHParams> {
+pub fn parse_ecdh_params(i: &[u8]) -> IResult<&[u8], ServerECDHParams<'_>> {
     ServerECDHParams::parse(i)
 }

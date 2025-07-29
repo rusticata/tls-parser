@@ -43,14 +43,14 @@ pub struct TlsMessageHeartbeat<'a> {
 
 /// Parse a TLS changecipherspec message
 // XXX add extra verification hdr.len == 1
-pub fn parse_tls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], TlsMessage> {
+pub fn parse_tls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], TlsMessage<'_>> {
     let (i, _) = verify(be_u8, |&tag| tag == 0x01)(i)?;
     Ok((i, TlsMessage::ChangeCipherSpec))
 }
 
 /// Parse a TLS alert message
 // XXX add extra verification hdr.len == 2
-pub fn parse_tls_message_alert(i: &[u8]) -> IResult<&[u8], TlsMessage> {
+pub fn parse_tls_message_alert(i: &[u8]) -> IResult<&[u8], TlsMessage<'_>> {
     let (i, alert) = TlsMessageAlert::parse(i)?;
     Ok((i, TlsMessage::Alert(alert)))
 }
@@ -58,7 +58,7 @@ pub fn parse_tls_message_alert(i: &[u8]) -> IResult<&[u8], TlsMessage> {
 /// Parse a TLS applicationdata message
 ///
 /// Read the entire input as applicationdata
-pub fn parse_tls_message_applicationdata(i: &[u8]) -> IResult<&[u8], TlsMessage> {
+pub fn parse_tls_message_applicationdata(i: &[u8]) -> IResult<&[u8], TlsMessage<'_>> {
     let msg = TlsMessage::ApplicationData(TlsMessageApplicationData { blob: i });
     Ok((&[], msg))
 }
@@ -67,7 +67,7 @@ pub fn parse_tls_message_applicationdata(i: &[u8]) -> IResult<&[u8], TlsMessage>
 pub fn parse_tls_message_heartbeat(
     i: &[u8],
     tls_plaintext_len: u16,
-) -> IResult<&[u8], Vec<TlsMessage>> {
+) -> IResult<&[u8], Vec<TlsMessage<'_>>> {
     let (i, heartbeat_type) = TlsHeartbeatMessageType::parse(i)?;
     let (i, payload_len) = be_u16(i)?;
     if tls_plaintext_len < 3 {

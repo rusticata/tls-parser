@@ -110,7 +110,7 @@ pub fn parse_tls_record_with_header<'i>(i:&'i [u8], hdr:&TlsRecordHeader ) -> IR
 
 /// Parse one packet only, as plaintext
 /// A single record can contain multiple messages, they must share the same record type
-pub fn parse_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
+pub fn parse_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext<'_>> {
     let (i, hdr) = parse_tls_record_header(i)?;
     if hdr.len > MAX_RECORD_LEN {
         return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
@@ -122,7 +122,7 @@ pub fn parse_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
 }
 
 /// Parse one packet only, as encrypted content
-pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted> {
+pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted<'_>> {
     let (i, hdr) = parse_tls_record_header(i)?;
     if hdr.len > MAX_RECORD_LEN {
         return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
@@ -137,7 +137,7 @@ pub fn parse_tls_encrypted(i: &[u8]) -> IResult<&[u8], TlsEncrypted> {
 /// This function is used to get the record type, and to make sure the record is
 /// complete (not fragmented).
 /// After calling this function, use [`parse_tls_record_with_header`] or [crate::TlsRecordsParser] to parse content.
-pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
+pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord<'_>> {
     let (i, hdr) = parse_tls_record_header(i)?;
     if hdr.len > MAX_RECORD_LEN {
         return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
@@ -154,7 +154,7 @@ pub fn parse_tls_raw_record(i: &[u8]) -> IResult<&[u8], TlsRawRecord> {
 /// not possible to parse TLS packets without knowing the TLS state.
 #[deprecated(since = "0.5.0", note = "Use parse_tls_plaintext")]
 #[inline]
-pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
+pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext<'_>> {
     parse_tls_plaintext(i)
 }
 
@@ -165,6 +165,6 @@ pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext> {
 ///
 /// This function will be removed from API, as it should be replaced by a more
 /// useful one to handle fragmentation.
-pub fn tls_parser_many(i: &[u8]) -> IResult<&[u8], Vec<TlsPlaintext>> {
+pub fn tls_parser_many(i: &[u8]) -> IResult<&[u8], Vec<TlsPlaintext<'_>>> {
     many1(complete(parse_tls_plaintext))(i)
 }

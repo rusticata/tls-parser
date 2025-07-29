@@ -18,6 +18,6 @@ pub struct ServerDHParams<'a> {
 }
 
 #[inline]
-pub fn parse_dh_params(i: &[u8]) -> IResult<&[u8], ServerDHParams> {
+pub fn parse_dh_params(i: &[u8]) -> IResult<&[u8], ServerDHParams<'_>> {
     ServerDHParams::parse(i)
 }
