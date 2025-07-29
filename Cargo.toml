@@ -10,7 +10,7 @@ version = "0.12.2"
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 categories = ["network-programming", "parser-implementations"]
 edition = "2018"
-rust-version = "1.63"
+rust-version = "1.70"
 
 readme = "README.md"
 build = "build.rs"
