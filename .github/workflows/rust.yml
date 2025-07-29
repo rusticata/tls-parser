@@ -8,7 +8,7 @@ on:
     - cron: '0 18 * * *'
 
 env:
-  check_ext_rust_version: nightly-2024-06-30
+  check_ext_rust_version: nightly-2025-05-04
   # ^ sync with https://github.com/awslabs/cargo-check-external-types/blob/main/rust-toolchain.toml
 
 jobs:
