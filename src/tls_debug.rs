@@ -79,7 +79,7 @@ impl<'a> fmt::Debug for TlsClientKeyExchangeContents<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TlsClientKeyExchangeContents::Dh(p) => fmt.write_fmt(format_args!("{:?}", HexSlice(p))),
-            TlsClientKeyExchangeContents::Ecdh(ref p) => fmt.write_fmt(format_args!("{:?}", p)),
+            TlsClientKeyExchangeContents::Ecdh(ref p) => fmt.write_fmt(format_args!("{p:?}")),
             TlsClientKeyExchangeContents::Unknown(p) => {
                 fmt.write_fmt(format_args!("{:?}", HexSlice(p)))
             }
@@ -125,12 +125,12 @@ impl<'a> fmt::Debug for ECParametersContent<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ECParametersContent::ExplicitPrime(ref p) => {
-                fmt.write_fmt(format_args!("ExplicitPrime({:?})", p))
+                fmt.write_fmt(format_args!("ExplicitPrime({p:?})"))
             }
             // ECParametersContent::ExplicitChar2(ref p) => {
             //     fmt.write_fmt(format_args!("ExplicitChar2({:?})", HexSlice(p)))
             // }
-            ECParametersContent::NamedGroup(p) => write!(fmt, "{}", p),
+            ECParametersContent::NamedGroup(p) => write!(fmt, "{p}"),
         }
     }
 }
@@ -153,22 +153,22 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
                     .iter()
                     .map(|&(ty, n)| {
                         let s = from_utf8(n).unwrap_or("<error decoding utf8 string>");
-                        format!("type={},name={}", ty, s)
+                        format!("type={ty},name={s}")
                     })
                     .collect();
-                write!(fmt, "TlsExtension::SNI({:?})", v)
+                write!(fmt, "TlsExtension::SNI({v:?})")
             }
             TlsExtension::MaxFragmentLength(l) => {
-                write!(fmt, "TlsExtension::MaxFragmentLength({})", l)
+                write!(fmt, "TlsExtension::MaxFragmentLength({l})")
             }
             TlsExtension::StatusRequest(data) => {
-                write!(fmt, "TlsExtension::StatusRequest({:?})", data)
+                write!(fmt, "TlsExtension::StatusRequest({data:?})")
             }
             TlsExtension::EllipticCurves(ref v) => {
-                let v2: Vec<_> = v.iter().map(|&curve| format!("{}", curve)).collect();
-                write!(fmt, "TlsExtension::EllipticCurves({:?})", v2)
+                let v2: Vec<_> = v.iter().map(|&curve| format!("{curve}")).collect();
+                write!(fmt, "TlsExtension::EllipticCurves({v2:?})")
             }
-            TlsExtension::EcPointFormats(v) => write!(fmt, "TlsExtension::EcPointFormats({:?})", v),
+            TlsExtension::EcPointFormats(v) => write!(fmt, "TlsExtension::EcPointFormats({v:?})"),
             TlsExtension::SignatureAlgorithms(ref v) => {
                 let v2: Vec<_> = v
                     .iter()
@@ -187,13 +187,13 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
                         }
                     })
                     .collect();
-                write!(fmt, "TlsExtension::SignatureAlgorithms({:?})", v2)
+                write!(fmt, "TlsExtension::SignatureAlgorithms({v2:?})")
             }
             TlsExtension::SessionTicket(data) => {
-                write!(fmt, "TlsExtension::SessionTicket(data={:?})", data)
+                write!(fmt, "TlsExtension::SessionTicket(data={data:?})")
             }
             TlsExtension::RecordSizeLimit(data) => {
-                write!(fmt, "TlsExtension::RecordSizeLimit(data={})", data)
+                write!(fmt, "TlsExtension::RecordSizeLimit(data={data})")
             }
             TlsExtension::KeyShareOld(data) => {
                 write!(fmt, "TlsExtension::KeyShareOld(data={:?})", HexSlice(data))
@@ -204,48 +204,46 @@ impl<'a> fmt::Debug for TlsExtension<'a> {
             TlsExtension::PreSharedKey(data) => {
                 write!(fmt, "TlsExtension::PreSharedKey(data={:?})", HexSlice(data))
             }
-            TlsExtension::EarlyData(o) => write!(fmt, "TlsExtension::EarlyData({:?})", o),
+            TlsExtension::EarlyData(o) => write!(fmt, "TlsExtension::EarlyData({o:?})"),
             TlsExtension::SupportedVersions(ref v) => {
-                let v2: Vec<_> = v.iter().map(|c| format!("{}", c)).collect();
-                write!(fmt, "TlsExtension::SupportedVersions(v={:?})", v2)
+                let v2: Vec<_> = v.iter().map(|c| format!("{c}")).collect();
+                write!(fmt, "TlsExtension::SupportedVersions(v={v2:?})")
             }
-            TlsExtension::Cookie(data) => write!(fmt, "TlsExtension::Cookie(data={:?})", data),
+            TlsExtension::Cookie(data) => write!(fmt, "TlsExtension::Cookie(data={data:?})"),
             TlsExtension::PskExchangeModes(ref v) => {
-                write!(fmt, "TlsExtension::PskExchangeModes({:?})", v)
+                write!(fmt, "TlsExtension::PskExchangeModes({v:?})")
             }
-            TlsExtension::Heartbeat(mode) => write!(fmt, "TlsExtension::Heartbeat(mode={})", mode),
+            TlsExtension::Heartbeat(mode) => write!(fmt, "TlsExtension::Heartbeat(mode={mode})"),
             TlsExtension::ALPN(ref v) => {
                 let v: Vec<_> = v
                     .iter()
                     .map(|c| from_utf8(c).unwrap_or("<error decoding utf8 string>"))
                     .collect();
-                write!(fmt, "TlsExtension::ALPN({:?})", v)
+                write!(fmt, "TlsExtension::ALPN({v:?})")
             }
             TlsExtension::SignedCertificateTimestamp(data) => write!(
                 fmt,
-                "TlsExtension::SignedCertificateTimestamp(data={:?})",
-                data
+                "TlsExtension::SignedCertificateTimestamp(data={data:?})"
             ),
-            TlsExtension::Padding(data) => write!(fmt, "TlsExtension::Padding(data={:?})", data),
+            TlsExtension::Padding(data) => write!(fmt, "TlsExtension::Padding(data={data:?})"),
             TlsExtension::EncryptThenMac => write!(fmt, "TlsExtension::EncryptThenMac"),
             TlsExtension::ExtendedMasterSecret => write!(fmt, "TlsExtension::ExtendedMasterSecret"),
             TlsExtension::OidFilters(ref v) => {
-                let v: Vec<_> = v.iter().map(|c| format!("{:?}", c)).collect();
-                write!(fmt, "TlsExtension::OidFilters({:?})", v)
+                let v: Vec<_> = v.iter().map(|c| format!("{c:?}")).collect();
+                write!(fmt, "TlsExtension::OidFilters({v:?})")
             }
             TlsExtension::PostHandshakeAuth => write!(fmt, "TlsExtension::PostHandshakeAuth"),
             TlsExtension::NextProtocolNegotiation => {
                 write!(fmt, "TlsExtension::NextProtocolNegotiation")
             }
             TlsExtension::RenegotiationInfo(data) => {
-                write!(fmt, "TlsExtension::RenegotiationInfo(data={:?})", data)
+                write!(fmt, "TlsExtension::RenegotiationInfo(data={data:?})")
             }
             TlsExtension::EncryptedServerName {
                 ciphersuite, group, ..
             } => write!(
                 fmt,
-                "TlsExtension::EncryptedServerName{{cipher: {:?}, group: {:?} ..}}",
-                ciphersuite, group
+                "TlsExtension::EncryptedServerName{{cipher: {ciphersuite:?}, group: {group:?} ..}}"
             ),
             TlsExtension::Grease(t, data) => write!(
                 fmt,

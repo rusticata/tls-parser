@@ -134,7 +134,7 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
         ));
 
         let res = parse_tls_extensions(bytes);
-        println!("{:?}", res);
+        println!("{res:?}");
 
         assert_eq!(res, expected);
     }

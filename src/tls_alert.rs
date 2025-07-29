@@ -81,7 +81,7 @@ mod tests {
         let b = TlsAlertSeverity(a_u8);
         assert_eq!(b, TlsAlertSeverity::Warning);
 
-        let s = format!("{}", b);
+        let s = format!("{b}");
         assert_eq!(s, "Warning");
 
         let s = format!("{}", TlsAlertSeverity(129));

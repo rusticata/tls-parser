@@ -227,14 +227,14 @@ mod tests {
     #[test]
     fn test_cipher_from_id() {
         let cipher = <&TlsCipherSuite>::try_from(0xc025).expect("could not get cipher");
-        println!("Found cipher: {:?}", cipher);
+        println!("Found cipher: {cipher:?}");
     }
 
     #[test]
     fn test_cipher_from_name() {
         let cipher = <&TlsCipherSuite>::try_from("TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384")
             .expect("could not get cipher");
-        println!("Found cipher: {:?}", cipher);
+        println!("Found cipher: {cipher:?}");
     }
 
     #[test]

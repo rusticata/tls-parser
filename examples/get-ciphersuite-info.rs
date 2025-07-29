@@ -54,7 +54,7 @@ fn print_ciphersuite(cs: &TlsCipherSuite, show_details: bool, to_json: bool) {
             entries.push(format!("\"mac_size\":{}", cs.mac_size));
         }
         let s = entries.join(",");
-        println!("{{ {} }}", s);
+        println!("{{ {s} }}");
     } else {
         let details = if show_details {
             format!(
