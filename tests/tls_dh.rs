@@ -1,5 +1,5 @@
 mod tls_dh {
-    use nom::sequence::pair;
+    use nom::{sequence::pair, Parser as _};
     use tls_parser::*;
 
     #[rustfmt::skip]
@@ -50,7 +50,7 @@ static ECDHE_PARAMS: &[u8] = &[
             }),
             data: &bytes[141..],
         };
-        let res = pair(parse_ecdh_params, parse_digitally_signed)(bytes);
+        let res = pair(parse_ecdh_params, parse_digitally_signed).parse(bytes);
         assert_eq!(res, Ok((empty, (expected1, expected2))));
     }
 
@@ -139,7 +139,7 @@ static DHE_PARAMS: &[u8] = &[
             }),
             data: &bytes[778..],
         };
-        let res = pair(parse_dh_params, parse_digitally_signed)(bytes);
+        let res = pair(parse_dh_params, parse_digitally_signed).parse(bytes);
         assert_eq!(res, Ok((empty, (expected1, expected2))));
     }
 } // mod tls_dh

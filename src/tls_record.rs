@@ -3,7 +3,7 @@ use nom::bytes::streaming::take;
 use nom::combinator::{complete, map_parser};
 use nom::error::{make_error, ErrorKind};
 use nom::multi::many1;
-use nom::{Err, IResult};
+use nom::{Err, IResult, Parser as _};
 use nom_derive::{NomBE, Parse};
 use rusticata_macros::newtype_enum;
 
@@ -99,10 +99,10 @@ pub fn parse_tls_record_header(i: &[u8]) -> IResult<&[u8], TlsRecordHeader> {
 #[allow(clippy::trivially_copy_pass_by_ref)] // TlsRecordHeader is only 6 bytes, but we prefer not breaking current API
 pub fn parse_tls_record_with_header<'i>(i:&'i [u8], hdr:&TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
     match hdr.record_type {
-        TlsRecordType::ChangeCipherSpec => many1(complete(parse_tls_message_changecipherspec))(i),
-        TlsRecordType::Alert            => many1(complete(parse_tls_message_alert))(i),
-        TlsRecordType::Handshake        => many1(complete(parse_tls_message_handshake))(i),
-        TlsRecordType::ApplicationData  => many1(complete(parse_tls_message_applicationdata))(i),
+        TlsRecordType::ChangeCipherSpec => many1(complete(parse_tls_message_changecipherspec)).parse(i),
+        TlsRecordType::Alert            => many1(complete(parse_tls_message_alert)).parse(i),
+        TlsRecordType::Handshake        => many1(complete(parse_tls_message_handshake)).parse(i),
+        TlsRecordType::ApplicationData  => many1(complete(parse_tls_message_applicationdata)).parse(i),
         TlsRecordType::Heartbeat        => parse_tls_message_heartbeat(i, hdr.len),
         _                               => Err(Err::Error(make_error(i, ErrorKind::Switch)))
     }
@@ -117,7 +117,8 @@ pub fn parse_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext<'_>> {
     }
     let (i, msg) = map_parser(take(hdr.len as usize), |i| {
         parse_tls_record_with_header(i, &hdr)
-    })(i)?;
+    })
+    .parse(i)?;
     Ok((i, TlsPlaintext { hdr, msg }))
 }
 
@@ -166,5 +167,5 @@ pub fn tls_parser(i: &[u8]) -> IResult<&[u8], TlsPlaintext<'_>> {
 /// This function will be removed from API, as it should be replaced by a more
 /// useful one to handle fragmentation.
 pub fn tls_parser_many(i: &[u8]) -> IResult<&[u8], Vec<TlsPlaintext<'_>>> {
-    many1(complete(parse_tls_plaintext))(i)
+    many1(complete(parse_tls_plaintext)).parse(i)
 }

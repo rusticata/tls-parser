@@ -119,13 +119,14 @@ pub fn parse_digitally_signed_old(i: &[u8]) -> IResult<&[u8], DigitallySigned<'_
     map(length_data(be_u16), |data| DigitallySigned {
         alg: None,
         data,
-    })(i)
+    })
+    .parse(i)
 }
 
 pub fn parse_digitally_signed(i: &[u8]) -> IResult<&[u8], DigitallySigned<'_>> {
     let (i, hash) = HashAlgorithm::parse(i)?;
     let (i, sign) = SignAlgorithm::parse(i)?;
-    let (i, data) = length_data(be_u16)(i)?;
+    let (i, data) = length_data(be_u16).parse(i)?;
     let signed = DigitallySigned {
         alg: Some(SignatureAndHashAlgorithm { hash, sign }),
         data,
@@ -144,8 +145,8 @@ where
     F: Fn(&'a [u8]) -> IResult<&'a [u8], T>,
 {
     if ext {
-        pair(fun, parse_digitally_signed)(i)
+        pair(fun, parse_digitally_signed).parse(i)
     } else {
-        pair(fun, parse_digitally_signed_old)(i)
+        pair(fun, parse_digitally_signed_old).parse(i)
     }
 }

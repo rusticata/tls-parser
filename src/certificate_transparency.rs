@@ -90,7 +90,8 @@ pub fn parse_ct_signed_certificate_timestamp(
     map_parser(
         length_data(be_u16),
         parse_ct_signed_certificate_timestamp_content,
-    )(i)
+    )
+    .parse(i)
 }
 
 /// Parses a list of Signed Certificate Timestamp entries
@@ -101,6 +102,7 @@ pub fn parse_ct_signed_certificate_timestamp_list(
     let (i, sct_list) = map_parser(
         take(sct_len as usize),
         many0(complete(parse_ct_signed_certificate_timestamp)),
-    )(i)?;
+    )
+    .parse(i)?;
     Ok((i, sct_list))
 }

@@ -8,7 +8,7 @@ use nom::combinator::{complete, cond, map, map_parser, opt, verify};
 use nom::error::{make_error, ErrorKind};
 use nom::multi::{length_count, length_data, many0};
 use nom::number::streaming::{be_u16, be_u24, be_u32, be_u8};
-use nom::{Err, IResult};
+use nom::{Err, IResult, Parser as _};
 use nom_derive::{NomBE, Parse};
 use rusticata_macros::newtype_enum;
 
@@ -479,13 +479,13 @@ pub fn parse_tls_handshake_msg_hello_request(i: &[u8]) -> IResult<&[u8], TlsMess
 pub fn parse_tls_handshake_client_hello(i: &[u8]) -> IResult<&[u8], TlsClientHelloContents<'_>> {
     let (i, version) = be_u16(i)?;
     let (i, random) = take(32usize)(i)?;
-    let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
-    let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
+    let (i, sidlen) = verify(be_u8, |&n| n <= 32).parse(i)?;
+    let (i, sid) = cond(sidlen > 0, take(sidlen as usize)).parse(i)?;
     let (i, ciphers_len) = be_u16(i)?;
     let (i, ciphers) = parse_cipher_suites(i, ciphers_len as usize)?;
     let (i, comp_len) = be_u8(i)?;
     let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
-    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let (i, ext) = opt(complete(length_data(be_u16))).parse(i)?;
     let content = TlsClientHelloContents::new(version, random, sid, ciphers, comp, ext);
     Ok((i, content))
 }
@@ -510,7 +510,8 @@ pub fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessa
     map(
         parse_tls_handshake_client_hello,
         TlsMessageHandshake::ClientHello,
-    )(i)
+    )
+    .parse(i)
 }
 
 pub(crate) fn parse_cipher_suites(i: &[u8], len: usize) -> IResult<&[u8], Vec<TlsCipherSuiteID>> {
@@ -559,7 +560,8 @@ pub(crate) fn parse_tls_versions(i: &[u8]) -> IResult<&[u8], Vec<TlsVersion>> {
 fn parse_certs(i: &[u8]) -> IResult<&[u8], Vec<RawCertificate<'_>>> {
     many0(complete(map(length_data(be_u24), |data| RawCertificate {
         data,
-    })))(i)
+    })))
+    .parse(i)
 }
 
 fn parse_tls_handshake_msg_server_hello_tlsv12<const HAS_EXT: bool>(
@@ -568,7 +570,8 @@ fn parse_tls_handshake_msg_server_hello_tlsv12<const HAS_EXT: bool>(
     map(
         parse_tls_server_hello_tlsv12::<HAS_EXT>,
         TlsMessageHandshake::ServerHello,
-    )(i)
+    )
+    .parse(i)
 }
 
 pub(crate) fn parse_tls_server_hello_tlsv12<const HAS_EXT: bool>(
@@ -576,12 +579,12 @@ pub(crate) fn parse_tls_server_hello_tlsv12<const HAS_EXT: bool>(
 ) -> IResult<&[u8], TlsServerHelloContents<'_>> {
     let (i, version) = be_u16(i)?;
     let (i, random) = take(32usize)(i)?;
-    let (i, sidlen) = verify(be_u8, |&n| n <= 32)(i)?;
-    let (i, sid) = cond(sidlen > 0, take(sidlen as usize))(i)?;
+    let (i, sidlen) = verify(be_u8, |&n| n <= 32).parse(i)?;
+    let (i, sid) = cond(sidlen > 0, take(sidlen as usize)).parse(i)?;
     let (i, cipher) = be_u16(i)?;
     let (i, comp) = be_u8(i)?;
     let (i, ext) = if HAS_EXT {
-        opt(complete(length_data(be_u16)))(i)?
+        opt(complete(length_data(be_u16))).parse(i)?
     } else {
         (i, None)
     };
@@ -594,8 +597,8 @@ fn parse_tls_handshake_msg_server_hello_tlsv13draft18(
 ) -> IResult<&[u8], TlsMessageHandshake<'_>> {
     let (i, version) = TlsVersion::parse(i)?;
     let (i, random) = take(32usize)(i)?;
-    let (i, cipher) = map(be_u16, TlsCipherSuiteID)(i)?;
-    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let (i, cipher) = map(be_u16, TlsCipherSuiteID).parse(i)?;
+    let (i, ext) = opt(complete(length_data(be_u16))).parse(i)?;
     let content = TlsServerHelloV13Draft18Contents {
         version,
         random,
@@ -688,8 +691,8 @@ pub fn parse_tls_handshake_msg_hello_retry_request(
     i: &[u8],
 ) -> IResult<&[u8], TlsMessageHandshake<'_>> {
     let (i, version) = TlsVersion::parse(i)?;
-    let (i, cipher) = map(be_u16, TlsCipherSuiteID)(i)?;
-    let (i, ext) = opt(complete(length_data(be_u16)))(i)?;
+    let (i, cipher) = map(be_u16, TlsCipherSuiteID).parse(i)?;
+    let (i, ext) = opt(complete(length_data(be_u16))).parse(i)?;
     let content = TlsHelloRetryRequestContents {
         version,
         cipher,
@@ -700,14 +703,14 @@ pub fn parse_tls_handshake_msg_hello_retry_request(
 
 pub(crate) fn parse_tls_certificate(i: &[u8]) -> IResult<&[u8], TlsCertificateContents<'_>> {
     let (i, cert_len) = be_u24(i)?;
-    let (i, cert_chain) = map_parser(take(cert_len as usize), parse_certs)(i)?;
+    let (i, cert_chain) = map_parser(take(cert_len as usize), parse_certs).parse(i)?;
     let content = TlsCertificateContents { cert_chain };
     Ok((i, content))
 }
 
 /// Parse a Certificate handshake message
 pub fn parse_tls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake<'_>> {
-    map(parse_tls_certificate, TlsMessageHandshake::Certificate)(i)
+    map(parse_tls_certificate, TlsMessageHandshake::Certificate).parse(i)
 }
 
 /// Parse a ServerKeyExchange handshake message
@@ -717,7 +720,8 @@ pub fn parse_tls_handshake_msg_serverkeyexchange(
 ) -> IResult<&[u8], TlsMessageHandshake<'_>> {
     map(take(len), |ext| {
         TlsMessageHandshake::ServerKeyExchange(TlsServerKeyExchangeContents { parameters: ext })
-    })(i)
+    })
+    .parse(i)
 }
 
 /// Parse a ServerDone handshake message
@@ -725,7 +729,7 @@ pub fn parse_tls_handshake_msg_serverdone(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake<'_>> {
-    map(take(len), TlsMessageHandshake::ServerDone)(i)
+    map(take(len), TlsMessageHandshake::ServerDone).parse(i)
 }
 
 /// Parse a CertificateVerify handshake message
@@ -733,13 +737,13 @@ pub fn parse_tls_handshake_msg_certificateverify(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake<'_>> {
-    map(take(len), TlsMessageHandshake::CertificateVerify)(i)
+    map(take(len), TlsMessageHandshake::CertificateVerify).parse(i)
 }
 
 pub(crate) fn parse_tls_clientkeyexchange(
     len: usize,
 ) -> impl FnMut(&[u8]) -> IResult<&[u8], TlsClientKeyExchangeContents> {
-    move |i| map(take(len), TlsClientKeyExchangeContents::Unknown)(i)
+    move |i| map(take(len), TlsClientKeyExchangeContents::Unknown).parse(i)
 }
 
 /// Parse a ClientKeyExchange handshake message
@@ -753,14 +757,15 @@ pub fn parse_tls_handshake_msg_clientkeyexchange(
     map(
         parse_tls_clientkeyexchange(len),
         TlsMessageHandshake::ClientKeyExchange,
-    )(i)
+    )
+    .parse(i)
 }
 
 fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsCertificateRequestContents<'_>> {
-    let (i, cert_types) = length_count(be_u8, be_u8)(i)?;
+    let (i, cert_types) = length_count(be_u8, be_u8).parse(i)?;
     let (i, ca_len) = be_u16(i)?;
     let (i, unparsed_ca) =
-        map_parser(take(ca_len as usize), many0(complete(length_data(be_u16))))(i)?;
+        map_parser(take(ca_len as usize), many0(complete(length_data(be_u16)))).parse(i)?;
     let content = TlsCertificateRequestContents {
         cert_types,
         // sig_hash_algs: Some(sig_hash_algs),
@@ -771,13 +776,13 @@ fn parse_certrequest_nosigalg(i: &[u8]) -> IResult<&[u8], TlsCertificateRequestC
 }
 
 fn parse_certrequest_full(i: &[u8]) -> IResult<&[u8], TlsCertificateRequestContents<'_>> {
-    let (i, cert_types) = length_count(be_u8, be_u8)(i)?;
+    let (i, cert_types) = length_count(be_u8, be_u8).parse(i)?;
     let (i, sig_hash_algs_len) = be_u16(i)?;
     let (i, sig_hash_algs) =
-        map_parser(take(sig_hash_algs_len as usize), many0(complete(be_u16)))(i)?;
+        map_parser(take(sig_hash_algs_len as usize), many0(complete(be_u16))).parse(i)?;
     let (i, ca_len) = be_u16(i)?;
     let (i, unparsed_ca) =
-        map_parser(take(ca_len as usize), many0(complete(length_data(be_u16))))(i)?;
+        map_parser(take(ca_len as usize), many0(complete(length_data(be_u16)))).parse(i)?;
     let content = TlsCertificateRequestContents {
         cert_types,
         sig_hash_algs: Some(sig_hash_algs),
@@ -793,7 +798,8 @@ pub fn parse_tls_handshake_certificaterequest(
     alt((
         complete(parse_certrequest_full),
         complete(parse_certrequest_nosigalg),
-    ))(i)
+    ))
+    .parse(i)
 }
 
 /// Parse a CertificateRequest handshake message
@@ -803,7 +809,8 @@ pub fn parse_tls_handshake_msg_certificaterequest(
     map(
         parse_tls_handshake_certificaterequest,
         TlsMessageHandshake::CertificateRequest,
-    )(i)
+    )
+    .parse(i)
 }
 
 /// Parse a Finished handshake message
@@ -811,7 +818,7 @@ pub fn parse_tls_handshake_msg_finished(
     i: &[u8],
     len: usize,
 ) -> IResult<&[u8], TlsMessageHandshake<'_>> {
-    map(take(len), TlsMessageHandshake::Finished)(i)
+    map(take(len), TlsMessageHandshake::Finished).parse(i)
 }
 
 /// Parse handshake message contents for CertificateStatus (\[RFC6066\])
@@ -823,7 +830,7 @@ pub fn parse_tls_handshake_certificatestatus(
     i: &[u8],
 ) -> IResult<&[u8], TlsCertificateStatusContents<'_>> {
     let (i, status_type) = be_u8(i)?;
-    let (i, blob) = length_data(be_u24)(i)?;
+    let (i, blob) = length_data(be_u24).parse(i)?;
     let content = TlsCertificateStatusContents { status_type, blob };
     Ok((i, content))
 }
@@ -839,7 +846,8 @@ pub fn parse_tls_handshake_msg_certificatestatus(
     map(
         parse_tls_handshake_certificatestatus,
         TlsMessageHandshake::CertificateStatus,
-    )(i)
+    )
+    .parse(i)
 }
 
 /// Parse handshake message contents for NextProtocol
@@ -848,8 +856,8 @@ pub fn parse_tls_handshake_msg_certificatestatus(
 /// [draft-agl-tls-nextprotoneg-03](https://tools.ietf.org/html/draft-agl-tls-nextprotoneg-03)
 /// Deprecated in favour of ALPN.
 pub fn parse_tls_handshake_next_protocol(i: &[u8]) -> IResult<&[u8], TlsNextProtocolContent<'_>> {
-    let (i, selected_protocol) = length_data(be_u8)(i)?;
-    let (i, padding) = length_data(be_u8)(i)?;
+    let (i, selected_protocol) = length_data(be_u8).parse(i)?;
+    let (i, padding) = length_data(be_u8).parse(i)?;
     let next_proto = TlsNextProtocolContent {
         selected_protocol,
         padding,
@@ -866,12 +874,13 @@ pub fn parse_tls_handshake_msg_next_protocol(i: &[u8]) -> IResult<&[u8], TlsMess
     map(
         parse_tls_handshake_next_protocol,
         TlsMessageHandshake::NextProtocol,
-    )(i)
+    )
+    .parse(i)
 }
 
 /// Parse a KeyUpdate handshake message
 pub fn parse_tls_handshake_msg_key_update(i: &[u8]) -> IResult<&[u8], TlsMessageHandshake<'_>> {
-    map(be_u8, TlsMessageHandshake::KeyUpdate)(i)
+    map(be_u8, TlsMessageHandshake::KeyUpdate).parse(i)
 }
 
 /// Parse a TLS handshake message

@@ -3,7 +3,7 @@ use nom::bytes::streaming::take;
 use nom::combinator::verify;
 use nom::error::{make_error, ErrorKind};
 use nom::number::streaming::{be_u16, be_u8};
-use nom::{Err, IResult};
+use nom::{Err, IResult, Parser};
 use nom_derive::Parse;
 
 use crate::tls_alert::*;
@@ -44,7 +44,7 @@ pub struct TlsMessageHeartbeat<'a> {
 /// Parse a TLS changecipherspec message
 // XXX add extra verification hdr.len == 1
 pub fn parse_tls_message_changecipherspec(i: &[u8]) -> IResult<&[u8], TlsMessage<'_>> {
-    let (i, _) = verify(be_u8, |&tag| tag == 0x01)(i)?;
+    let (i, _) = verify(be_u8, |&tag| tag == 0x01).parse(i)?;
     Ok((i, TlsMessage::ChangeCipherSpec))
 }
 
