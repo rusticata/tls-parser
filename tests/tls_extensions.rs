@@ -51,6 +51,22 @@ static CLIENT_EXTENSIONS1: &[u8] = &[
     }
 
     #[test]
+    fn test_fragmented_tls_extensions() {
+        let bytes = &CLIENT_EXTENSIONS1[..29];
+        let expected = Ok((
+            &CLIENT_EXTENSIONS1[23..29],
+            vec![TlsExtension::SNI(vec![(
+                SNIType::HostName,
+                b"www.google.com",
+            )])],
+        ));
+
+        let res = parse_tls_extensions(bytes);
+
+        assert_eq!(res, expected);
+    }
+
+    #[test]
     fn test_tls_extension_max_fragment_length() {
         let empty = &b""[..];
         let bytes = &[0x00, 0x01, 0x00, 0x01, 0x04];

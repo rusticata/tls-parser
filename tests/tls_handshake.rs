@@ -5,6 +5,8 @@ extern crate nom;
 extern crate tls_parser;
 
 mod tls_handshake {
+    use std::num::NonZero;
+
     use nom::{Err, Needed};
     use tls_parser::*;
 
@@ -75,6 +77,51 @@ static CH : &[u8] = &[
             ))],
         };
         let res = parse_tls_plaintext(CH);
+        assert_eq!(res, Ok((empty, expected)));
+    }
+
+    #[test]
+    fn test_fragmented_tls_record_clienthello() {
+        let empty = &b""[..];
+        let rand_data = [
+            0xb2, 0x9d, 0xd7, 0x87, 0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a, 0xcf,
+            0xb7, 0xa3, 0x82, 0x1f, 0x82, 0x6c, 0x49, 0xbc, 0x8b, 0xb8, 0xa9, 0x03, 0x0a, 0x2d,
+            0xce, 0x38, 0x0b, 0xf4,
+        ];
+        let ciphers = &[
+            0xc030, 0xc02c, 0xc028, 0xc024, 0xc014, 0xc00a, 0x00a5, 0x00a3, 0x00a1, 0x009f, 0x006b,
+            0x006a, 0x0069, 0x0068, 0x0039, 0x0038, 0x0037, 0x0036, 0x0088, 0x0087, 0x0086, 0x0085,
+            0xc032, 0xc02e, 0xc02a, 0xc026, 0xc00f, 0xc005, 0x009d, 0x003d, 0x0035, 0x0084, 0xc02f,
+            0xc02b, 0xc027, 0xc023, 0xc013, 0xc009, 0x00a4, 0x00a2, 0x00a0, 0x009e, 0x0067, 0x0040,
+            0x003f, 0x003e, 0x0033, 0x0032, 0x0031, 0x0030, 0x009a, 0x0099, 0x0098, 0x0097, 0x0045,
+            0x0044, 0x0043, 0x0042, 0xc031, 0xc02d, 0xc029, 0xc025, 0xc00e, 0xc004, 0x009c, 0x003c,
+            0x002f, 0x0096, 0x0041, 0xc011, 0xc007, 0xc00c, 0xc002, 0x0005, 0x0004, 0xc012, 0xc008,
+            0x0016, 0x0013, 0x0010, 0x000d, 0xc00d, 0xc003, 0x000a, 0x00ff,
+        ];
+        let comp = vec![TlsCompressionID(0x00)];
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls10,
+                len: 300,
+            },
+            msg: vec![TlsMessage::Handshake(TlsMessageHandshake::ClientHello(
+                TlsClientHelloContents {
+                    version: TlsVersion::Tls12,
+                    random: &rand_data,
+                    session_id: None,
+                    ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
+                    comp,
+                    ext: Some(&CH[220..CH.len() - 10]),
+                },
+            ))],
+        };
+        let res = parse_tls_plaintext(&CH[..CH.len() - 10]);
+        assert_eq!(
+            res,
+            Err(Err::Incomplete(Needed::Size(NonZero::new(10).unwrap())))
+        );
+        let res = parse_fragmented_tls_plaintext(&CH[..CH.len() - 10]);
         assert_eq!(res, Ok((empty, expected)));
     }
 
@@ -469,6 +516,39 @@ static SERVER_REPLY1: &[u8] = &[
             ))],
         };
         assert_eq!(parse_tls_plaintext(bytes), Ok((empty, expected)));
+    }
+
+    #[test]
+    fn test_fragmented_tls_record_certificate() {
+        let empty = &b""[..];
+        let bytes = &SERVER_REPLY1[64..3000];
+        let chain = vec![
+            RawCertificate {
+                data: &bytes[15..1171],
+            },
+            RawCertificate {
+                data: &bytes[1174..2186],
+            },
+            // &bytes[2189..2936], incomplete cert data
+        ];
+        for cert in &chain {
+            println!("cert len: {}", cert.data.len());
+        }
+        let expected = TlsPlaintext {
+            hdr: TlsRecordHeader {
+                record_type: TlsRecordType::Handshake,
+                version: TlsVersion::Tls12,
+                len: 3081,
+            },
+            msg: vec![TlsMessage::Handshake(TlsMessageHandshake::Certificate(
+                TlsCertificateContents { cert_chain: chain },
+            ))],
+        };
+
+        assert!(parse_tls_plaintext(bytes).is_err());
+
+        let result = parse_fragmented_tls_plaintext(bytes);
+        assert_eq!(result, Ok((empty, expected)));
     }
 
     #[test]
