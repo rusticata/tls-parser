@@ -81,7 +81,7 @@ static CH : &[u8] = &[
     }
 
     #[test]
-    fn test_fragmented_tls_record_clienthello() {
+    fn test_partial_tls_record_clienthello() {
         let empty = &b""[..];
         let rand_data = [
             0xb2, 0x9d, 0xd7, 0x87, 0xff, 0x21, 0xeb, 0x04, 0xc8, 0xa5, 0x38, 0x39, 0x9a, 0xcf,
@@ -121,7 +121,7 @@ static CH : &[u8] = &[
             res,
             Err(Err::Incomplete(Needed::Size(NonZero::new(10).unwrap())))
         );
-        let res = parse_fragmented_tls_plaintext(&CH[..CH.len() - 10]);
+        let res = parse_partial_tls_plaintext(&CH[..CH.len() - 10]);
         assert_eq!(res, Ok((empty, expected)));
     }
 
@@ -519,7 +519,7 @@ static SERVER_REPLY1: &[u8] = &[
     }
 
     #[test]
-    fn test_fragmented_tls_record_certificate() {
+    fn test_partial_tls_record_certificate() {
         let empty = &b""[..];
         let bytes = &SERVER_REPLY1[64..3000];
         let chain = vec![
@@ -547,7 +547,7 @@ static SERVER_REPLY1: &[u8] = &[
 
         assert!(parse_tls_plaintext(bytes).is_err());
 
-        let result = parse_fragmented_tls_plaintext(bytes);
+        let result = parse_partial_tls_plaintext(bytes);
         assert_eq!(result, Ok((empty, expected)));
     }
 

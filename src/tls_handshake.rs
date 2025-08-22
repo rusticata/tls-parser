@@ -483,7 +483,7 @@ pub fn parse_tls_handshake_client_hello(i: &[u8]) -> IResult<&[u8], TlsClientHel
 
 fn parse_tls_handshake_client_hello_inner(
     i: &[u8],
-    fragmented: bool,
+    allow_partial: bool,
 ) -> IResult<&[u8], TlsClientHelloContents<'_>> {
     let (i, version) = be_u16(i)?;
     let (i, random) = take(32usize)(i)?;
@@ -494,7 +494,7 @@ fn parse_tls_handshake_client_hello_inner(
     let (i, comp_len) = be_u8(i)?;
     let (i, comp) = parse_compressions_algs(i, comp_len as usize)?;
     let (i, ext_len) = be_u16(i)?;
-    let ext_len = match fragmented {
+    let ext_len = match allow_partial {
         false => ext_len as usize,
         true => min(ext_len as usize, i.len()),
     };
@@ -509,13 +509,13 @@ fn parse_tls_handshake_client_hello_inner(
 /// use tls_parser::*;
 ///
 /// # pub fn do_stuff(bytes: &[u8]) {
-/// if let Ok((_, ch)) = parse_fragmented_tls_handshake_client_hello(bytes) {
+/// if let Ok((_, ch)) = parse_partial_tls_handshake_client_hello(bytes) {
 ///     println!("ClientHello TLS version: {}", ch.version);
 ///     println!("  number of proposed ciphersuites: {}", ch.ciphers.len());
 /// }
 /// # }
 /// ```
-pub fn parse_fragmented_tls_handshake_client_hello(
+pub fn parse_partial_tls_handshake_client_hello(
     i: &[u8],
 ) -> IResult<&[u8], TlsClientHelloContents<'_>> {
     parse_tls_handshake_client_hello_inner(i, true)
@@ -544,12 +544,12 @@ pub fn parse_tls_handshake_msg_client_hello(i: &[u8]) -> IResult<&[u8], TlsMessa
     )(i)
 }
 
-/// Parse a fragmented ClientHello handshake message
-pub fn parse_fragmented_tls_handshake_msg_client_hello(
+/// Parse a partial ClientHello handshake message
+pub fn parse_partial_tls_handshake_msg_client_hello(
     i: &[u8],
 ) -> IResult<&[u8], TlsMessageHandshake<'_>> {
     map(
-        parse_fragmented_tls_handshake_client_hello,
+        parse_partial_tls_handshake_client_hello,
         TlsMessageHandshake::ClientHello,
     )(i)
 }
@@ -743,7 +743,7 @@ pub(crate) fn parse_tls_certificate(i: &[u8]) -> IResult<&[u8], TlsCertificateCo
     parse_tls_certificate_inner(i, false)
 }
 
-pub(crate) fn parse_fragmented_tls_certificate(
+pub(crate) fn parse_partial_tls_certificate(
     i: &[u8],
 ) -> IResult<&[u8], TlsCertificateContents<'_>> {
     parse_tls_certificate_inner(i, true)
@@ -751,10 +751,10 @@ pub(crate) fn parse_fragmented_tls_certificate(
 
 fn parse_tls_certificate_inner(
     i: &[u8],
-    fragmented: bool,
+    allow_partial: bool,
 ) -> IResult<&[u8], TlsCertificateContents<'_>> {
     let (i, cert_len) = be_u24(i)?;
-    let cert_len = match fragmented {
+    let cert_len = match allow_partial {
         false => cert_len as usize,
         true => min(cert_len as usize, i.len()),
     };
@@ -768,12 +768,12 @@ pub fn parse_tls_handshake_msg_certificate(i: &[u8]) -> IResult<&[u8], TlsMessag
     map(parse_tls_certificate, TlsMessageHandshake::Certificate)(i)
 }
 
-/// Parse a fragmented Certificate handshake message
-pub fn parse_fragmented_tls_handshake_msg_certificate(
+/// Parse a partial Certificate handshake message
+pub fn parse_partial_tls_handshake_msg_certificate(
     i: &[u8],
 ) -> IResult<&[u8], TlsMessageHandshake<'_>> {
     map(
-        parse_fragmented_tls_certificate,
+        parse_partial_tls_certificate,
         TlsMessageHandshake::Certificate,
     )(i)
 }
@@ -947,33 +947,36 @@ pub fn parse_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage<'_>> {
     parse_tls_message_handshake_inner(i, false)
 }
 
-/// Parse a fragmented TLS handshake message
-pub fn parse_fragmented_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage<'_>> {
+/// Parse a partial TLS handshake message
+pub fn parse_partial_tls_message_handshake(i: &[u8]) -> IResult<&[u8], TlsMessage<'_>> {
     parse_tls_message_handshake_inner(i, true)
 }
 
 /// Parse a TLS handshake message
-fn parse_tls_message_handshake_inner(i: &[u8], fragmented: bool) -> IResult<&[u8], TlsMessage<'_>> {
+fn parse_tls_message_handshake_inner(
+    i: &[u8],
+    allow_partial: bool,
+) -> IResult<&[u8], TlsMessage<'_>> {
     let (i, ht) = be_u8(i)?;
     let (i, hl) = be_u24(i)?;
-    let hl = match fragmented {
+    let hl = match allow_partial {
         false => hl as usize,
         true => i.len(),
     };
     let (i, raw_msg) = take(hl)(i)?;
     let (_, msg) = match TlsHandshakeType(ht) {
         TlsHandshakeType::HelloRequest => parse_tls_handshake_msg_hello_request(raw_msg),
-        TlsHandshakeType::ClientHello => match fragmented {
+        TlsHandshakeType::ClientHello => match allow_partial {
             false => parse_tls_handshake_msg_client_hello(raw_msg),
-            true => parse_fragmented_tls_handshake_msg_client_hello(raw_msg),
+            true => parse_partial_tls_handshake_msg_client_hello(raw_msg),
         },
         TlsHandshakeType::ServerHello => parse_tls_handshake_msg_server_hello(raw_msg),
         TlsHandshakeType::NewSessionTicket => parse_tls_handshake_msg_newsessionticket(raw_msg, hl),
         TlsHandshakeType::EndOfEarlyData => Ok((raw_msg, TlsMessageHandshake::EndOfEarlyData)),
         TlsHandshakeType::HelloRetryRequest => parse_tls_handshake_msg_hello_retry_request(raw_msg),
-        TlsHandshakeType::Certificate => match fragmented {
+        TlsHandshakeType::Certificate => match allow_partial {
             false => parse_tls_handshake_msg_certificate(raw_msg),
-            true => parse_fragmented_tls_handshake_msg_certificate(raw_msg),
+            true => parse_partial_tls_handshake_msg_certificate(raw_msg),
         },
         TlsHandshakeType::ServerKeyExchange => {
             parse_tls_handshake_msg_serverkeyexchange(raw_msg, hl)

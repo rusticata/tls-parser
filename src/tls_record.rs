@@ -96,39 +96,35 @@ pub fn parse_tls_record_header(i: &[u8]) -> IResult<&[u8], TlsRecordHeader> {
 /// strict protocol conformance).
 ///
 /// This function will fail on fragmented records. To support fragmented records, use
-/// [crate::TlsRecordsParser]].
+/// [crate::TlsRecordsParser]], or use [crate::parse_partial_tls_plaintext] to parse
+/// partial plaintext records.
 #[rustfmt::skip]
 #[allow(clippy::trivially_copy_pass_by_ref)] // TlsRecordHeader is only 6 bytes, but we prefer not breaking current API
 pub fn parse_tls_record_with_header<'i>(i:&'i [u8], hdr:&TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
     parse_tls_record_with_header_inner(i, hdr, false)
 }
 
-/// Given fragmented data and a TLS record header, parse content.
+/// Given partial data and a TLS record header, parse content.
 ///
 /// A record can contain multiple messages (with the same type).
 ///
-/// Note that message length is checked (not required for parser safety, but for
-/// strict protocol conformance).
-///
-/// This function will fail on fragmented records. To support fragmented records, use
-/// [crate::TlsRecordsParser]].
 #[rustfmt::skip]
 #[allow(clippy::trivially_copy_pass_by_ref)] // TlsRecordHeader is only 6 bytes, but we prefer not breaking current API
-pub fn parse_fragmented_tls_record_with_header<'i>(i:&'i [u8], hdr:&TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
+pub fn parse_partial_tls_record_with_header<'i>(i:&'i [u8], hdr:&TlsRecordHeader ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
     parse_tls_record_with_header_inner(i, hdr, true)
 }
 
 fn parse_tls_record_with_header_inner<'i>(
     i: &'i [u8],
     hdr: &TlsRecordHeader,
-    fragmented: bool,
+    allow_partial: bool,
 ) -> IResult<&'i [u8], Vec<TlsMessage<'i>>> {
     match hdr.record_type {
         TlsRecordType::ChangeCipherSpec => many1(complete(parse_tls_message_changecipherspec))(i),
         TlsRecordType::Alert => many1(complete(parse_tls_message_alert))(i),
-        TlsRecordType::Handshake => match fragmented {
+        TlsRecordType::Handshake => match allow_partial {
             false => many1(complete(parse_tls_message_handshake))(i),
-            true => many1(complete(parse_fragmented_tls_message_handshake))(i),
+            true => many1(complete(parse_partial_tls_message_handshake))(i),
         },
         TlsRecordType::ApplicationData => many1(complete(parse_tls_message_applicationdata))(i),
         TlsRecordType::Heartbeat => parse_tls_message_heartbeat(i, hdr.len),
@@ -142,26 +138,25 @@ pub fn parse_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext<'_>> {
     parse_tls_plaintext_inner(i, false)
 }
 
-/// Parse one fragmented packet only, as plaintext
+/// Parse one partial packet only, as plaintext
 /// A single record can contain multiple messages, they must share the same record type
-pub fn parse_fragmented_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext<'_>> {
+pub fn parse_partial_tls_plaintext(i: &[u8]) -> IResult<&[u8], TlsPlaintext<'_>> {
     parse_tls_plaintext_inner(i, true)
 }
 
-fn parse_tls_plaintext_inner(i: &[u8], fragmented: bool) -> IResult<&[u8], TlsPlaintext<'_>> {
+fn parse_tls_plaintext_inner(i: &[u8], allow_partial: bool) -> IResult<&[u8], TlsPlaintext<'_>> {
     let (i, hdr) = parse_tls_record_header(i)?;
     if hdr.len > MAX_RECORD_LEN {
         return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
     }
 
-    let (i, msg) = match fragmented {
-        false => map_parser(take(hdr.len as usize), |i| {
-            parse_tls_record_with_header(i, &hdr)
-        })(i)?,
-        true => map_parser(take(min(hdr.len as usize, i.len())), |i| {
-            parse_fragmented_tls_record_with_header(i, &hdr)
-        })(i)?,
+    let data_len = match allow_partial {
+        false => hdr.len as usize,
+        true => min(hdr.len as usize, i.len()),
     };
+    let (i, msg) = map_parser(take(data_len), |i| {
+        parse_tls_record_with_header_inner(i, &hdr, allow_partial)
+    })(i)?;
     Ok((i, TlsPlaintext { hdr, msg }))
 }
 
