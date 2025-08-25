@@ -51,7 +51,7 @@ hex-literal = "0.4"
 pretty_assertions = "1.4"
 
 [build-dependencies]
-phf_codegen = "0.11"
+phf_codegen = "0.13"
 
 [package.metadata.cargo_check_external_types]
 allowed_external_types = [
