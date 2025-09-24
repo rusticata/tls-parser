@@ -22,6 +22,7 @@ impl<'a> fmt::Debug for TlsClientHelloContents<'a> {
             .field("ciphers", &self.ciphers)
             .field("comp", &self.comp)
             .field("ext", &self.ext.map(HexSlice))
+            .field("is_parsing_complete", &self.is_parsing_complete)
             .finish()
     }
 }

@@ -21,6 +21,15 @@ pub enum TlsMessage<'a> {
     Heartbeat(TlsMessageHeartbeat<'a>),
 }
 
+impl TlsMessage<'_> {
+    pub fn is_parsing_complete(&self) -> bool {
+        match self {
+            TlsMessage::Handshake(hs) => hs.is_parsing_complete(),
+            _ => true,
+        }
+    }
+}
+
 /// TLS application data
 ///
 /// Since this message can only be sent after the handshake, data is

@@ -75,6 +75,7 @@ static TV_SERVER_HELLO_1: &[u8] = &[
                     ciphers: ciphers.iter().map(|&x| TlsCipherSuiteID(x)).collect(),
                     comp: vec![TlsCompressionID(0)],
                     ext: Some(&bytes[112..]),
+                    is_parsing_complete: true,
                 },
             ))],
         };
