@@ -20,6 +20,18 @@ fn gen_tls_ext_sni_hostname<'a, 'b: 'a, W: Write + 'a>(
     tuple((be_u8((i.0).0), be_u16(i.1.len() as u16), slice(i.1)))
 }
 
+fn length_be_u8<W, F>(f: F) -> impl SerializeFn<W>
+where
+    W: Write,
+    F: SerializeFn<Vec<u8>>,
+{
+    move |out| {
+        // use a temporary buffer
+        let (buf, len) = gen(&f, Vec::new())?;
+        tuple((be_u8(len as u8), slice(buf)))(out)
+    }
+}
+
 fn length_be_u16<W, F>(f: F) -> impl SerializeFn<W>
 where
     W: Write,
@@ -76,6 +88,13 @@ where
     be_u16(g.0)
 }
 
+fn gen_tls_version<W>(v: TlsVersion) -> impl SerializeFn<W>
+where
+    W: Write,
+{
+    be_u16(v.0)
+}
+
 fn gen_tls_ext_elliptic_curves<'a, W>(v: &'a [NamedGroup]) -> impl SerializeFn<W> + 'a
 where
     W: Write + 'a,
@@ -83,6 +102,26 @@ where
     tagged_extension(
         u16::from(TlsExtensionType::SupportedGroups),
         length_be_u16(all(v.iter().map(|&g| gen_tls_named_group(g)))),
+    )
+}
+
+fn gen_tls_ext_supported_versions<'a, W>(vs: &'a [TlsVersion]) -> impl SerializeFn<W> + 'a
+where
+    W: Write + 'a,
+{
+    tagged_extension(
+        u16::from(TlsExtensionType::SupportedVersions),
+        length_be_u8(all(vs.iter().map(|&v| gen_tls_version(v)))),
+    )
+}
+
+fn gen_tls_ext_signature_algorithms<'a, W>(sigs: &'a [u16]) -> impl SerializeFn<W> + 'a
+where
+    W: Write + 'a,
+{
+    tagged_extension(
+        u16::from(TlsExtensionType::SignatureAlgorithms),
+        length_be_u16(all(sigs.iter().map(|&s| be_u16(s)))),
     )
 }
 
@@ -113,6 +152,8 @@ where
         TlsExtension::MaxFragmentLength(l) => gen_tls_ext_max_fragment_length(*l)(out),
 
         TlsExtension::EllipticCurves(ref v) => gen_tls_ext_elliptic_curves(v)(out),
+        TlsExtension::SupportedVersions(ref v) => gen_tls_ext_supported_versions(v)(out),
+        TlsExtension::SignatureAlgorithms(ref v) => gen_tls_ext_signature_algorithms(v)(out),
         _ => Err(GenError::NotYetImplemented),
     }
 }
@@ -488,6 +529,41 @@ mod tests {
             0x00, // type
             0x00, 0x0e, // length
             0x77, 0x77, 0x77, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d,
+        ];
+        assert_eq!(&v[..], &res[..]);
+    }
+
+    #[test]
+    fn serialize_extension_versions() {
+        let ext = TlsExtension::SupportedVersions(vec![TlsVersion::Tls12, TlsVersion::Tls13]);
+
+        let res = gen_simple(gen_tls_extension(&ext), Vec::new())
+            .expect("Could not serialize messages");
+        let v = [
+            0x00, 0x2b, // SupportedVersions tag
+            0x00, 0x05, // SupportedVersions ext length
+            0x04,       // SupportedVersions list length
+            0x03, 0x03, // TLS 1.2
+            0x03, 0x04, // TLS 1.3
+        ];
+        assert_eq!(&v[..], &res[..]);
+    }
+
+    #[test]
+    fn serialize_extension_supported_groups() {
+        let ext = TlsExtension::EllipticCurves(vec![
+            NamedGroup::Secp256r1,
+            NamedGroup::EcdhX25519,
+        ]);
+
+        let res = gen_simple(gen_tls_extension(&ext), Vec::new())
+            .expect("Could not serialize messages");
+        let v = [
+            0x00, 0x0a, // SupportedGroups tag
+            0x00, 0x06, // SupportedGroups ext length
+            0x00, 0x04, // SupportedGroups list length
+            0x00, 0x17, // secp256r1
+            0x00, 0x1d, // x25519
         ];
         assert_eq!(&v[..], &res[..]);
     }
