@@ -82,6 +82,11 @@ impl display SignatureScheme {
     ecdsa_brainpoolP384r1tls13_sha384 = 0x081b,
     ecdsa_brainpoolP512r1tls13_sha512 = 0x081c,
 
+    /* ML-DSA algorithms [draft-ietf-tls-mldsa] */
+    mldsa44 = 0x0904,
+    mldsa65 = 0x0905,
+    mldsa87 = 0x0906,
+
     /* Legacy algorithms */
     rsa_pkcs1_sha1 = 0x0201,
     ecdsa_sha1 = 0x0203,
@@ -147,5 +152,28 @@ where
         pair(fun, parse_digitally_signed)(i)
     } else {
         pair(fun, parse_digitally_signed_old)(i)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SignatureScheme;
+    use alloc::string::ToString;
+
+    #[test]
+    fn signature_scheme_display() {
+        // ML-DSA post-quantum schemes ([draft-ietf-tls-mldsa]).
+        assert_eq!(SignatureScheme(0x0904).to_string(), "mldsa44");
+        assert_eq!(SignatureScheme(0x0905).to_string(), "mldsa65");
+        assert_eq!(SignatureScheme(0x0906).to_string(), "mldsa87");
+        // An existing classical scheme still resolves by name.
+        assert_eq!(
+            SignatureScheme(0x0403).to_string(),
+            "ecdsa_secp256r1_sha256"
+        );
+        // An unrecognized codepoint falls back to the numeric form.
+        assert!(SignatureScheme(0x0000)
+            .to_string()
+            .starts_with("SignatureScheme"));
     }
 }
