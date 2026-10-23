@@ -95,7 +95,7 @@ fn main() {
         )
         .clone();
 
-        map.entry(key, val.as_str());
+        map.entry(key, val);
     }
 
     writeln!(
