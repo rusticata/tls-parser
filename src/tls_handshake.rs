@@ -86,6 +86,7 @@ impl debug TlsVersion {
 
     DTls10       = 0xfeff,
     DTls12       = 0xfefd,
+    DTls13       = 0xfefc,
 }
 }
 
