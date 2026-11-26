@@ -106,7 +106,7 @@ MAP_ENC = {
         'CAMELLIA_256_CBC': ['CAMELLIA', 'CBC', 256],
         'CAMELLIA_128_GCM': ['CAMELLIA', 'GCM', 128],
         'CAMELLIA_256_GCM': ['CAMELLIA', 'GCM', 256],
-        'CHACHA20_POLY1305': ['CHACHA20_POLY1305', '', 128],
+        'CHACHA20_POLY1305': ['CHACHA20_POLY1305', '', 256],
         'DES_CBC': ['DES', 'CBC', 56],
         'DES_CBC_40': ['DES', 'CBC', 40],
         'DES40_CBC': ['DES', 'CBC', 40],
@@ -181,7 +181,7 @@ def extract_ciphersuite_info(desc, rfcs):
         macsize = encsize
     if enc == "CHACHA20_POLY1305":
         mac = "AEAD"
-        macsize = encsize
+        macsize = 128
     # XXX (not used yet)
     minver = 0x0300
     maxver = 0xffff
